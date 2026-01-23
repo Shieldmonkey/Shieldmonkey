@@ -138,7 +138,7 @@ function App() {
       <header className="popup-header">
         <div className="logo-area">
           <img src="/icons/icon48.png" alt="Logo" className="logo-img" />
-          <h1>StickyMonkey</h1>
+          <h1>StaticMonkey</h1>
         </div>
         <div className="global-switch-container">
           <ToggleSwitch checked={extensionEnabled} onChange={toggleGlobal} />

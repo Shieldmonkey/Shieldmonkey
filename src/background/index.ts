@@ -2,7 +2,7 @@ import { parseMetadata } from '../utils/metadataParser';
 import { getGMAPIScript } from '../core/gm_api';
 import { matchPattern } from '../utils/urlMatcher';
 
-console.log("StickyMonkey Background Script Loaded");
+console.log("StaticMonkey Background Script Loaded");
 
 interface Script {
   id: string;
@@ -40,7 +40,7 @@ async function updateBadge(tabId: number, url: string) {
 
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log("StickyMonkey installed - Initializing...");
+  console.log("StaticMonkey installed - Initializing...");
 
   // Enable userScripts API if available
   if (chrome.userScripts) {
@@ -428,7 +428,7 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
         chrome.notifications.create({
           type: 'basic',
           iconUrl: data.image || '/icons/icon48.png',
-          title: data.title || 'StickyMonkey',
+          title: data.title || 'StaticMonkey',
           message: data.text
         });
       }

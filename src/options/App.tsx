@@ -354,8 +354,8 @@ function App() {
   const renderSidebar = () => (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <img src="/icons/icon48.png" className="logo-img" alt="StickyMonkey" />
-        <h2>StickyMonkey</h2>
+        <img src="/icons/icon48.png" className="logo-img" alt="StaticMonkey" />
+        <h2>StaticMonkey</h2>
       </div>
       <nav className="nav-links">
         <button
@@ -612,7 +612,7 @@ function App() {
               <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Links</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <li>
-                  <a href="https://github.com/toshs/stickymonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none' }}>
+                  <a href="https://github.com/toshs/staticmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none' }}>
                     <span>GitHub Repository</span>
                   </a>
                   <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View source code, documentation, and releases.</p>
@@ -624,7 +624,7 @@ function App() {
               <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Issues & Feedback</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <li>
-                  <a href="https://github.com/toshs/stickymonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
+                  <a href="https://github.com/toshs/staticmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
                     Report a Bug / Request a Feature
                   </a>
                   <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
@@ -632,7 +632,7 @@ function App() {
                   </p>
                 </li>
                 <li>
-                  <a href="https://github.com/toshs/stickymonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
+                  <a href="https://github.com/toshs/staticmonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
                     Report Vulnerability
                   </a>
                   <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
@@ -645,7 +645,7 @@ function App() {
             <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
               <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>About</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                StickyMonkey is a modern userscript manager for Chrome, built with React and safe API practices.
+                StaticMonkey is a modern userscript manager for Chrome, built with React and safe API practices.
                 <br />
                 Version: {version}
               </p>
