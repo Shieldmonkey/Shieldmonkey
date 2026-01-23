@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle } from 'lucide-react';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
@@ -133,8 +133,6 @@ function App() {
         // Create logic handled below via a dedicated function call if triggered by UI, 
         // but if opened externally, we might want to auto-create.
         // Let's stick to the previous implementation for #new, but redirect to unique ID.
-        const params = new URLSearchParams(window.location.search);
-        const matchParam = params.get('match') || '<all_urls>';
         // ... creation logic duplicated?
       }
 
@@ -283,7 +281,7 @@ function App() {
     }
   };
 
-  const saveScript = async () => {
+  const saveScript = useCallback(async () => {
     if (!activeScript) return;
     setIsSaving(true);
     try {
@@ -327,7 +325,7 @@ function App() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [activeScript, scripts]);
 
   const handlePermissionConfirm = () => {
     setPermissionModalOpen(false);
@@ -350,7 +348,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeScript, isSaving, scripts]);
+  }, [activeScript, isSaving, scripts, saveScript]);
 
   // Render Logic
   const renderSidebar = () => (
@@ -454,7 +452,7 @@ function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {/* Use a simple link logic */}
                           <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--accent-color)', textDecoration: 'none' }} title={sourceUrl}>
-                            {(() => { try { return new URL(sourceUrl).hostname; } catch (e) { return 'Link'; } })()}
+                            {(() => { try { return new URL(sourceUrl).hostname; } catch { return 'Link'; } })()}
                           </a>
                           <button className="action-btn" title="Check for updates" onClick={(e) => { e.stopPropagation(); checkForUpdate(script); }} style={{ padding: 2 }}>
                             <RefreshCw size={14} />

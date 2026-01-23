@@ -4,7 +4,7 @@ export const matchPattern = (pattern: string, url: string): boolean => {
 
     // Basic glob to regex conversion
     // Escape special regex characters except *
-    let regexString = pattern
+    const regexString = pattern
         .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
         .replace(/\*/g, '.*');
 

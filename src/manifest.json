@@ -38,5 +38,8 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'"
+  }
 }

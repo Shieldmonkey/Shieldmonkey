@@ -27,6 +27,7 @@ export interface Metadata {
     "run-at"?: string;
     noframes?: boolean;
     unwrap?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
 
@@ -88,12 +89,13 @@ export function parseMetadata(code: string): Metadata {
             case "grant":
                 if (value) metadata[key].push(value);
                 break;
-            case "resource":
+            case "resource": {
                 const parts = value.split(/\s+/);
                 if (parts.length >= 2) {
                     metadata.resource.push({ name: parts[0], url: parts.slice(1).join(" ") });
                 }
                 break;
+            }
             case "noframes":
                 metadata.noframes = true;
                 break;

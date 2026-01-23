@@ -1,3 +1,4 @@
+import type * as Monaco from 'monaco-editor';
 
 /**
  * Type definitions for Greasemonkey/Tampermonkey APIs
@@ -190,13 +191,17 @@ declare const GM: {
 /**
  * Configures Monaco Editor with GM types and Metadata completion
  */
-export const configureMonaco = (monaco: any) => {
+export const configureMonaco = (monaco: typeof Monaco) => {
     // 1. Add GM Types
-    const libDisposable = monaco.languages.typescript.javascriptDefaults.addExtraLib(GM_TYPES, 'ts:filename/gm.d.ts');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tsDefaults = (monaco.languages.typescript as any).javascriptDefaults;
+    const libDisposable = tsDefaults.addExtraLib(GM_TYPES, 'ts:filename/gm.d.ts');
 
     // 2. Set Compiler Options to allow JS
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-        target: monaco.languages.typescript.ScriptTarget.ESNext,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ts = monaco.languages.typescript as any;
+    tsDefaults.setCompilerOptions({
+        target: ts.ScriptTarget.ESNext,
         allowNonTsExtensions: true,
         allowJs: true,
         checkJs: true
@@ -205,7 +210,7 @@ export const configureMonaco = (monaco: any) => {
     // 3. Register Metadata Completion Provider
     const completionDisposable = monaco.languages.registerCompletionItemProvider('javascript', {
         triggerCharacters: ['@', " "],
-        provideCompletionItems: (model: any, position: any) => {
+        provideCompletionItems: (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
             const textUntilPosition = model.getValueInRange({
                 startLineNumber: 1,
                 startColumn: 1,

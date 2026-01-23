@@ -4,11 +4,20 @@ import { matchPattern } from '../utils/urlMatcher';
 
 console.log("StickyMonkey Background Script Loaded");
 
+interface Script {
+  id: string;
+  name: string;
+  code: string;
+  enabled?: boolean;
+  grantedPermissions?: string[];
+  [key: string]: unknown;
+}
+
 // Calculate and update badge for a tab
 async function updateBadge(tabId: number, url: string) {
   try {
     const data = await chrome.storage.local.get('scripts');
-    const scripts = (data.scripts || []) as any[];
+    const scripts = (data.scripts || []) as Script[];
 
     const count = scripts.filter(script => {
       if (!script.enabled) return false;
@@ -44,7 +53,7 @@ chrome.runtime.onInstalled.addListener(async () => {
       // Check global enabled state
       const settings = await chrome.storage.local.get(['extensionEnabled', 'scripts']);
       const extensionEnabled = settings.extensionEnabled !== false; // Default true
-      const savedScripts = (settings.scripts || []) as any[];
+      const savedScripts = (settings.scripts || []) as Script[];
 
       if (settings.extensionEnabled === undefined) {
         await chrome.storage.local.set({ extensionEnabled: true });
@@ -63,7 +72,7 @@ chrome.runtime.onInstalled.addListener(async () => {
             const granted = script.grantedPermissions || [];
 
             // Unregister first just in case
-            try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch (e) { }
+            try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch { /* ignore */ }
 
             await chrome.userScripts.register([{
               id: script.id,
@@ -79,7 +88,7 @@ chrome.runtime.onInstalled.addListener(async () => {
                   description: metadata.description
                 }) + "\n" + script.code
               }],
-              runAt: runAt as any,
+              runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
               world: 'USER_SCRIPT'
             }]);
             console.log(`Restored script: ${script.name}`);
@@ -95,11 +104,6 @@ chrome.runtime.onInstalled.addListener(async () => {
       const registeredScripts = await chrome.userScripts.getScripts();
       if (registeredScripts.length === 0 && savedScripts.length === 0) {
         // ... default script creation logic ...
-        // Keeping the original logic for default script creation below if you haven't changed it
-        // But for brevity in replacement tool, I need to include it or reference it if I'm replacing the whole block.
-        // Wait, the replaced block is huge. I should be careful.
-        // I will trust the user wants me to keep the default script logic but I need to include it in the replacement or split the edits.
-        // Splitting edits is safer.
       }
     } catch (err) {
       console.error("Failed to initialize user scripts:", err);
@@ -161,7 +165,7 @@ async function handleToggleGlobal(enabled: boolean) {
   } else {
     // Re-register enabled scripts
     const data = await chrome.storage.local.get('scripts');
-    const savedScripts = (data.scripts || []) as any[];
+    const savedScripts = (data.scripts || []) as Script[];
 
     for (const script of savedScripts) {
       if (!script.enabled) continue;
@@ -172,7 +176,7 @@ async function handleToggleGlobal(enabled: boolean) {
         const runAt = metadata['run-at'] || 'document_end';
         const granted = script.grantedPermissions || [];
 
-        try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch (e) { }
+        try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch { /* ignore */ }
 
         await chrome.userScripts.register([{
           id: script.id,
@@ -188,7 +192,7 @@ async function handleToggleGlobal(enabled: boolean) {
               description: metadata.description
             }) + "\n" + script.code
           }],
-          runAt: runAt as any,
+          runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
           world: 'USER_SCRIPT'
         }]);
       } catch (e) {
@@ -241,13 +245,13 @@ chrome.runtime.onUserScriptMessage.addListener((message, _sender, sendResponse) 
 
 
 
-async function handleSaveScript(script: any) {
+async function handleSaveScript(script: Script) {
   if (!chrome.userScripts) throw new Error("API unavailable");
 
   // 1. Update in Storage
   const data = await chrome.storage.local.get('scripts');
-  const scripts: any[] = Array.isArray(data.scripts) ? data.scripts : [];
-  const index = scripts.findIndex((s: any) => s.id === script.id);
+  const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
+  const index = scripts.findIndex((s) => s.id === script.id);
 
   // Preserve permissions if not passed (though they should be passed from UI)
   if (index !== -1 && !script.grantedPermissions) {
@@ -285,7 +289,7 @@ async function handleSaveScript(script: any) {
   // Ensure we unregister first to avoid duplicate ID error
   try {
     await chrome.userScripts.unregister({ ids: [script.id] });
-  } catch (e) {
+  } catch {
     // Ignore error if script was not registered
   }
 
@@ -304,7 +308,7 @@ async function handleSaveScript(script: any) {
           description: metadata.description
         }) + "\n" + script.code
       }],
-      runAt: runAt as any,
+      runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
       world: 'USER_SCRIPT'
     }]);
   }
@@ -317,8 +321,8 @@ async function handleToggleScript(scriptId: string, enabled: boolean) {
   if (!chrome.userScripts) return;
 
   const data = await chrome.storage.local.get('scripts');
-  const scripts: any[] = Array.isArray(data.scripts) ? data.scripts : [];
-  const script = scripts.find((s: any) => s.id === scriptId);
+  const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
+  const script = scripts.find((s) => s.id === scriptId);
 
   if (script) {
     script.enabled = enabled;
@@ -358,8 +362,8 @@ async function handleDeleteScript(scriptId: string) {
   if (!chrome.userScripts) return;
 
   const data = await chrome.storage.local.get('scripts');
-  const scripts: any[] = Array.isArray(data.scripts) ? data.scripts : [];
-  const newScripts = scripts.filter((s: any) => s.id !== scriptId);
+  const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
+  const newScripts = scripts.filter((s) => s.id !== scriptId);
   await chrome.storage.local.set({ scripts: newScripts });
 
   await chrome.userScripts.unregister({ ids: [scriptId] });
@@ -367,6 +371,7 @@ async function handleDeleteScript(scriptId: string) {
 }
 
 // GM API Handlers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
   console.log("GM Request:", type, data, _sender, scriptId);
   const origin = _sender.origin;
@@ -378,8 +383,8 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
   }
 
   const db = await chrome.storage.local.get('scripts');
-  const scripts = (db.scripts || []) as any[];
-  const script = scripts.find((s: any) => s.id === scriptId);
+  const scripts = (db.scripts || []) as Script[];
+  const script = scripts.find((s) => s.id === scriptId);
 
   if (!script) {
     throw new Error("Script not found");
@@ -508,8 +513,8 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
           responseHeaders: responseHeaders,
           finalUrl: response.url
         };
-      } catch (e: any) {
-        throw new Error(e.message || "Network Error");
+      } catch (e) {
+        throw new Error((e as Error).message || "Network Error");
       }
     case 'GM_registerMenuCommand':
       // Basic implementation using contextMenus

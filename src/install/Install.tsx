@@ -28,12 +28,20 @@ self.MonacoEnvironment = {
 
 type Theme = 'light' | 'dark' | 'system';
 
+interface Script {
+    id: string;
+    name: string;
+    namespace?: string;
+    code: string;
+    [key: string]: unknown;
+}
+
 const Install = () => {
     const [status, setStatus] = useState<'loading' | 'confirm' | 'installing' | 'success' | 'error'>('loading');
     const [scriptUrl, setScriptUrl] = useState<string | null>(null);
     const [code, setCode] = useState<string>('');
     const [metadata, setMetadata] = useState<Metadata | null>(null);
-    const [existingScript, setExistingScript] = useState<any | null>(null);
+    const [existingScript, setExistingScript] = useState<Script | null>(null);
     const [error, setError] = useState<string>('');
     const [viewMode, setViewMode] = useState<'code' | 'diff'>('code');
     const [theme, setTheme] = useState<Theme>('dark');
@@ -84,9 +92,9 @@ const Install = () => {
             setMetadata(meta);
 
             const data = await chrome.storage.local.get('scripts');
-            const scripts = (data.scripts as any[]) || [];
+            const scripts = (data.scripts as Script[]) || [];
 
-            const existing = scripts.find((s: any) => {
+            const existing = scripts.find((s) => {
                 const sNamespace = s.namespace || '';
                 const mNamespace = meta.namespace || '';
                 return s.name === meta.name && sNamespace === mNamespace;
@@ -100,9 +108,9 @@ const Install = () => {
             }
 
             setStatus('confirm');
-        } catch (e: any) {
+        } catch (e) {
             setStatus('error');
-            setError(e.message);
+            setError((e as Error).message);
         }
     };
 
@@ -132,9 +140,9 @@ const Install = () => {
             setTimeout(() => {
                 window.close();
             }, 2000);
-        } catch (e: any) {
+        } catch (e) {
             setStatus('error');
-            setError(e.message);
+            setError((e as Error).message);
         }
     };
 
@@ -176,7 +184,7 @@ const Install = () => {
     if (existingScript) {
         try {
             existingVersion = parseMetadata(existingScript.code).version || 'Unknown';
-        } catch (e) { }
+        } catch { /* ignore */ }
     }
 
     return (
