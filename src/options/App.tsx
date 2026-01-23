@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, Power } from 'lucide-react';
+import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle } from 'lucide-react';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import './App.css';
@@ -44,10 +44,18 @@ interface Script {
   downloadUrl?: string;
   sourceUrl?: string;
   namespace?: string;
+  installDate?: number;
 }
 
 type Theme = 'light' | 'dark' | 'system';
-type Page = 'scripts' | 'discover' | 'settings';
+type Page = 'scripts' | 'settings' | 'help';
+
+const ToggleSwitch = ({ checked, onChange, disabled }: { checked: boolean, onChange: (checked: boolean) => void, disabled?: boolean }) => (
+  <label className={`switch ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+    <input type="checkbox" checked={checked} onChange={(e) => !disabled && onChange(e.target.checked)} disabled={disabled} />
+    <span className="slider"></span>
+  </label>
+);
 
 function App() {
   const [activePage, setActivePage] = useState<Page>('scripts');
@@ -55,6 +63,7 @@ function App() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
+  const version = chrome.runtime.getManifest().version;
 
   // Permission Modal State
   const [permissionModalOpen, setPermissionModalOpen] = useState(false);
@@ -71,19 +80,13 @@ function App() {
       const page = parts[0] as Page;
       const id = parts[1];
 
-      if (['scripts', 'discover', 'settings'].includes(page || 'scripts')) {
+      if (['scripts', 'help', 'settings'].includes(page || 'scripts')) {
         setActivePage((page || 'scripts') as Page);
       } else {
         setActivePage('scripts');
       }
 
       if (page === 'scripts' && id) {
-        if (id === 'new') {
-          // Handle new script via render logic or effect?
-          // The existing useEffect for '#new' below handles creation, 
-          // but let's integrate it. 
-          // Actually, standardizing: if id is present, we are in editor mode.
-        }
         setSelectedScriptId(id);
       } else {
         setSelectedScriptId(null);
@@ -122,45 +125,17 @@ function App() {
         }));
       }
 
-      // Check for 'new' param in searching existing scripts is needed if we are just reloading?
-      // Actually, if we are at #scripts/new, we might need to create one if it doesn't match an ID.
-      // But typically we generate an ID first. 
-      // Let's keep the legacy handling for creating a script from popup via hash parameters
-      if (window.location.hash === '#new') {
+      const hash = window.location.hash;
+      // Legacy 'new' check - if present in search or hash logic we didn't fully migrate. 
+      // But now we rely on explicit navigation. 
+      // However, if opened with explicit intent via URL query params for new script:
+      if (hash === '#new' || hash === '#scripts/new') {
+        // Create logic handled below via a dedicated function call if triggered by UI, 
+        // but if opened externally, we might want to auto-create.
+        // Let's stick to the previous implementation for #new, but redirect to unique ID.
         const params = new URLSearchParams(window.location.search);
         const matchParam = params.get('match') || '<all_urls>';
-
-        const newScriptId = crypto.randomUUID();
-        const newScript: Script = {
-          id: newScriptId,
-          name: 'New Script',
-          code: `// ==UserScript==
-// @name        New Script
-// @match       ${matchParam}
-// ==/UserScript==
-
-`,
-          enabled: true,
-          lastSavedCode: `// ==UserScript==
-// @name        New Script
-// @match       ${matchParam}
-// ==/UserScript==
-
-`,
-          grantedPermissions: []
-        };
-
-        initializedScripts.push(newScript);
-
-        // Save immediately so it persists? Or just in state?
-        // Better to just set in state and let user save.
-        // But if we navigate away, it's lost.
-        // For now, let's just set state and navigate to it.
-
-        // Clean up URL parameters but keep hash for router
-        window.history.replaceState(null, '', window.location.pathname + `#scripts/${newScriptId}`);
-        // Let the router effect pick up the ID? 
-        // We need to set scripts first so the ID exists.
+        // ... creation logic duplicated?
       }
 
       setScripts(initializedScripts);
@@ -260,7 +235,8 @@ function App() {
 // ==/UserScript==
 
 `,
-      grantedPermissions: []
+      grantedPermissions: [],
+      installDate: Date.now()
     };
     setScripts([...scripts, newScript]);
     navigateTo('scripts', newScriptId);
@@ -274,8 +250,8 @@ function App() {
     }
   };
 
-  const toggleScript = async (script: Script) => {
-    const newState = !script.enabled;
+  const toggleScript = async (script: Script, currentState: boolean) => {
+    const newState = !currentState;
     const updatedScripts = scripts.map(s =>
       s.id === script.id ? { ...s, enabled: newState } : s
     );
@@ -392,20 +368,23 @@ function App() {
           <span>Scripts</span>
         </button>
         <button
-          className={`nav-item ${activePage === 'discover' ? 'active' : ''}`}
-          onClick={() => navigateTo('discover')}
-        >
-          <Search size={18} />
-          <span>Discover</span>
-        </button>
-        <button
           className={`nav-item ${activePage === 'settings' ? 'active' : ''}`}
           onClick={() => navigateTo('settings')}
         >
           <Settings size={18} />
           <span>Settings</span>
         </button>
+        <button
+          className={`nav-item ${activePage === 'help' ? 'active' : ''}`}
+          onClick={() => navigateTo('help')}
+        >
+          <HelpCircle size={18} />
+          <span>Help</span>
+        </button>
       </nav>
+      <div style={{ marginTop: 'auto', padding: '16px', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>
+        v{version}
+      </div>
     </aside>
   );
 
@@ -413,7 +392,7 @@ function App() {
     <div className="content-scroll">
       <div className="script-table-container">
         <div className="page-header">
-          <h2 className="page-title">My Scripts</h2>
+          <h2 className="page-title">My Scripts ({scripts.length})</h2>
           <button className="btn-primary" onClick={handleNewScript}>
             <Plus size={16} />
             <span>New Script</span>
@@ -429,36 +408,36 @@ function App() {
             <p>Create a new script to get started.</p>
           </div>
         ) : (
-          <table className="script-table">
+          <table className="script-table compact">
             <thead>
               <tr>
-                <th style={{ width: '60px' }}>State</th>
-                <th>Name</th>
+                <th style={{ width: '60px' }}>Status</th>
+                <th>Name / Namespace</th>
                 <th>Version</th>
+                <th>Source</th>
+                <th>Installed</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {scripts.map(script => {
                 const metadata = parseMetadata(script.code);
+                const sourceUrl = script.updateUrl || script.downloadUrl || script.sourceUrl;
+
                 return (
                   <tr key={script.id}>
                     <td>
-                      <button
-                        className="action-btn"
-                        style={{ color: script.enabled ? 'var(--accent-color)' : 'var(--text-secondary)' }}
-                        onClick={(e) => { e.stopPropagation(); toggleScript(script); }}
-                        title={script.enabled ? "Disable" : "Enable"}
-                      >
-                        <Power size={18} strokeWidth={2.5} />
-                      </button>
+                      <ToggleSwitch
+                        checked={!!script.enabled}
+                        onChange={() => toggleScript(script, !!script.enabled)}
+                      />
                     </td>
                     <td style={{ fontWeight: 500 }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span>{script.name}</span>
-                        {metadata.description && (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }} className='truncate'>
-                            {metadata.description}
+                        <span style={{ fontSize: '0.95rem' }}>{script.name}</span>
+                        {metadata.namespace && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }} className='truncate'>
+                            {metadata.namespace}
                           </span>
                         )}
                       </div>
@@ -470,15 +449,30 @@ function App() {
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>-</span>
                       )}
                     </td>
+                    <td>
+                      {sourceUrl ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {/* Use a simple link logic */}
+                          <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--accent-color)', textDecoration: 'none' }} title={sourceUrl}>
+                            {(() => { try { return new URL(sourceUrl).hostname; } catch (e) { return 'Link'; } })()}
+                          </a>
+                          <button className="action-btn" title="Check for updates" onClick={(e) => { e.stopPropagation(); checkForUpdate(script); }} style={{ padding: 2 }}>
+                            <RefreshCw size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>-</span>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {script.installDate ? new Date(script.installDate).toLocaleDateString() : '-'}
+                      </span>
+                    </td>
                     <td className="col-actions">
                       <button className="action-btn" title="Edit" onClick={() => navigateTo('scripts', script.id)}>
                         <Edit size={16} />
                       </button>
-                      {(script.updateUrl || script.downloadUrl || script.sourceUrl) && (
-                        <button className="action-btn" title="Check for updates" onClick={() => checkForUpdate(script)}>
-                          <RefreshCw size={16} />
-                        </button>
-                      )}
                       <button className="action-btn delete" title="Delete" onClick={() => deleteScript(script.id)}>
                         <Trash2 size={16} />
                       </button>
@@ -609,6 +603,61 @@ function App() {
     );
   };
 
+  const renderHelp = () => {
+    return (
+      <div className="content-scroll">
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 className="page-title" style={{ marginBottom: '24px' }}>Help & Support</h2>
+
+          <div style={{ display: 'grid', gap: '24px' }}>
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Links</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li>
+                  <a href="https://github.com/toshs/stickymonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none' }}>
+                    <span>GitHub Repository</span>
+                  </a>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View source code, documentation, and releases.</p>
+                </li>
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Issues & Feedback</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <li>
+                  <a href="https://github.com/toshs/stickymonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
+                    Report a Bug / Request a Feature
+                  </a>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Found a problem? Let us know on GitHub Issues.
+                  </p>
+                </li>
+                <li>
+                  <a href="https://github.com/toshs/stickymonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
+                    Report Vulnerability
+                  </a>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Security is important. Please report any vulnerabilities safely.
+                  </p>
+                </li>
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>About</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                StickyMonkey is a modern userscript manager for Chrome, built with React and safe API practices.
+                <br />
+                Version: {version}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="dashboard-container">
       {renderSidebar()}
@@ -617,13 +666,7 @@ function App() {
         {activePage === 'scripts' && !selectedScriptId && renderScriptTable()}
         {activePage === 'scripts' && selectedScriptId && renderScriptEditor()}
         {activePage === 'settings' && renderSettings()}
-        {activePage === 'discover' && (
-          <div className="empty-dashboard">
-            <Search size={48} style={{ opacity: 0.5, marginBottom: 16 }} />
-            <h3>Discover</h3>
-            <p>Script discovery details coming soon.</p>
-          </div>
-        )}
+        {activePage === 'help' && renderHelp()}
       </main>
 
       {permissionModalOpen && permissionScript && (
