@@ -1,0 +1,69 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # 1. stickymonkey.dev.zip (With Source Maps, No Minify)
+      - name: Build Dev (With Source Maps)
+        run: npm run build
+
+      - name: Upload Dev Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickymonkey.dev
+          path: dist/
+
+      - name: Clean dist
+        run: rm -rf dist
+
+      # 2. stickymonkey.zip (No Source Maps, No Minify)
+      - name: Build Standard (No Source Maps)
+        run: npm run build
+        env:
+          DISABLE_SOURCEMAP: 'true'
+
+      - name: Upload Standard Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickymonkey
+          path: dist/
+
+      - name: Clean dist
+        run: rm -rf dist
+
+      # 3. stickymonkey.min.zip (No Source Maps, Minified)
+      - name: Build Minified (No Source Maps, Minified)
+        run: npm run build
+        env:
+          DISABLE_SOURCEMAP: 'true'
+          ENABLE_MINIFY: 'true'
+
+      - name: Upload Minified Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickymonkey.min
+          path: dist/

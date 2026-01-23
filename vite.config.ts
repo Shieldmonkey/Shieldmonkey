@@ -19,7 +19,12 @@ export default defineConfig({
     // })
   ],
   build: {
-    minify: false,
-    sourcemap: 'inline'
+    minify: process.env.ENABLE_MINIFY === 'true',
+    sourcemap: process.env.DISABLE_SOURCEMAP === 'true' ? false : 'inline',
+    rollupOptions: {
+      input: {
+        install: 'src/install/index.html'
+      }
+    }
   }
 })
