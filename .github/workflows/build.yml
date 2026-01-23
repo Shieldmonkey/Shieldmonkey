@@ -27,7 +27,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # 1. stickymonkey.dev.zip (With Source Maps, No Minify)
+      # 1. Shieldmonkey.dev.zip (With Source Maps, No Minify)
       - name: Build Dev (With Source Maps)
         run: npm run build
         env:
@@ -36,13 +36,13 @@ jobs:
       - name: Upload Dev Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: stickymonkey.dev
+          name: Shieldmonkey.dev
           path: dist/
 
       - name: Clean dist
         run: rm -rf dist
 
-      # 2. stickymonkey.zip (No Source Maps, No Minify)
+      # 2. Shieldmonkey.zip (No Source Maps, No Minify)
       - name: Build Standard (No Source Maps)
         run: npm run build
         env:
@@ -51,13 +51,13 @@ jobs:
       - name: Upload Standard Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: stickymonkey
+          name: Shieldmonkey
           path: dist/
 
       - name: Clean dist
         run: rm -rf dist
 
-      # 3. stickymonkey.min.zip (No Source Maps, Minified)
+      # 3. Shieldmonkey.min.zip (No Source Maps, Minified)
       - name: Build Minified (No Source Maps, Minified)
         run: npm run build
         env:
@@ -67,5 +67,5 @@ jobs:
       - name: Upload Minified Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: stickymonkey.min
+          name: Shieldmonkey.min
           path: dist/

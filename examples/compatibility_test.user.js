@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name        Compatibility Test
-// @namespace   com.stickymonkey.test
+// @namespace   com.shieldmonkey.test
 // @version     1.0
-// @description Tests GM_ functions for StickyMonkey
+// @description Tests GM_ functions for Shieldmonkey
 // @match       <all_urls>
 // ==/UserScript==
 
 (function() {
     'use strict';
     
-    console.log(`%c 🧪 StickyMonkey Compatibility Test `, "background: #3b82f6; color: white; padding: 4px; border-radius: 4px;");
+    console.log(`%c 🧪 Shieldmonkey Compatibility Test `, "background: #3b82f6; color: white; padding: 4px; border-radius: 4px;");
 
     // Test GM_setValue / GM_getValue
     const KEY = 'test_count';
@@ -39,11 +39,11 @@
     div.style.zIndex = '999999';
     div.style.fontFamily = 'monospace';
     div.style.cursor = 'pointer';
-    div.innerText = 'StickyMonkey Active 🐒';
+    div.innerText = 'Shieldmonkey Active 🐒';
     
     div.onclick = () => {
-        if (confirm('Open StickyMonkey Repo?')) {
-            GM_openInTab('https://github.com/toshs/stickymonkey', { active: true });
+        if (confirm('Open Shieldmonkey Repo?')) {
+            GM_openInTab('https://github.com/toshs/Shieldmonkey', { active: true });
         }
     };
     

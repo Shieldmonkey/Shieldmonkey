@@ -27,7 +27,7 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
   
   const GM_info = {
     script: ${scriptObj},
-    scriptHandler: 'StaticMonkey',
+    scriptHandler: 'Shieldmonkey',
     version: '0.1.0'
   };
 
@@ -46,7 +46,7 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
                 }
             });
         } catch(e) {
-            console.error("StaticMonkey API Error:", e);
+            console.error("Shieldmonkey API Error:", e);
             reject(e);
         }
     });
@@ -57,7 +57,7 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
     
     setValue: async function(key, value) {
       if (!granted.has('GM_setValue') && !granted.has('GM.setValue')) {
-          console.warn("StaticMonkey: GM_setValue permission not granted");
+          console.warn("Shieldmonkey: GM_setValue permission not granted");
           return;
       }
       return sendRequest('GM_setValue', { key, value });
@@ -85,7 +85,7 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
 
     xmlhttpRequest: function(details) {
        if (!granted.has('GM_xmlhttpRequest') && !granted.has('GM.xmlhttpRequest')) {
-          console.error("StaticMonkey: GM_xmlhttpRequest permission not granted");
+          console.error("Shieldmonkey: GM_xmlhttpRequest permission not granted");
           if(details.onerror) details.onerror({ error: "Permission denied" });
           return { abort: () => {} };
        }
@@ -108,7 +108,7 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
     
     openInTab: function(url, options) {
        if (!granted.has('GM_openInTab') && !granted.has('GM.openInTab')) {
-         console.warn("StaticMonkey: GM_openInTab permission not granted");
+         console.warn("Shieldmonkey: GM_openInTab permission not granted");
          return;
        }
        sendRequest('GM_openInTab', { url, options });

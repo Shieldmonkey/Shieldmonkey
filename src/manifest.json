@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "StaticMonkey",
+  "name": "Shieldmonkey",
   "version": "0.1.0",
   "description": "A Userscript manager for the modern web.",
   "permissions": [
