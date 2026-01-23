@@ -9,6 +9,6 @@ try {
     } else {
         document.documentElement.setAttribute('data-theme', theme);
     }
-} catch (e) {
+} catch {
     // Ignore errors in theme loading
 }
