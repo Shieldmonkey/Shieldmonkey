@@ -350,6 +350,21 @@ async function handleSaveScript(script: Script) {
   }
 
   // Update in storage again with new name/namespace
+  // Enforce uniqueness of name + namespace pair
+  let uniqueName = script.name;
+  let counter = 1;
+  while (true) {
+    const conflict = scripts.find((s) => 
+      s.id !== script.id && 
+      s.name === uniqueName && 
+      (s.namespace || '') === (script.namespace || '')
+    );
+    if (!conflict) break;
+    uniqueName = `${script.name} (${counter})`;
+    counter++;
+  }
+  script.name = uniqueName;
+
   // Use the calculated index or find it again if it was a push
   const newIndex = index !== -1 ? index : scripts.length - 1;
   scripts[newIndex] = script;
