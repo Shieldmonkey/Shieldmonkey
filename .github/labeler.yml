@@ -1,0 +1,26 @@
+# Labels for files changed in a PR
+frontend:
+  - "src/**/*"
+  - "public/**/*"
+  - "index.html"
+background:
+  - "src/background/**/*"
+options:
+  - "src/options/**/*"
+popup:
+  - "src/popup/**/*"
+content-scripts:
+  - "src/content-script/**/*"
+automation:
+  - ".github/workflows/**/*"
+  - ".github/dependabot.yml"
+documentation:
+  - "*.md"
+  - "docs/**/*"
+config:
+  - "package.json"
+  - "package-lock.json"
+  - "tsconfig.json"
+  - "vite.config.ts"
+  - ".eslintrc.js"
+  - ".prettierrc"

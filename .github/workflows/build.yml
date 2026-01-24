@@ -7,9 +7,30 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [dev, standard, minified]
+        include:
+          - build_type: dev
+            artifact_name: Shieldmonkey.dev
+            env: 
+              NODE_OPTIONS: "--max_old_space_size=4096"
+          - build_type: standard
+            artifact_name: Shieldmonkey
+            env:
+              DISABLE_SOURCEMAP: "true"
+          - build_type: minified
+            artifact_name: Shieldmonkey.min
+            env:
+              DISABLE_SOURCEMAP: "true"
+              ENABLE_MINIFY: "true"
 
     steps:
       - name: Checkout
@@ -25,47 +46,15 @@ jobs:
         run: npm ci
 
       - name: Lint
+        if: matrix.build_type == 'standard'
         run: npm run lint
 
-      # 1. Shieldmonkey.dev.zip (With Source Maps, No Minify)
-      - name: Build Dev (With Source Maps)
+      - name: Build Extension
         run: npm run build
-        env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
+        env: ${{ matrix.env }}
 
-      - name: Upload Dev Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Shieldmonkey.dev
-          path: dist/
-
-      - name: Clean dist
-        run: rm -rf dist
-
-      # 2. Shieldmonkey.zip (No Source Maps, No Minify)
-      - name: Build Standard (No Source Maps)
-        run: npm run build
-        env:
-          DISABLE_SOURCEMAP: 'true'
-
-      - name: Upload Standard Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shieldmonkey
-          path: dist/
-
-      - name: Clean dist
-        run: rm -rf dist
-
-      # 3. Shieldmonkey.min.zip (No Source Maps, Minified)
-      - name: Build Minified (No Source Maps, Minified)
-        run: npm run build
-        env:
-          DISABLE_SOURCEMAP: 'true'
-          ENABLE_MINIFY: 'true'
-
-      - name: Upload Minified Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shieldmonkey.min
+          name: ${{ matrix.artifact_name }}
           path: dist/
