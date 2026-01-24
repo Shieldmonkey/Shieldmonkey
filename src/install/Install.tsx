@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import './index.css';
 import { parseMetadata, type Metadata } from '../utils/metadataParser';
 import Editor, { DiffEditor, loader } from '@monaco-editor/react';
@@ -62,6 +62,57 @@ const Install = () => {
 
     const effectiveEditorTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'vs-dark';
 
+
+
+    useEffect(() => {
+        const disposable = configureMonaco(monaco);
+        return () => disposable.dispose();
+    }, []);
+
+    const loadScriptContent = useCallback(async (text: string) => {
+        try {
+            const meta = parseMetadata(text);
+            setCode(text);
+            setMetadata(meta);
+
+            const data = await chrome.storage.local.get('scripts');
+            const scripts = (data.scripts as Script[]) || [];
+
+            const existing = scripts.find((s) => {
+                const sNamespace = s.namespace || '';
+                const mNamespace = meta.namespace || '';
+                return s.name === meta.name && sNamespace === mNamespace;
+            });
+
+            if (existing) {
+                setExistingScript(existing);
+                if (existing.code !== text) {
+                    setViewMode('diff');
+                }
+            }
+
+            setStatus('confirm');
+        } catch (e) {
+            setStatus('error');
+            setError((e as Error).message);
+        }
+    }, []);
+
+    const fetchScript = useCallback(async (url: string) => {
+        try {
+            // Use background fetching to bypass CSP
+            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url });
+            if (!response || !response.success) {
+                throw new Error(response.error || 'Failed to fetch script content');
+            }
+            const text = response.text;
+            loadScriptContent(text);
+        } catch (e) {
+            setStatus('error');
+            setError((e as Error).message);
+        }
+    }, [loadScriptContent]);
+
     useEffect(() => {
         // Check for content passed via data:text/html redirection (see background script)
         try {
@@ -92,56 +143,7 @@ const Install = () => {
 
         setScriptUrl(url);
         fetchScript(url);
-    }, []);
-
-    useEffect(() => {
-        const disposable = configureMonaco(monaco);
-        return () => disposable.dispose();
-    }, []);
-
-    const loadScriptContent = async (text: string) => {
-        try {
-            const meta = parseMetadata(text);
-            setCode(text);
-            setMetadata(meta);
-
-            const data = await chrome.storage.local.get('scripts');
-            const scripts = (data.scripts as Script[]) || [];
-
-            const existing = scripts.find((s) => {
-                const sNamespace = s.namespace || '';
-                const mNamespace = meta.namespace || '';
-                return s.name === meta.name && sNamespace === mNamespace;
-            });
-
-            if (existing) {
-                setExistingScript(existing);
-                if (existing.code !== text) {
-                    setViewMode('diff');
-                }
-            }
-
-            setStatus('confirm');
-        } catch (e) {
-            setStatus('error');
-            setError((e as Error).message);
-        }
-    };
-
-    const fetchScript = async (url: string) => {
-        try {
-            // Use background fetching to bypass CSP
-            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url });
-            if (!response || !response.success) {
-                throw new Error(response.error || 'Failed to fetch script content');
-            }
-            const text = response.text;
-            loadScriptContent(text);
-        } catch (e) {
-            setStatus('error');
-            setError((e as Error).message);
-        }
-    };
+    }, [fetchScript, loadScriptContent]);
 
     const handleInstall = async () => {
         if (!metadata || !code) return;

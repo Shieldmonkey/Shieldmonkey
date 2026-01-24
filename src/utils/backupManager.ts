@@ -68,7 +68,7 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
 
     // Helper: Collect existing files to check for renames
     const existingFiles: string[] = [];
-    // @ts-ignore - Async iterator for directory handle
+    // @ts-expect-error - Async iterator for directory handle
     for await (const [name, entry] of scriptsDirHandle.entries()) {
         if (entry.kind === 'file' && name.endsWith('.user.js')) {
             existingFiles.push(name);

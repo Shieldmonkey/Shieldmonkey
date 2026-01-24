@@ -402,25 +402,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   console.log("Received message:", message, _sender);
   if (message.type === 'SAVE_SCRIPT') {
     const { script } = message;
-    handleSaveScript(script).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    handleSaveScript(script).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
     return true;
   }
 
   if (message.type === 'TOGGLE_SCRIPT') {
     const { scriptId, enabled } = message;
-    handleToggleScript(scriptId, enabled).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    handleToggleScript(scriptId, enabled).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
     return true;
   }
 
   if (message.type === 'TOGGLE_GLOBAL') {
     const { enabled } = message;
-    handleToggleGlobal(enabled).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    handleToggleGlobal(enabled).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
     return true;
   }
 
   if (message.type === 'DELETE_SCRIPT') {
     const { scriptId } = message;
-    handleDeleteScript(scriptId).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    handleDeleteScript(scriptId).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
     return true;
   }
 
@@ -428,7 +428,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const { url } = message;
     fetchScriptContent(url)
       .then(text => sendResponse({ success: true, text }))
-      .catch((err: any) => sendResponse({ success: false, error: err.toString() }));
+      .catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
     return true; // Keep channel open
   }
 

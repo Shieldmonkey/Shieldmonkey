@@ -369,7 +369,6 @@ function App() {
       setBackupStatus('idle');
       setBackupMessage('');
       setIsBackupLoading(true);
-      // @ts-ignore - showDirectoryPicker is not in all types yet
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       await saveDirectoryHandle(handle);
       setBackupDirName(handle.name);
