@@ -61,10 +61,8 @@ body {
 .sidebar-header h2 {
   font-size: 1.1rem;
   margin: 0;
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-color);
+  font-weight: 600;
 }
 
 .logo-img {
@@ -460,4 +458,36 @@ input:focus + .slider {
 
 input:checked + .slider:before {
   transform: translateX(16px);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 70px;
+  }
+  
+  .sidebar-header {
+    padding: 24px 0;
+    justify-content: center;
+  }
+  
+  .sidebar-header h2 {
+    display: none;
+  }
+  
+  .nav-links {
+    padding: 0 8px;
+  }
+  
+  .nav-item {
+    justify-content: center;
+    padding: 12px;
+  }
+  
+  .nav-item span {
+    display: none;
+  }
+
+  .sidebar div[style*="margin-top: auto"] {
+    display: none;
+  }
 }

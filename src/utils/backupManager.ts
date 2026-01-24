@@ -1,0 +1,166 @@
+import { getDirectoryHandle } from './backupStorage';
+
+interface Script {
+    id: string;
+    name: string;
+    code: string;
+    enabled?: boolean;
+    lastSavedCode?: string;
+    grantedPermissions?: string[];
+    updateUrl?: string;
+    downloadUrl?: string;
+    sourceUrl?: string;
+    namespace?: string;
+    installDate?: number;
+}
+
+export async function performBackup(existingHandle?: FileSystemDirectoryHandle): Promise<number> {
+    let handle = existingHandle;
+    if (!handle) {
+        handle = await getDirectoryHandle();
+    }
+    if (!handle) {
+        throw new Error("No backup directory configured.");
+    }
+
+    // Check permission without prompting (background friendly logic)
+    // If we are in the foreground (options page), we might have triggered verifyPermission earlier.
+    // In background, if this returns 'prompt', we fail.
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') {
+        // If we are in background (no existingHandle passed implies periodic or manual trigger without direct handle),
+        // we might want to prompt the user. But we can't prompt in background.
+        // We can try to open the options page to let user re-grant.
+        if (!existingHandle) {
+            // Assuming this is running in background context or where we can't prompt
+            // We can check if we can request permission but that requires user gesture.
+
+            // If we are indeed in background alarm, we should notify user.
+            // We can use notification or open a tab.
+            // Let's throw a specific error that the caller can handle or just fail with instruction.
+
+            // Attempt to recover by notifying via extension message if possible, or just log.
+            // Ideally we should show a notification.
+            if (chrome.notifications && chrome.runtime.id) { // Check runtime.id to ensure context is valid
+                chrome.notifications.create({
+                    type: 'basic',
+                    iconUrl: '/icons/icon48.png',
+                    title: 'Shieldmonkey Backup Failed',
+                    message: 'Backup directory permission lost. Click here to fix.',
+                    priority: 2
+                }, () => {
+                    // We can't easily add click listener here inside this function without side effects.
+                    // It is better to rely on the background script listener for notification clicks.
+                });
+            }
+        }
+        throw new Error(`Permission to backup directory is '${perm}'. Please re-configure backup in settings.`);
+    }
+
+    const scripts = await new Promise<Script[]>((resolve) => {
+        chrome.storage.local.get(['scripts'], (result) => {
+            resolve((result.scripts as Script[]) || []);
+        });
+    });
+
+    // Create or get 'scripts' directory
+    const scriptsDirHandle = await handle.getDirectoryHandle('scripts', { create: true });
+
+    // Helper: Collect existing files to check for renames
+    const existingFiles: string[] = [];
+    // @ts-ignore - Async iterator for directory handle
+    for await (const [name, entry] of scriptsDirHandle.entries()) {
+        if (entry.kind === 'file' && name.endsWith('.user.js')) {
+            existingFiles.push(name);
+        }
+    }
+
+    for (const script of scripts) {
+        // Sanitize name for filename
+        const safeName = script.name.replace(/[^a-z0-9\-_]/gi, '_').replace(/_{2,}/g, '_');
+        // Append ID to ensure uniqueness if names collide
+        const idSuffix = `_${script.id.substring(0, 8)}.user.js`;
+        const fileName = `${safeName}${idSuffix}`;
+
+        // Check for old files with same ID suffix but different name prefix
+        for (const existingName of existingFiles) {
+            if (existingName.endsWith(idSuffix) && existingName !== fileName) {
+                // Same ID, different name -> Delete old file
+                try {
+                    await scriptsDirHandle.removeEntry(existingName);
+                } catch (e) {
+                    console.warn("Failed to remove old backup file", existingName, e);
+                }
+            }
+        }
+
+        const fileHandle = await scriptsDirHandle.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(script.code);
+        await writable.close();
+    }
+
+    // Write a full dump including metadata that might not be in the code (like enabled state, etc)
+    // This helps in full restoration.
+    const dumpHandle = await handle.getFileHandle('stickymonkey_dump.json', { create: true });
+    const dumpWritable = await dumpHandle.createWritable();
+    await dumpWritable.write(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        version: chrome.runtime.getManifest().version,
+        scripts: scripts
+    }, null, 2));
+    await dumpWritable.close();
+
+    return scripts.length;
+}
+
+export async function performRestore(existingHandle?: FileSystemDirectoryHandle): Promise<number> {
+    let handle = existingHandle;
+    if (!handle) {
+        handle = await getDirectoryHandle();
+    }
+    if (!handle) {
+        // Ask for handle if not found (UI flow should handle this, but internal check)
+        throw new Error("No backup directory available.");
+    }
+
+    try {
+        const dumpHandle = await handle.getFileHandle('stickymonkey_dump.json', { create: false });
+        const file = await dumpHandle.getFile();
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!data.scripts || !Array.isArray(data.scripts)) {
+            throw new Error("Invalid backup format: No scripts array found.");
+        }
+
+        const restoreScripts = data.scripts as Script[];
+
+        // Merge logic: Update existing by ID, add new ones.
+        const currentData = await new Promise<{ scripts: Script[] }>((resolve) => {
+            chrome.storage.local.get(['scripts'], (res) => resolve(res as { scripts: Script[] }));
+        });
+        const currentScripts = currentData.scripts || [];
+
+        // Map current scripts for easy lookup
+        const scriptMap = new Map<string, Script>();
+        currentScripts.forEach(s => scriptMap.set(s.id, s));
+
+        // Apply restore
+        for (const script of restoreScripts) {
+            // Overwrite existing or add new
+            scriptMap.set(script.id, script);
+        }
+
+        const newScripts = Array.from(scriptMap.values());
+        await chrome.storage.local.set({ scripts: newScripts });
+
+        return restoreScripts.length;
+
+    } catch (e) {
+        if ((e as Error).name === 'NotFoundError') {
+            throw new Error("Backup file (stickymonkey_dump.json) not found in directory.");
+        }
+        throw e;
+    }
+}

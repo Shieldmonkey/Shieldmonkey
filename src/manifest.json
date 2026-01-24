@@ -7,13 +7,27 @@
     "storage",
     "userScripts",
     "tabs",
+    "activeTab",
     "notifications",
+    "scripting",
     "webNavigation",
-    "contextMenus"
+    "contextMenus",
+    "declarativeNetRequest",
+    "webRequest",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "src/rules.json"
+      }
+    ]
+  },
   "action": {
     "default_popup": "src/popup/index.html"
   },

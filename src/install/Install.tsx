@@ -63,6 +63,24 @@ const Install = () => {
     const effectiveEditorTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'vs-dark';
 
     useEffect(() => {
+        // Check for content passed via data:text/html redirection (see background script)
+        try {
+            if (window.name) {
+                const data = JSON.parse(window.name);
+                if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
+                    setScriptUrl(data.url);
+                    loadScriptContent(data.source);
+                    // Clear window.name to prevent reuse if reloaded manually? 
+                    // Maybe better to keep it so reload works? 
+                    // Let's keep it.
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to parse window.name for script content", e);
+        }
+
+        // Fallback: Query param + Fetch
         const query = new URLSearchParams(window.location.search);
         const url = query.get('url');
 
@@ -81,12 +99,8 @@ const Install = () => {
         return () => disposable.dispose();
     }, []);
 
-    const fetchScript = async (url: string) => {
+    const loadScriptContent = async (text: string) => {
         try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`Failed to fetch script: ${res.statusText}`);
-            const text = await res.text();
-
             const meta = parseMetadata(text);
             setCode(text);
             setMetadata(meta);
@@ -108,6 +122,21 @@ const Install = () => {
             }
 
             setStatus('confirm');
+        } catch (e) {
+            setStatus('error');
+            setError((e as Error).message);
+        }
+    };
+
+    const fetchScript = async (url: string) => {
+        try {
+            // Use background fetching to bypass CSP
+            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url });
+            if (!response || !response.success) {
+                throw new Error(response.error || 'Failed to fetch script content');
+            }
+            const text = response.text;
+            loadScriptContent(text);
         } catch (e) {
             setStatus('error');
             setError((e as Error).message);

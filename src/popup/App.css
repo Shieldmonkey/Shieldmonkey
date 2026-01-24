@@ -68,10 +68,7 @@ body {
   margin: 0;
   font-weight: 700;
   letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-color);
 }
 
 .icon-btn {

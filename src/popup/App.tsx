@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor } from 'lucide-react';
+import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor, Edit } from 'lucide-react';
 import './App.css';
 import { parseMetadata } from '../utils/metadataParser';
 import { matchPattern } from '../utils/urlMatcher';
@@ -126,11 +126,19 @@ function App() {
   const checkForUpdate = (script: Script) => {
     const url = getUpdateUrl(script);
     if (url) {
-      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
-      chrome.tabs.create({ url: installUrl });
+      // Use START_INSTALL_FLOW to safely fetch script content via loader page,
+      // preventing browser download prompts.
+      chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
     } else {
       alert('No update URL found for this script.');
     }
+  };
+
+  const editScript = (id: string) => {
+    // Open directly using the hash routing supported by Options App
+    // Format: src/options/index.html#scripts/<id>
+    const url = `src/options/index.html#scripts/${id}`;
+    chrome.tabs.create({ url: url });
   };
 
   return (
@@ -167,6 +175,9 @@ function App() {
                   <span className="script-name" style={{ marginLeft: '12px' }} title={script.name}>{script.name}</span>
                 </div>
                 <div className="script-actions">
+                  <button className="icon-btn" title="Edit" onClick={() => editScript(script.id)} style={{ padding: '4px' }}>
+                    <Edit size={14} />
+                  </button>
                   {getUpdateUrl(script) && (
                     <button className="icon-btn" title="Check for updates" onClick={() => checkForUpdate(script)} style={{ padding: '4px' }}>
                       <RefreshCw size={14} />
@@ -185,15 +196,16 @@ function App() {
             <p>No scripts matching this page.</p>
             {currentUrl && <p className="text-xs text-gray-500 mt-2 truncate max-w-200">{currentUrl}</p>}
           </div>
-        )}
+        )
+        }
 
         <div style={{ padding: '0 16px 16px', marginTop: 'auto' }}>
           <button className="new-script-btn" onClick={() => openDashboard(true)}>
             <Plus size={16} /> Create New Script
           </button>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
 

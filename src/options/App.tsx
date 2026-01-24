@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle } from 'lucide-react';
+import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle, FolderInput, Clock, Check, AlertCircle, RotateCcw } from 'lucide-react';
+import { saveDirectoryHandle, getDirectoryHandle } from '../utils/backupStorage';
+import { performBackup, performRestore } from '../utils/backupManager';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import './App.css';
@@ -62,7 +64,7 @@ function App() {
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'dark');
   const version = chrome.runtime.getManifest().version;
 
   // Permission Modal State
@@ -70,6 +72,27 @@ function App() {
   const [permissionScript, setPermissionScript] = useState<Script | null>(null);
   const [requestedPermissions, setRequestedPermissions] = useState<string[]>([]);
   const [pendingSaveResolved, setPendingSaveResolved] = useState<((allowed: boolean) => void) | null>(null);
+
+  // Backup State
+  const [backupDirName, setBackupDirName] = useState<string | null>(null);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+  const [isBackupLoading, setIsBackupLoading] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [backupMessage, setBackupMessage] = useState<string>('');
+
+  useEffect(() => {
+    getDirectoryHandle().then(async (handle) => {
+      if (handle) {
+        setBackupDirName(handle.name);
+      }
+    });
+
+    chrome.storage.local.get(['lastBackupTime'], (res) => {
+      if (res.lastBackupTime) {
+        setLastBackupTime(res.lastBackupTime as string);
+      }
+    });
+  }, []);
 
   // Router Logic
   useEffect(() => {
@@ -112,6 +135,7 @@ function App() {
       // Theme logic
       const storedTheme = (data.theme as Theme) || 'dark';
       setTheme(storedTheme);
+      localStorage.setItem('theme', storedTheme);
 
       const storedScripts = data.scripts as Script[] | undefined;
       let initializedScripts: Script[] = [];
@@ -213,6 +237,7 @@ function App() {
   const changeTheme = (newTheme: Theme) => {
     setTheme(newTheme);
     chrome.storage.local.set({ theme: newTheme });
+    localStorage.setItem('theme', newTheme);
   };
 
   const handleNewScript = () => {
@@ -243,8 +268,9 @@ function App() {
   const checkForUpdate = (script: Script) => {
     const url = script.updateUrl || script.downloadUrl || script.sourceUrl;
     if (url) {
-      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
-      chrome.tabs.create({ url: installUrl });
+      // Use START_INSTALL_FLOW to safely fetch script content via loader page,
+      // preventing browser download prompts.
+      chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
     }
   };
 
@@ -338,6 +364,88 @@ function App() {
     if (pendingSaveResolved) pendingSaveResolved(false);
     setPendingSaveResolved(null);
   };
+  const handleSelectBackupDir = async () => {
+    try {
+      setBackupStatus('idle');
+      setBackupMessage('');
+      setIsBackupLoading(true);
+      // @ts-ignore - showDirectoryPicker is not in all types yet
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      await saveDirectoryHandle(handle);
+      setBackupDirName(handle.name);
+
+      // Perform initial backup
+      await performBackup(handle);
+      const time = new Date().toISOString();
+      setLastBackupTime(time);
+      chrome.storage.local.set({ lastBackupTime: time });
+      setBackupStatus('success');
+      setBackupStatus('success');
+
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        console.error("Backup setup failed", e);
+        setBackupStatus('error');
+        setBackupMessage((e as Error).message);
+        // alert("Failed to select directory: " + (e as Error).message);
+      }
+    } finally {
+      setIsBackupLoading(false);
+    }
+  };
+
+  const handleManualBackup = async () => {
+    try {
+      setBackupStatus('idle');
+      setBackupMessage('');
+      setIsBackupLoading(true);
+      const count = await performBackup();
+      const time = new Date().toISOString();
+      setLastBackupTime(time);
+      chrome.storage.local.set({ lastBackupTime: time });
+      // alert(`Backup successful! Saved ${count} scripts.`);
+      setBackupStatus('success');
+      setBackupMessage(`Saved ${count} scripts`);
+
+    } catch (e) {
+      console.error("Backup failed", e);
+      setBackupStatus('error');
+      setBackupMessage((e as Error).message);
+      // alert("Backup failed: " + (e as Error).message);
+    } finally {
+      setIsBackupLoading(false);
+    }
+  };
+
+  const handleManualRestore = async () => {
+    if (!confirm("Are you sure you want to restore from backup? This will merge/update existing scripts with the backup data.")) {
+      return;
+    }
+    try {
+      setBackupStatus('idle');
+      setBackupMessage('');
+      setIsBackupLoading(true);
+
+      const count = await performRestore();
+
+      // Notify background to reload all scripts
+      await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+
+      // Reload scripts in UI
+      chrome.storage.local.get(['scripts'], (result) => {
+        setScripts((result.scripts as Script[]) || []);
+      });
+
+      setBackupStatus('success');
+      setBackupMessage(`Restored ${count} scripts`);
+    } catch (e) {
+      console.error("Restore failed", e);
+      setBackupStatus('error');
+      setBackupMessage((e as Error).message);
+    } finally {
+      setIsBackupLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -409,7 +517,7 @@ function App() {
           <table className="script-table compact">
             <thead>
               <tr>
-                <th style={{ width: '60px' }}>Status</th>
+                <th style={{ width: '60px' }}>Enabled</th>
                 <th>Name / Namespace</th>
                 <th>Version</th>
                 <th>Source</th>
@@ -596,6 +704,77 @@ function App() {
               </button>
             </div>
           </div>
+
+          <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)', marginTop: '24px' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Backup</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+              Select a directory to automatically backup your scripts.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleSelectBackupDir}
+                  disabled={isBackupLoading}
+                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <FolderInput size={18} />
+                  <span>{backupDirName ? 'Change Directory' : 'Select Directory'}</span>
+                </button>
+                {backupDirName && (
+                  <span style={{ fontSize: '0.9rem', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                    Selected: {backupDirName}
+                  </span>
+                )}
+              </div>
+
+              {backupDirName && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                  <button
+                    className="btn-primary"
+                    onClick={handleManualBackup}
+                    disabled={isBackupLoading}
+                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Save size={18} />
+                    <span>{isBackupLoading ? 'Working...' : 'Backup'}</span>
+                  </button>
+
+                  <button
+                    className="btn-secondary"
+                    onClick={handleManualRestore}
+                    disabled={isBackupLoading}
+                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <RotateCcw size={18} />
+                    <span>Restore</span>
+                  </button>
+
+                  {backupStatus === 'success' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                      <Check size={18} />
+                      <span>Done{backupMessage ? `: ${backupMessage}` : ''}</span>
+                    </div>
+                  )}
+
+                  {backupStatus === 'error' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                      <AlertCircle size={18} />
+                      <span>Error{backupMessage ? `: ${backupMessage}` : ''}</span>
+                    </div>
+                  )}
+
+                  {lastBackupTime && backupStatus !== 'success' && backupStatus !== 'error' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      <Clock size={14} />
+                      <span>Last: {new Date(lastBackupTime).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -604,50 +783,45 @@ function App() {
   const renderHelp = () => {
     return (
       <div className="content-scroll">
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 className="page-title" style={{ marginBottom: '24px' }}>Help & Support</h2>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 className="page-title" style={{ marginBottom: '20px' }}>Help & Support</h2>
 
-          <div style={{ display: 'grid', gap: '24px' }}>
-            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Links</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Links</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none' }}>
+                  <a href="https://github.com/toshs/Shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                     <span>GitHub Repository</span>
                   </a>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View source code, documentation, and releases.</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>View source code & docs.</p>
                 </li>
               </ul>
             </div>
 
-            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Issues & Feedback</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Issues</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
-                    Report a Bug / Request a Feature
+                  <a href="https://github.com/toshs/Shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
+                    Report a Bug
                   </a>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Found a problem? Let us know on GitHub Issues.
+                  <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Found a problem? Let us know.
                   </p>
                 </li>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500 }}>
+                  <a href="https://github.com/toshs/Shieldmonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
                     Report Vulnerability
                   </a>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Security is important. Please report any vulnerabilities safely.
-                  </p>
                 </li>
               </ul>
             </div>
 
-            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>About</h3>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Shieldmonkey is a modern userscript manager for Chrome, built with React and safe API practices.
-                <br />
-                Version: {version}
+            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', gridColumn: '1 / -1' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>About</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, fontSize: '0.9rem', margin: 0 }}>
+                Shieldmonkey is a modern userscript manager for Chrome. <span style={{ opacity: 0.7 }}>v{version}</span>
               </p>
             </div>
           </div>

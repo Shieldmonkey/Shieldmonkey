@@ -38,10 +38,22 @@ async function updateBadge(tabId: number, url: string) {
   }
 }
 
+import { performBackup } from '../utils/backupManager';
+
+// ... (existing imports)
+
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("Shieldmonkey installed - Initializing...");
 
+  // Setup Backup Alarm (every 60 minutes)
+  chrome.alarms.create('backup-alarm', { periodInMinutes: 60 });
+
+  await reloadAllScripts();
+});
+
+// Reusable function to reload/register all scripts from storage
+async function reloadAllScripts() {
   // Enable userScripts API if available
   if (chrome.userScripts) {
     try {
@@ -59,8 +71,23 @@ chrome.runtime.onInstalled.addListener(async () => {
         await chrome.storage.local.set({ extensionEnabled: true });
       }
 
+      // Clear existing registrations first? 
+      // unregistering undefined unregisters all?
+      // Or we can unregister all explicitly.
+      // But we don't have IDs easily unless we stored them.
+      // Actually we can getScripts() to find registered IDs.
+      try {
+        const existing = await chrome.userScripts.getScripts();
+        const ids = existing.map(s => s.id);
+        if (ids.length > 0) {
+          await chrome.userScripts.unregister({ ids });
+        }
+      } catch (e) {
+        console.warn("Failed to unregister existing scripts", e);
+      }
+
       if (extensionEnabled && savedScripts.length > 0) {
-        console.log(`Restoring ${savedScripts.length} scripts from storage...`);
+        console.log(`Loading ${savedScripts.length} scripts from storage...`);
         for (const script of savedScripts) {
           if (!script.enabled) continue;
 
@@ -70,9 +97,6 @@ chrome.runtime.onInstalled.addListener(async () => {
             const excludes = metadata.exclude;
             const runAt = metadata['run-at'] || 'document_end';
             const granted = script.grantedPermissions || [];
-
-            // Unregister first just in case
-            try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch { /* ignore */ }
 
             await chrome.userScripts.register([{
               id: script.id,
@@ -91,41 +115,134 @@ chrome.runtime.onInstalled.addListener(async () => {
               runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
               world: 'USER_SCRIPT'
             }]);
-            console.log(`Restored script: ${script.name}`);
+            console.log(`Registered script: ${script.name}`);
           } catch (e) {
-            console.error(`Failed to restore script ${script.name}:`, e);
+            console.error(`Failed to register script ${script.name}:`, e);
           }
         }
       } else if (!extensionEnabled) {
-        console.log("Extension is disabled globally. Skipping script restoration.");
+        console.log("Extension is disabled globally. Skipping script registration.");
       }
 
-      // 2. Register default hello world script ONLY if no scripts exist and none were restored
-      const registeredScripts = await chrome.userScripts.getScripts();
-      if (registeredScripts.length === 0 && savedScripts.length === 0) {
-        // ... default script creation logic ...
-      }
     } catch (err) {
       console.error("Failed to initialize user scripts:", err);
     }
   } else {
     console.error("chrome.userScripts API is not available.");
   }
-});
 
+  await updateActiveTabBadge();
+}
+
+// Set to track tabs that should bypass the .user.js redirect
 // Detect navigation to .user.js files and redirect to installer
+// Track pending script installations: tabId -> scriptUrl
+const pendingInstallations = new Map<number, string>();
+
+// Detect navigation to .user.js files and redirect to loader page
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  // Only redirect for main frame navigation
   if (details.frameId === 0 && details.url && /\.user\.js([?#].*)?$/i.test(details.url)) {
     console.log("Detected .user.js navigation:", details.url);
-    const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(details.url)}`;
-    chrome.tabs.update(details.tabId, { url: installUrl });
+
+    // For file:// URLs, we must avoid the external loader (security restriction).
+    // Redirect directly to the install page. The user MUST allow file access in extension settings.
+    if (details.url.startsWith('file:')) {
+      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(details.url)}`;
+      chrome.tabs.update(details.tabId, { url: installUrl });
+    } else {
+      // For http/https, use the safe trampoline to prompt/fetch content
+      pendingInstallations.set(details.tabId, details.url);
+      chrome.tabs.update(details.tabId, { url: 'https://shieldmonkey.github.io/' });
+    }
   }
 });
 
+// Helper to fetch script content directly from background (used by Install page and others via Message)
+async function fetchScriptContent(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+  return response.text();
+}
+
 // Tab updates for badge
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
+  // Check if this is a pending installation tab that has finished loading the loader page
+  if (changeInfo.status === 'complete' && pendingInstallations.has(tabId) && tab.url?.startsWith('https://shieldmonkey.github.io/')) {
+    const targetUrl = pendingInstallations.get(tabId);
+    // Remove from pending map shortly after injection? 
+    // No, keep it until we redirect? Actually we can remove it now or let the script handle redirect.
+    // If we remove it now, subsequent reloads might fail if they stay on about:blank? 
+    // They will just show blank page. That's acceptable.
+    pendingInstallations.delete(tabId);
+
+    if (!targetUrl) return;
+
+    chrome.scripting.executeScript({
+      target: { tabId },
+      func: (url: string, installPageUrl: string) => {
+        // UI Construction in clean about:blank
+        document.body.style.fontFamily = 'system-ui, sans-serif';
+        document.body.style.display = 'flex';
+        document.body.style.flexDirection = 'column';
+        document.body.style.justifyContent = 'center';
+        document.body.style.alignItems = 'center';
+        document.body.style.height = '100vh';
+        document.body.style.background = '#222';
+        document.body.style.color = '#fff';
+        document.body.style.margin = '0';
+
+        const loader = document.createElement('div');
+        loader.style.border = '4px solid #333';
+        loader.style.borderTop = '4px solid #10b981';
+        loader.style.borderRadius = '50%';
+        loader.style.width = '40px';
+        loader.style.height = '40px';
+        loader.style.marginRight = '15px';
+
+        // Simple CSS animation via style injection
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        `;
+        document.head.appendChild(style);
+        loader.style.animation = 'spin 1s linear infinite';
+
+        const text = document.createElement('div');
+        text.textContent = 'Fetching script...';
+
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+
+        container.appendChild(loader);
+        container.appendChild(text);
+        document.body.appendChild(container);
+
+        // Fetch script directly from the loader page context
+        // Fetch script directly from the loader page context
+        fetch(url)
+          .then(res => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          })
+          .then(text => {
+            window.name = JSON.stringify({ type: 'SHIELDMONKEY_INSTALL_DATA', url: url, source: text });
+            // Request navigation via background to avoid blocking
+            chrome.runtime.sendMessage({ type: 'OPEN_INSTALL_PAGE', url: installPageUrl });
+          })
+          .catch(err => {
+            text.textContent = 'Error: ' + (err.message || 'Unknown error');
+            text.style.color = '#ef4444';
+          });
+      },
+      args: [targetUrl, chrome.runtime.getURL('src/install/index.html')],
+    });
+  }
+
+  // Helper handling for badge
+  if (changeInfo.status === 'complete' && tab.url && tab.url !== 'about:blank') {
     updateBadge(tabId, tab.url);
   }
 });
@@ -151,99 +268,9 @@ async function updateActiveTabBadge() {
 
 async function handleToggleGlobal(enabled: boolean) {
   await chrome.storage.local.set({ extensionEnabled: enabled });
-
-  if (!chrome.userScripts) return;
-
-  if (!enabled) {
-    // Unregister all scripts
-    const scripts = await chrome.userScripts.getScripts();
-    const ids = scripts.map(s => s.id);
-    if (ids.length > 0) {
-      await chrome.userScripts.unregister({ ids });
-    }
-    console.log("Global disable: Unregistered all scripts.");
-  } else {
-    // Re-register enabled scripts
-    const data = await chrome.storage.local.get('scripts');
-    const savedScripts = (data.scripts || []) as Script[];
-
-    for (const script of savedScripts) {
-      if (!script.enabled) continue;
-      try {
-        const metadata = parseMetadata(script.code);
-        const matches = [...metadata.match, ...metadata.include];
-        const excludes = metadata.exclude;
-        const runAt = metadata['run-at'] || 'document_end';
-        const granted = script.grantedPermissions || [];
-
-        try { await chrome.userScripts.unregister({ ids: [script.id] }); } catch { /* ignore */ }
-
-        await chrome.userScripts.register([{
-          id: script.id,
-          matches: matches.length > 0 ? matches : ["<all_urls>"],
-          excludeMatches: excludes,
-          js: [{
-            code: getGMAPIScript({
-              id: script.id,
-              name: script.name,
-              version: metadata.version || '1.0',
-              permissions: granted,
-              namespace: metadata.namespace,
-              description: metadata.description
-            }) + "\n" + script.code
-          }],
-          runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
-          world: 'USER_SCRIPT'
-        }]);
-      } catch (e) {
-        console.error("Failed to restore script on enable:", e);
-      }
-    }
-    console.log("Global enable: Restored scripts.");
-  }
-  await updateActiveTabBadge();
+  console.log("Global enabled state changed to:", enabled);
+  await reloadAllScripts();
 }
-
-// Listen for messages from the Options page (Dashboard)
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log("Received message:", message, _sender);
-  if (message.type === 'SAVE_SCRIPT') {
-    const { script } = message;
-    handleSaveScript(script).then(() => sendResponse({ success: true })).catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.type === 'TOGGLE_SCRIPT') {
-    const { scriptId, enabled } = message;
-    handleToggleScript(scriptId, enabled).then(() => sendResponse({ success: true })).catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.type === 'TOGGLE_GLOBAL') {
-    const { enabled } = message;
-    handleToggleGlobal(enabled).then(() => sendResponse({ success: true })).catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.type === 'DELETE_SCRIPT') {
-    const { scriptId } = message;
-    handleDeleteScript(scriptId).then(() => sendResponse({ success: true })).catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-});
-
-chrome.runtime.onUserScriptMessage.addListener((message, _sender, sendResponse) => {
-  console.log("Received message:", message, _sender);
-  // Handle GM API requests from Injected Scripts
-  if (message.type && message.type.startsWith('GM_')) {
-    handleGMRequest(message.type, message.data, _sender, message.scriptId)
-      .then(result => sendResponse({ result }))
-      .catch(err => sendResponse({ error: err.message }));
-    return true;
-  }
-});
-
-
 
 async function handleSaveScript(script: Script) {
   if (!chrome.userScripts) throw new Error("API unavailable");
@@ -369,6 +396,83 @@ async function handleDeleteScript(scriptId: string) {
   await chrome.userScripts.unregister({ ids: [scriptId] });
   await updateActiveTabBadge();
 }
+
+// Listen for messages from the Options page (Dashboard)
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  console.log("Received message:", message, _sender);
+  if (message.type === 'SAVE_SCRIPT') {
+    const { script } = message;
+    handleSaveScript(script).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'TOGGLE_SCRIPT') {
+    const { scriptId, enabled } = message;
+    handleToggleScript(scriptId, enabled).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'TOGGLE_GLOBAL') {
+    const { enabled } = message;
+    handleToggleGlobal(enabled).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'DELETE_SCRIPT') {
+    const { scriptId } = message;
+    handleDeleteScript(scriptId).then(() => sendResponse({ success: true })).catch((err: any) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'FETCH_SCRIPT_CONTENT') {
+    const { url } = message;
+    fetchScriptContent(url)
+      .then(text => sendResponse({ success: true, text }))
+      .catch((err: any) => sendResponse({ success: false, error: err.toString() }));
+    return true; // Keep channel open
+  }
+
+  if (message.type === 'OPEN_INSTALL_PAGE') {
+    if (_sender.tab && _sender.tab.id) {
+      chrome.tabs.update(_sender.tab.id, { url: message.url });
+    }
+    return true;
+  }
+
+  if (message.type === 'START_INSTALL_FLOW') {
+    const { url } = message;
+
+    if (url.startsWith('file:')) {
+      // For file://, open install page directly
+      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
+      chrome.tabs.create({ url: installUrl });
+    } else {
+      // For web URLs, use the trampoline
+      chrome.tabs.create({ url: 'https://shieldmonkey.github.io/' }).then(tab => {
+        if (tab.id) {
+          pendingInstallations.set(tab.id, url);
+        }
+      });
+    }
+    return true;
+  }
+
+  if (message.type === 'RELOAD_SCRIPTS') {
+    reloadAllScripts().then(() => sendResponse({ success: true }));
+    return true;
+  }
+});
+
+chrome.runtime.onUserScriptMessage.addListener((message, _sender, sendResponse) => {
+  console.log("Received message:", message, _sender);
+  // Handle GM API requests from Injected Scripts
+  if (message.type && message.type.startsWith('GM_')) {
+    handleGMRequest(message.type, message.data, _sender, message.scriptId)
+      .then(result => sendResponse({ result }))
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
+});
 
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -544,3 +648,24 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
   }
   return null;
 }
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'backup-alarm') {
+    performBackup().then(count => {
+      console.log(`Auto-backup completed. Saved ${count} scripts.`);
+      chrome.storage.local.set({ lastBackupTime: new Date().toISOString() });
+    }).catch(err => {
+      console.error("Auto-backup failed:", err);
+      // Error is also logged in backupManager with notification
+    });
+  }
+});
+
+chrome.notifications.onClicked.addListener((notificationId) => {
+  if (notificationId) {
+    // Open options page to hash #settings
+    chrome.runtime.openOptionsPage();
+    // Or if we specifically want #settings:
+    // chrome.tabs.create({ url: 'src/options/index.html#settings' });
+  }
+});
