@@ -9,6 +9,7 @@
   --text-secondary: #999999;
   --accent-color: #22c55e;
   --accent-hover: #16a34a;
+  --primary-color: var(--accent-color);
   --border-color: rgba(255, 255, 255, 0.1);
   color-scheme: dark;
 }
@@ -23,6 +24,7 @@
   --text-secondary: #64748b; /* Slate 500 */
   --accent-color: #22c55e;
   --accent-hover: #16a34a;
+  --primary-color: var(--accent-color);
   --border-color: #e2e8f0; /* Slate 200 */
   color-scheme: light;
 }
@@ -132,6 +134,8 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap; /* Allow wrapping */
+  gap: 16px;       /* Add space when wrapping */
 }
 
 .page-title {
@@ -401,7 +405,7 @@ body {
 
 .modal-footer {
   padding: 16px 24px;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(128, 128, 128, 0.05);
   display: flex;
   justify-content: flex-end;
   gap: 12px;

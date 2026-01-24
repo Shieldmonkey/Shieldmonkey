@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Compatibility Test
-// @namespace   com.shieldmonkey.test
+// @namespace   https://github.com/shieldmonkey/shieldmonkey
 // @version     1.0
 // @description Tests GM_ functions for Shieldmonkey
 // @match       <all_urls>
@@ -43,7 +43,7 @@
     
     div.onclick = () => {
         if (confirm('Open Shieldmonkey Repo?')) {
-            GM_openInTab('https://github.com/toshs/Shieldmonkey', { active: true });
+            GM_openInTab('https://github.com/shieldmonkey/shieldmonkey', { active: true });
         }
     };
     

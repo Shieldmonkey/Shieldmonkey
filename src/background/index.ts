@@ -45,9 +45,47 @@ import { performBackup } from '../utils/backupManager';
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("Shieldmonkey installed - Initializing...");
+  console.log("Environment Debug:", {
+    DEV: import.meta.env.DEV,
+    MODE: import.meta.env.MODE,
+    __DEV__: typeof __DEV__ !== 'undefined' ? __DEV__ : 'undefined'
+  });
 
-  // Setup Backup Alarm (every 60 minutes)
-  chrome.alarms.create('backup-alarm', { periodInMinutes: 60 });
+  // Setup Backup Alarm
+  setupBackupAlarm();
+
+  // In Development mode, preload example scripts
+  // In Development mode, preload example scripts
+  // Use explicit __DEV__ global (defined in vite config) to ensure correct mode detection
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    console.log("Development mode detected (__DEV__ is true). Loading example scripts...");
+    const examples = [
+      'gm_api_test.user.js',
+      'gm_permission_violation.user.js',
+      'isolation_test_A.user.js',
+      'isolation_test_B.user.js',
+      'compatibility_test.user.js'
+    ];
+
+    for (const filename of examples) {
+      try {
+        const url = chrome.runtime.getURL(`examples/${filename}`);
+        console.log(`Fetching example from: ${url}`);
+        const code = await fetchScriptContent(url);
+        const id = `dev-example-${filename.replace('.user.js', '').replace(/[^a-z0-9]/g, '-')}`;
+
+        await handleSaveScript({
+          id,
+          name: filename, // will be overwritten by metadata
+          code,
+          enabled: true
+        });
+        console.log(`Loaded example script: ${filename}`);
+      } catch (e) {
+        console.warn(`Failed to load example script ${filename}:`, e);
+      }
+    }
+  }
 
   await reloadAllScripts();
 });
@@ -306,6 +344,11 @@ async function handleSaveScript(script: Script) {
     script.namespace = metadata.namespace;
   }
 
+  // Update permissions from metadata
+  if (metadata.grant && Array.isArray(metadata.grant)) {
+    script.grantedPermissions = metadata.grant;
+  }
+
   // Update in storage again with new name/namespace
   // Use the calculated index or find it again if it was a push
   const newIndex = index !== -1 ? index : scripts.length - 1;
@@ -464,12 +507,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.runtime.onUserScriptMessage.addListener((message, _sender, sendResponse) => {
-  console.log("Received message:", message, _sender);
+  console.log("Shieldmonkey: Received UserScript Message:", message, "Sender:", _sender);
+
+  if (!message || !message.type) {
+    console.warn("Shieldmonkey: Invalid message format");
+    return;
+  }
+
   // Handle GM API requests from Injected Scripts
   if (message.type && message.type.startsWith('GM_')) {
     handleGMRequest(message.type, message.data, _sender, message.scriptId)
-      .then(result => sendResponse({ result }))
-      .catch(err => sendResponse({ error: err.message }));
+      .then(result => {
+        // console.log("Shieldmonkey: GM Request Success", result);
+        sendResponse({ result });
+      })
+      .catch(err => {
+        console.error("Shieldmonkey: GM Request Failed", err);
+        sendResponse({ error: err.message });
+      });
     return true;
   }
 });
@@ -651,15 +706,49 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'backup-alarm') {
-    performBackup().then(count => {
-      console.log(`Auto-backup completed. Saved ${count} scripts.`);
-      chrome.storage.local.set({ lastBackupTime: new Date().toISOString() });
-    }).catch(err => {
-      console.error("Auto-backup failed:", err);
-      // Error is also logged in backupManager with notification
+    chrome.storage.local.get(['autoBackup'], (res) => {
+      if (res.autoBackup) {
+        performBackup().then(count => {
+          console.log(`Auto-backup completed. Saved ${count} scripts.`);
+          chrome.storage.local.set({ lastBackupTime: new Date().toISOString() });
+        }).catch(err => {
+          console.error("Auto-backup failed:", err);
+          // Error is also logged in backupManager with notification
+        });
+      } else {
+        console.log("Auto-backup skipped (disabled in settings).");
+      }
     });
   }
 });
+
+// Update alarm when settings change
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local') {
+    if (changes.autoBackup || changes.backupFrequency) {
+      setupBackupAlarm();
+    }
+  }
+});
+
+function setupBackupAlarm() {
+  chrome.storage.local.get(['autoBackup', 'backupFrequency'], (res) => {
+    const enabled = !!res.autoBackup;
+    const frequency = res.backupFrequency || 'daily'; // default daily
+
+    if (enabled) {
+      let periodInMinutes = 60 * 24; // daily
+      if (frequency === 'hourly') periodInMinutes = 60;
+      if (frequency === 'weekly') periodInMinutes = 60 * 24 * 7;
+
+      chrome.alarms.create('backup-alarm', { periodInMinutes });
+      console.log(`Backup alarm set to ${frequency} (${periodInMinutes} mins)`);
+    } else {
+      chrome.alarms.clear('backup-alarm');
+      console.log("Backup alarm cleared");
+    }
+  });
+}
 
 chrome.notifications.onClicked.addListener((notificationId) => {
   if (notificationId) {

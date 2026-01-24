@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
+    "dev": "vite build --watch --mode development",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "4.7.0",
-    "idb": "^8.0.3",
+    "idb": "8.0.3",
     "lucide-react": "0.562.0",
     "monaco-editor": "0.55.1",
     "react": "19.2.3",

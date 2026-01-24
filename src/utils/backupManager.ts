@@ -68,7 +68,7 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
 
     // Helper: Collect existing files to check for renames
     const existingFiles: string[] = [];
-    // @ts-expect-error - Async iterator for directory handle
+
     for await (const [name, entry] of scriptsDirHandle.entries()) {
         if (entry.kind === 'file' && name.endsWith('.user.js')) {
             existingFiles.push(name);
@@ -102,7 +102,7 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
 
     // Write a full dump including metadata that might not be in the code (like enabled state, etc)
     // This helps in full restoration.
-    const dumpHandle = await handle.getFileHandle('stickymonkey_dump.json', { create: true });
+    const dumpHandle = await handle.getFileHandle('shieldmonkey_dump.json', { create: true });
     const dumpWritable = await dumpHandle.createWritable();
     await dumpWritable.write(JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -125,7 +125,7 @@ export async function performRestore(existingHandle?: FileSystemDirectoryHandle)
     }
 
     try {
-        const dumpHandle = await handle.getFileHandle('stickymonkey_dump.json', { create: false });
+        const dumpHandle = await handle.getFileHandle('shieldmonkey_dump.json', { create: false });
         const file = await dumpHandle.getFile();
         const text = await file.text();
         const data = JSON.parse(text);
@@ -159,7 +159,7 @@ export async function performRestore(existingHandle?: FileSystemDirectoryHandle)
 
     } catch (e) {
         if ((e as Error).name === 'NotFoundError') {
-            throw new Error("Backup file (stickymonkey_dump.json) not found in directory.");
+            throw new Error("Backup file (shieldmonkey_dump.json) not found in directory.");
         }
         throw e;
     }

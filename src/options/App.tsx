@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle, FolderInput, Clock, Check, AlertCircle, RotateCcw } from 'lucide-react';
+import { Plus, Terminal, Save, Trash2, RefreshCw, Settings, Moon, Sun, Monitor, Edit, ArrowLeft, HelpCircle, FolderInput, Clock, Check, AlertCircle, RotateCcw, FileUp, FolderUp, Play, Pause } from 'lucide-react';
+import Modal, { type ModalType } from './Modal';
 import { saveDirectoryHandle, getDirectoryHandle } from '../utils/backupStorage';
 import { performBackup, performRestore } from '../utils/backupManager';
+import { importFromFile, importFromDirectory } from '../utils/importManager';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import './App.css';
@@ -79,6 +81,31 @@ function App() {
   const [isBackupLoading, setIsBackupLoading] = useState(false);
   const [backupStatus, setBackupStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [backupMessage, setBackupMessage] = useState<string>('');
+  const [restoreStatus, setRestoreStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [restoreMessage, setRestoreMessage] = useState<string>('');
+  const [autoBackup, setAutoBackup] = useState(false);
+  const [backupFrequency, setBackupFrequency] = useState('daily');
+  const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
+  const [extensionEnabled, setExtensionEnabled] = useState(true);
+
+  // Generic Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: ModalType;
+    title: string;
+    message: React.ReactNode;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
+
+  const showModal = (type: ModalType, title: string, message: React.ReactNode, onConfirm?: () => void) => {
+    setModalConfig({ isOpen: true, type, title, message, onConfirm });
+  };
+  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
   useEffect(() => {
     getDirectoryHandle().then(async (handle) => {
@@ -87,9 +114,18 @@ function App() {
       }
     });
 
-    chrome.storage.local.get(['lastBackupTime'], (res) => {
+    chrome.storage.local.get(['lastBackupTime', 'autoBackup', 'backupFrequency', 'extensionEnabled'], (res) => {
       if (res.lastBackupTime) {
         setLastBackupTime(res.lastBackupTime as string);
+      }
+      if (res.autoBackup !== undefined) {
+        setAutoBackup(!!res.autoBackup);
+      }
+      if (res.backupFrequency) {
+        setBackupFrequency(res.backupFrequency as string);
+      }
+      if (res.extensionEnabled !== undefined) {
+        setExtensionEnabled(!!res.extensionEnabled);
       }
     });
   }, []);
@@ -195,6 +231,9 @@ function App() {
         if (changes.theme) {
           setTheme(changes.theme.newValue as Theme);
         }
+        if (changes.extensionEnabled) {
+          setExtensionEnabled(!!changes.extensionEnabled.newValue);
+        }
       }
     };
 
@@ -290,20 +329,90 @@ function App() {
   };
 
   const deleteScript = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this script?")) return;
-
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'DELETE_SCRIPT',
-        scriptId: id
-      });
-      const newScripts = scripts.filter(s => s.id !== id);
-      setScripts(newScripts);
-      if (selectedScriptId === id) {
-        navigateTo('scripts');
+    showModal('confirm', 'Delete Script', 'Are you sure you want to delete this script?', async () => {
+      try {
+        await chrome.runtime.sendMessage({
+          type: 'DELETE_SCRIPT',
+          scriptId: id
+        });
+        const newScripts = scripts.filter(s => s.id !== id);
+        setScripts(newScripts);
+        // Remove from selection if present
+        if (selectedScriptIds.has(id)) {
+          const next = new Set(selectedScriptIds);
+          next.delete(id);
+          setSelectedScriptIds(next);
+        }
+        if (selectedScriptId === id) {
+          navigateTo('scripts');
+        }
+        closeModal();
+      } catch (e) {
+        console.error("Failed to delete", e);
+        showModal('error', 'Delete Failed', (e as Error).message);
       }
-    } catch (e) {
-      console.error("Failed to delete", e);
+    });
+  };
+
+  const handleBulkEnable = async () => {
+    if (selectedScriptIds.size === 0) return;
+    for (const id of selectedScriptIds) {
+      await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: id, enabled: true });
+    }
+    // Optimistic update
+    setScripts(prev => prev.map(s => selectedScriptIds.has(s.id) ? { ...s, enabled: true } : s));
+  };
+
+  const handleBulkDisable = async () => {
+    if (selectedScriptIds.size === 0) return;
+    for (const id of selectedScriptIds) {
+      await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: id, enabled: false });
+    }
+    // Optimistic update
+    setScripts(prev => prev.map(s => selectedScriptIds.has(s.id) ? { ...s, enabled: false } : s));
+  };
+
+  const toggleExtension = (enabled: boolean) => {
+    setExtensionEnabled(enabled);
+    chrome.storage.local.set({ extensionEnabled: enabled });
+    chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedScriptIds.size === 0) return;
+
+    showModal('confirm', 'Delete Scripts', `Are you sure you want to delete ${selectedScriptIds.size} scripts?`, async () => {
+      try {
+        for (const id of selectedScriptIds) {
+          await chrome.runtime.sendMessage({
+            type: 'DELETE_SCRIPT',
+            scriptId: id
+          });
+        }
+        const newScripts = scripts.filter(s => !selectedScriptIds.has(s.id));
+        setScripts(newScripts);
+        setSelectedScriptIds(new Set());
+        closeModal();
+        showModal('success', 'Deleted', `Successfully deleted ${selectedScriptIds.size} scripts.`);
+      } catch (e) {
+        console.error("Failed to delete", e);
+        showModal('error', 'Delete Failed', (e as Error).message);
+      }
+    });
+  };
+
+  const toggleScriptSelection = (id: string) => {
+    const next = new Set(selectedScriptIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedScriptIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedScriptIds.size === scripts.length) {
+      setSelectedScriptIds(new Set());
+    } else {
+      setSelectedScriptIds(new Set(scripts.map(s => s.id)));
     }
   };
 
@@ -347,7 +456,7 @@ function App() {
       setScripts(updatedScripts);
     } catch (e) {
       console.error("Failed to save", e);
-      alert("Failed to save script: " + (e as Error).message);
+      showModal('error', 'Save Failed', (e as Error).message);
     } finally {
       setIsSaving(false);
     }
@@ -373,13 +482,8 @@ function App() {
       await saveDirectoryHandle(handle);
       setBackupDirName(handle.name);
 
-      // Perform initial backup
-      await performBackup(handle);
-      const time = new Date().toISOString();
-      setLastBackupTime(time);
-      chrome.storage.local.set({ lastBackupTime: time });
-      setBackupStatus('success');
-      setBackupStatus('success');
+      // Removed immediate backup to prevent accidental overwrites
+      // await performBackup(handle);
 
     } catch (e) {
       if ((e as Error).name !== 'AbortError') {
@@ -417,32 +521,92 @@ function App() {
   };
 
   const handleManualRestore = async () => {
-    if (!confirm("Are you sure you want to restore from backup? This will merge/update existing scripts with the backup data.")) {
-      return;
-    }
+    // Separate Restore: Explicitly ask for directory
     try {
-      setBackupStatus('idle');
-      setBackupMessage('');
-      setIsBackupLoading(true);
+      const handle = await window.showDirectoryPicker();
 
-      const count = await performRestore();
+      showModal(
+        'confirm',
+        'Restore Scripts',
+        `Restoring from "${handle.name}". This will merge/update existing scripts. Continue?`,
+        async () => {
+          try {
+            setRestoreStatus('idle');
+            setRestoreMessage('');
+            setIsBackupLoading(true);
+            closeModal();
 
-      // Notify background to reload all scripts
-      await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+            const count = await performRestore(handle);
 
-      // Reload scripts in UI
-      chrome.storage.local.get(['scripts'], (result) => {
-        setScripts((result.scripts as Script[]) || []);
-      });
+            // Notify background to reload all scripts
+            await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
 
-      setBackupStatus('success');
-      setBackupMessage(`Restored ${count} scripts`);
+            // Reload scripts in UI
+            chrome.storage.local.get(['scripts'], (result) => {
+              setScripts((result.scripts as Script[]) || []);
+            });
+
+            setRestoreStatus('success');
+            setRestoreMessage(`Restored ${count} scripts`);
+            showModal('success', 'Restore Complete', `Successfully restored ${count} scripts.`);
+          } catch (e) {
+            console.error("Restore failed", e);
+            setRestoreStatus('error');
+            setRestoreMessage((e as Error).message);
+            showModal('error', 'Restore Failed', (e as Error).message);
+          } finally {
+            setIsBackupLoading(false);
+          }
+        }
+      );
+
     } catch (e) {
-      console.error("Restore failed", e);
-      setBackupStatus('error');
-      setBackupMessage((e as Error).message);
-    } finally {
-      setIsBackupLoading(false);
+      if ((e as Error).name !== 'AbortError') {
+        console.error("Restore failed", e);
+        setRestoreStatus('error');
+        setRestoreMessage((e as Error).message);
+        showModal('error', 'Error', (e as Error).message);
+      }
+    }
+    // finally block moved inside confirm callback or handled if abort
+  };
+
+  const handleImportFile = async () => {
+    try {
+      const importedScripts = await importFromFile();
+      if (importedScripts.length === 0) return;
+
+      for (const script of importedScripts) {
+        await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script });
+      }
+      // Reload
+      chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+      // UI Reload
+      const updated = await chrome.storage.local.get('scripts');
+      if (updated.scripts) setScripts(updated.scripts as Script[]);
+
+      showModal('success', 'Import Successful', `Imported ${importedScripts.length} scripts.`);
+    } catch (e) {
+      console.error(e);
+      showModal('error', 'Import Failed', (e as Error).message);
+    }
+  };
+
+  const handleImportFolder = async () => {
+    try {
+      const importedScripts = await importFromDirectory();
+      if (importedScripts.length === 0) return;
+      for (const script of importedScripts) {
+        await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script });
+      }
+      chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+      const updated = await chrome.storage.local.get('scripts');
+      if (updated.scripts) setScripts(updated.scripts as Script[]);
+
+      showModal('success', 'Import Successful', `Imported ${importedScripts.length} scripts.`);
+    } catch (e) {
+      console.error(e);
+      showModal('error', 'Import Failed', (e as Error).message);
     }
   };
 
@@ -497,11 +661,74 @@ function App() {
     <div className="content-scroll">
       <div className="script-table-container">
         <div className="page-header">
-          <h2 className="page-title">My Scripts ({scripts.length})</h2>
-          <button className="btn-primary" onClick={handleNewScript}>
-            <Plus size={16} />
-            <span>New Script</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 className="page-title">My Scripts ({scripts.length})</h2>
+            {selectedScriptIds.size > 0 && (
+              <div style={{ display: 'flex', gap: '8px', marginLeft: '12px', paddingLeft: '12px', borderLeft: '1px solid var(--border-color)' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleBulkEnable}
+                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                  title="Enable Selected"
+                >
+                  <Play size={14} /> Enable
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={handleBulkDisable}
+                  style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                  title="Disable Selected"
+                >
+                  <Pause size={14} /> Disable
+                </button>
+                <button
+                  className="btn-danger"
+                  onClick={handleBulkDelete}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '0.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: '#fee2e2',
+                    color: '#ef4444',
+                    border: '1px solid #fecaca',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={14} />
+                  <span>Delete ({selectedScriptIds.size})</span>
+                </button>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+              <span style={{ fontSize: '0.9rem', color: extensionEnabled ? 'var(--text-color)' : 'var(--text-secondary)' }}>
+                {extensionEnabled ? 'Extension Enabled' : 'Extension Disabled'}
+              </span>
+              <ToggleSwitch
+                checked={extensionEnabled}
+                onChange={toggleExtension}
+              />
+            </div>
+            <div style={{ height: '24px', width: '1px', background: 'var(--border-color)' }}></div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn-secondary" onClick={handleImportFile} title="Import .user.js files">
+                <FileUp size={16} />
+                <span>Import File</span>
+              </button>
+              <button className="btn-secondary" onClick={handleImportFolder} title="Import from folder">
+                <FolderUp size={16} />
+                <span>Import Folder</span>
+              </button>
+              <button className="btn-primary" onClick={handleNewScript}>
+                <Plus size={16} />
+                <span>New Script</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {scripts.length === 0 ? (
@@ -516,6 +743,14 @@ function App() {
           <table className="script-table compact">
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={scripts.length > 0 && selectedScriptIds.size === scripts.length}
+                    onChange={toggleSelectAll}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
                 <th style={{ width: '60px' }}>Enabled</th>
                 <th>Name / Namespace</th>
                 <th>Version</th>
@@ -530,7 +765,15 @@ function App() {
                 const sourceUrl = script.updateUrl || script.downloadUrl || script.sourceUrl;
 
                 return (
-                  <tr key={script.id}>
+                  <tr key={script.id} className={selectedScriptIds.has(script.id) ? 'selected-row' : ''} style={selectedScriptIds.has(script.id) ? { backgroundColor: 'var(--hover-color)' } : {}}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedScriptIds.has(script.id)}
+                        onChange={() => toggleScriptSelection(script.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
                     <td>
                       <ToggleSwitch
                         checked={!!script.enabled}
@@ -590,7 +833,9 @@ function App() {
         )}
       </div>
     </div>
+
   );
+
 
   const renderScriptEditor = () => {
     if (!activeScript) return <div>Script not found</div>;
@@ -643,62 +888,59 @@ function App() {
           <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', fontWeight: 500 }}>Appearance</h3>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-color)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
               <button
                 onClick={() => changeTheme('light')}
                 style={{
-                  flex: 1,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '16px',
-                  background: theme === 'light' ? 'var(--accent-color)' : 'var(--bg-color)',
-                  border: '1px solid var(--border-color)',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  background: theme === 'light' ? 'var(--accent-color)' : 'transparent',
+                  border: 'none',
                   color: theme === 'light' ? 'white' : 'var(--text-secondary)',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
                 }}
               >
-                <Sun size={24} />
+                <Sun size={16} />
                 <span>Light</span>
               </button>
               <button
                 onClick={() => changeTheme('dark')}
                 style={{
-                  flex: 1,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '16px',
-                  background: theme === 'dark' ? 'var(--accent-color)' : 'var(--bg-color)',
-                  border: '1px solid var(--border-color)',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  background: theme === 'dark' ? 'var(--accent-color)' : 'transparent',
+                  border: 'none',
                   color: theme === 'dark' ? 'white' : 'var(--text-secondary)',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
                 }}
               >
-                <Moon size={24} />
+                <Moon size={16} />
                 <span>Dark</span>
               </button>
               <button
                 onClick={() => changeTheme('system')}
                 style={{
-                  flex: 1,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '16px',
-                  background: theme === 'system' ? 'var(--accent-color)' : 'var(--bg-color)',
-                  border: '1px solid var(--border-color)',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  background: theme === 'system' ? 'var(--accent-color)' : 'transparent',
+                  border: 'none',
                   color: theme === 'system' ? 'white' : 'var(--text-secondary)',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
                 }}
               >
-                <Monitor size={24} />
+                <Monitor size={16} />
                 <span>System</span>
               </button>
             </div>
@@ -728,6 +970,44 @@ function App() {
                 )}
               </div>
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px', marginBottom: '8px' }}>
+                <ToggleSwitch
+                  checked={autoBackup}
+                  onChange={(checked) => {
+                    setAutoBackup(checked);
+                    chrome.storage.local.set({ autoBackup: checked });
+                  }}
+                  disabled={!backupDirName}
+                />
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                  Enable automatic backups
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: autoBackup ? 1 : 0.6 }}>
+                  <select
+                    value={backupFrequency}
+                    onChange={(e) => {
+                      setBackupFrequency(e.target.value);
+                      chrome.storage.local.set({ backupFrequency: e.target.value });
+                    }}
+                    disabled={!autoBackup || !backupDirName}
+                    style={{
+                      background: 'var(--bg-color)',
+                      color: 'var(--text-color)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <option value="hourly">Every Hour</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>frequency</span>
+                </div>
+              </div>
+
               {backupDirName && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
                   <button
@@ -738,16 +1018,6 @@ function App() {
                   >
                     <Save size={18} />
                     <span>{isBackupLoading ? 'Working...' : 'Backup'}</span>
-                  </button>
-
-                  <button
-                    className="btn-secondary"
-                    onClick={handleManualRestore}
-                    disabled={isBackupLoading}
-                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <RotateCcw size={18} />
-                    <span>Restore</span>
                   </button>
 
                   {backupStatus === 'success' && (
@@ -773,6 +1043,38 @@ function App() {
                 </div>
               )}
             </div>
+
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Restore</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                Restore scripts from a previously backed-up directory (expects 'shieldmonkey_dump.json').
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={handleManualRestore}
+                  disabled={isBackupLoading}
+                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <RotateCcw size={18} />
+                  <span>Select Directory & Restore</span>
+                </button>
+
+                {restoreStatus === 'success' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                    <Check size={18} />
+                    <span>Done{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                  </div>
+                )}
+
+                {restoreStatus === 'error' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                    <AlertCircle size={18} />
+                    <span>Error{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -790,7 +1092,7 @@ function App() {
               <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Links</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                  <a href="https://github.com/Shieldmonkey/Shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                     <span>GitHub Repository</span>
                   </a>
                   <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>View source code & docs.</p>
@@ -802,7 +1104,7 @@ function App() {
               <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Issues</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
+                  <a href="https://github.com/Shieldmonkey/Shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
                     Report a Bug
                   </a>
                   <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -810,7 +1112,7 @@ function App() {
                   </p>
                 </li>
                 <li>
-                  <a href="https://github.com/toshs/Shieldmonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
+                  <a href="https://github.com/Shieldmonkey/Shieldmonkey/security/advisories" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem' }}>
                     Report Vulnerability
                   </a>
                 </li>
@@ -849,6 +1151,16 @@ function App() {
           onCancel={handlePermissionCancel}
         />
       )}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm}
+        onClose={closeModal}
+        confirmLabel={modalConfig.onConfirm ? 'Confirm' : 'OK'}
+        cancelLabel="Cancel"
+      />
     </div>
   );
 }

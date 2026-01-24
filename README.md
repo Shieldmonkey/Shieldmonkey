@@ -50,8 +50,8 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 
 1. リポジトリのクローン
    ```bash
-   git clone https://github.com/toshs/stickymonkey.git
-   cd stickymonkey
+   git clone https://github.com/shieldmonkey/shieldmonkey.git
+   cd shieldmonkey
    ```
 
 2. 依存関係のインストール

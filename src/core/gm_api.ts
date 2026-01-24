@@ -22,8 +22,10 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
 
   return `
 (function(scope) {
-  const granted = new Set(${perms});
-  const GM_SCRIPT_ID = "${config.id}";
+  console.log("Shieldmonkey: Injecting API for " + "${config.name}");
+  try {
+    const granted = new Set(${perms});
+    const GM_SCRIPT_ID = "${config.id}";
   
   const GM_info = {
     script: ${scriptObj},
@@ -198,6 +200,10 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
   // unsafeWindow handling
   scope.unsafeWindow = window; 
 
+
+  } catch (e) {
+    console.error("Shieldmonkey: Failed to inject API for " + "${config.name}", e);
+  }
 })(window);
 `;
 }
