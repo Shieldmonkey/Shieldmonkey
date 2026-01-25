@@ -7,12 +7,14 @@ import { useModal } from '../context/useModal';
 import PermissionModal from '../PermissionModal';
 import { parseMetadata } from '../../utils/metadataParser';
 import { type Script } from '../types';
+import { useI18n } from '../../context/I18nContext';
 
 const ScriptEditor = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { scripts, saveScript, deleteScript } = useApp();
     const { showModal: showGenericModal } = useModal();
+    const { t } = useI18n();
 
     // Find script from context
     const scriptFromContext = scripts.find((s: Script) => s.id === id);
@@ -70,7 +72,7 @@ const ScriptEditor = () => {
             const updatedScript: Script = {
                 ...scriptFromContext,
                 code: currentCode,
-                name: metadata.name || scriptFromContext.name || 'New Script',
+                name: metadata.name || scriptFromContext.name || t('newScript'),
                 namespace: metadata.namespace || scriptFromContext.namespace,
                 grantedPermissions
             };
@@ -80,15 +82,15 @@ const ScriptEditor = () => {
 
         } catch (e) {
             console.error("Failed to save", e);
-            showGenericModal('error', 'Save Failed', (e as Error).message);
+            showGenericModal('error', t('editorSaveFailed'), (e as Error).message);
         } finally {
             setIsSaving(false);
         }
-    }, [code, scriptFromContext, saveScript, showGenericModal]);
+    }, [code, scriptFromContext, saveScript, showGenericModal, t]);
 
     const handleDelete = () => {
         if (!scriptFromContext) return;
-        showGenericModal('confirm', 'Delete Script', 'Are you sure you want to delete this script?', async () => {
+        showGenericModal('confirm', t('editorConfirmDeleteTitle'), t('editorConfirmDeleteMsg'), async () => {
             await deleteScript(scriptFromContext.id);
             navigate('/scripts');
         });
@@ -123,8 +125,8 @@ const ScriptEditor = () => {
     const editorTheme = theme === 'light' ? 'vs' : 'vs-dark';
 
     if (!scriptFromContext) {
-        if (scripts.length === 0) return <div>Loading...</div>;
-        return <div>Script not found</div>;
+        if (scripts.length === 0) return <div>{t('editorLoading')}</div>;
+        return <div>{t('editorScriptNotFound')}</div>;
     }
 
     // Metadata for header/sidebar info
@@ -139,10 +141,10 @@ const ScriptEditor = () => {
                     className="sidebar-header"
                     style={{ cursor: 'pointer', justifyContent: 'flex-start', paddingLeft: '24px' }}
                     onClick={() => navigate('/scripts')}
-                    title="Back to Script List"
+                    title={t('backToScriptList')}
                 >
                     <ArrowLeft size={20} style={{ color: 'var(--text-secondary)' }} />
-                    <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>Back</h2>
+                    <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>{t('navBack')}</h2>
                 </div>
 
                 <div className="content-scroll" style={{ padding: '0 24px 24px 24px' }}>
@@ -151,21 +153,21 @@ const ScriptEditor = () => {
                     <div style={{ marginBottom: '32px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
                             <Info size={16} />
-                            <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Info</h3>
+                            <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderInfo')}</h3>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 16px', fontSize: '0.85rem' }}>
-                            <div style={{ color: 'var(--text-secondary)' }}>Version</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelVersion')}</div>
                             <div style={{ fontFamily: 'monospace' }}>{metadata.version || '-'}</div>
 
-                            <div style={{ color: 'var(--text-secondary)' }}>Author</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelAuthor')}</div>
                             <div>{metadata.author || '-'}</div>
 
-                            <div style={{ color: 'var(--text-secondary)' }}>Installed</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelInstalled')}</div>
                             <div>{scriptFromContext.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
 
                             {referrerUrl && (
                                 <>
-                                    <div style={{ color: 'var(--text-secondary)' }}>Page</div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelPage')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={referrerUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
@@ -177,7 +179,7 @@ const ScriptEditor = () => {
 
                             {sourceUrl && (
                                 <>
-                                    <div style={{ color: 'var(--text-secondary)' }}>Source</div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelSource')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
@@ -190,7 +192,7 @@ const ScriptEditor = () => {
 
                             {(metadata.updateURL || scriptFromContext.updateUrl) && (
                                 <>
-                                    <div style={{ color: 'var(--text-secondary)' }}>Update</div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={metadata.updateURL || scriptFromContext.updateUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
@@ -202,7 +204,7 @@ const ScriptEditor = () => {
 
                             {(metadata.downloadURL || scriptFromContext.downloadUrl) && (
                                 <>
-                                    <div style={{ color: 'var(--text-secondary)' }}>Download</div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={metadata.downloadURL || scriptFromContext.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
@@ -220,7 +222,7 @@ const ScriptEditor = () => {
                             <div style={{ marginBottom: '32px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
                                     <Shield size={16} />
-                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Permissions</h3>
+                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderPermissions')}</h3>
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                     {(metadata.grant || []).filter(p => p !== 'none').map(p => (
@@ -246,7 +248,7 @@ const ScriptEditor = () => {
                             <div style={{ marginBottom: '32px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
                                     <Globe size={16} />
-                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Matches</h3>
+                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderMatches')}</h3>
                                 </div>
                                 <ul style={{
                                     listStyle: 'none',
@@ -279,7 +281,7 @@ const ScriptEditor = () => {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             readOnly
-                            title="Name is defined in metadata block"
+                            title={t('nameDefinedInMetadata')}
                             style={{ cursor: 'default', marginLeft: 0 }}
                         />
                         {metadata.namespace && (
@@ -296,7 +298,7 @@ const ScriptEditor = () => {
                             disabled={!isDirty || isSaving}
                         >
                             <Save size={16} />
-                            <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                            <span>{isSaving ? t('editorBtnSaving') : t('editorBtnSave')}</span>
                         </button>
                         <button
                             className="btn-secondary"

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import './Install.css';
 import { parseMetadata, type Metadata } from '../../utils/metadataParser';
 import Editor, { DiffEditor } from '@monaco-editor/react';
+import { useI18n } from '../../context/I18nContext';
 
 // Theme logic
 type Theme = 'light' | 'dark' | 'system';
@@ -24,6 +25,7 @@ const Install = () => {
     const [error, setError] = useState<string>('');
     const [viewMode, setViewMode] = useState<'code' | 'diff'>('code');
     const [theme, setTheme] = useState<Theme>('dark');
+    const { t } = useI18n();
 
     // Theme logic
     useEffect(() => {
@@ -76,7 +78,7 @@ const Install = () => {
             // Use background fetching to bypass CSP
             const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url });
             if (!response || !response.success) {
-                throw new Error(response.error || 'Failed to fetch script content');
+                throw new Error(response.error || t('installErrorFailedToFetch'));
             }
             const text = response.text;
             loadScriptContent(text);
@@ -84,7 +86,7 @@ const Install = () => {
             setStatus('error');
             setError((e as Error).message);
         }
-    }, [loadScriptContent]);
+    }, [loadScriptContent, t]);
 
     useEffect(() => {
         // Check for content passed via data:text/html redirection (see background script)
@@ -122,7 +124,7 @@ const Install = () => {
                     chrome.storage.local.remove(key);
                 } else {
                     setStatus('error');
-                    setError('Expired or invalid installation session.');
+                    setError(t('installErrorExpired'));
                 }
             });
             return;
@@ -135,7 +137,7 @@ const Install = () => {
                 return;
             }
             setStatus('error');
-            setError('No URL provided');
+            setError(t('installErrorNoUrl'));
             return;
         }
 
@@ -144,7 +146,7 @@ const Install = () => {
 
         setScriptUrl(url);
         fetchScript(url);
-    }, [fetchScript, loadScriptContent]);
+    }, [fetchScript, loadScriptContent, t]);
 
     const handleInstall = async () => {
         if (!metadata || !code) return;
@@ -186,17 +188,17 @@ const Install = () => {
     };
 
     if (status === 'loading') {
-        return <div className="install-loading-container" style={{ textAlign: 'center' }}><h2>Loading script...</h2></div>;
+        return <div className="install-loading-container" style={{ textAlign: 'center' }}><h2>{t('installLoading')}</h2></div>;
     }
 
     if (status === 'error') {
         return (
             <div className="install-loading-container">
-                <h2>Error</h2>
+                <h2>{t('installErrorTitle')}</h2>
                 <p style={{ color: '#ff6b6b' }}>{error}</p>
                 <div className="actions">
-                    <button className="btn-secondary" onClick={handleCancel}>Close</button>
-                    {scriptUrl && <button className="btn-primary" onClick={() => fetchScript(scriptUrl)}>Retry</button>}
+                    <button className="btn-secondary" onClick={handleCancel}>{t('installBtnClose')}</button>
+                    {scriptUrl && <button className="btn-primary" onClick={() => fetchScript(scriptUrl)}>{t('installBtnRetry')}</button>}
                 </div>
             </div>
         );
@@ -205,11 +207,11 @@ const Install = () => {
     if (status === 'success') {
         return (
             <div className="install-loading-container">
-                <h2>Successfully Installed!</h2>
-                <p>{metadata?.name} is now active.</p>
-                <p style={{ color: 'var(--text-secondary)' }}>Closing window in 2 seconds...</p>
+                <h2>{t('installSuccessTitle')}</h2>
+                <p>{t('installSuccessMsg', [metadata?.name || 'Script'])}</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{t('installClosingMsg')}</p>
                 <div className="actions">
-                    <button className="btn-secondary" onClick={handleCancel}>Close Now</button>
+                    <button className="btn-secondary" onClick={handleCancel}>{t('installBtnCloseNow')}</button>
                 </div>
             </div>
         );
@@ -226,7 +228,7 @@ const Install = () => {
         <div className="install-container">
             <header className="install-header">
                 <div className="install-header-left">
-                    <h1>{existingScript ? 'Update Script' : 'Install Script'}</h1>
+                    <h1>{existingScript ? t('installHeaderUpdate') : t('installHeaderInstall')}</h1>
                     <div className="script-title-badge">
                         <span className="script-name">{metadata?.name}</span>
                         <span className="script-version">v{metadata?.version}</span>
@@ -241,23 +243,23 @@ const Install = () => {
                                 style={{ background: viewMode === 'code' ? undefined : 'transparent', border: 'none', padding: '4px 12px', fontSize: '0.85rem', color: viewMode === 'code' ? undefined : 'var(--text-primary)' }}
                                 onClick={() => setViewMode('code')}
                             >
-                                Source
+                                {t('installBtnSource')}
                             </button>
                             <button
                                 className={viewMode === 'diff' ? 'btn-primary' : ''}
                                 style={{ background: viewMode === 'diff' ? undefined : 'transparent', border: 'none', padding: '4px 12px', fontSize: '0.85rem', color: viewMode === 'diff' ? undefined : 'var(--text-primary)' }}
                                 onClick={() => setViewMode('diff')}
                             >
-                                Diff
+                                {t('installBtnDiff')}
                             </button>
                         </div>
                     )}
                 </div>
 
                 <div className="install-header-actions">
-                    <button className="btn-secondary" onClick={handleCancel}>Cancel</button>
+                    <button className="btn-secondary" onClick={handleCancel}>{t('installBtnCancel')}</button>
                     <button className="btn-primary" onClick={handleInstall}>
-                        {existingScript ? 'Update' : 'Install'}
+                        {existingScript ? t('installBtnUpdate') : t('installBtnInstall')}
                     </button>
                 </div>
             </header>
@@ -267,20 +269,20 @@ const Install = () => {
                     <div className="install-info-section">
                         <h3>Metadata</h3>
                         <div className="install-meta-grid">
-                            <div className="meta-label">Author:</div>
+                            <div className="meta-label">{t('installMetaAuthor')}</div>
                             <div>{metadata?.author || '-'}</div>
 
-                            <div className="meta-label">Description:</div>
+                            <div className="meta-label">{t('installMetaDescription')}</div>
                             <div>{metadata?.description || '-'}</div>
 
                             {existingScript && (
                                 <>
-                                    <div className="meta-label">Current:</div>
+                                    <div className="meta-label">{t('installMetaCurrent')}</div>
                                     <div style={{ color: 'var(--text-secondary)' }}>v{existingVersion}</div>
                                 </>
                             )}
 
-                            <div className="meta-label">Source:</div>
+                            <div className="meta-label">{t('installMetaSource')}</div>
                             <div style={{ wordBreak: 'break-all', fontSize: '0.85em' }}>
                                 <a href={scriptUrl!} target="_blank" rel="noreferrer">{scriptUrl}</a>
                             </div>
@@ -293,7 +295,7 @@ const Install = () => {
 
                         return (
                             <div className="install-info-section">
-                                <h3>Permissions</h3>
+                                <h3>{t('installHeaderPermissions')}</h3>
                                 <div className="chip-container">
                                     {effectivePermissions.map(p => (
                                         <span key={p} className="permission-chip">{p}</span>
@@ -305,7 +307,7 @@ const Install = () => {
 
                     {metadata?.match && metadata.match.length > 0 && (
                         <div className="install-info-section">
-                            <h3>Matches</h3>
+                            <h3>{t('installHeaderMatches')}</h3>
                             <ul className="match-list">
                                 {metadata.match.map(m => (
                                     <li key={m}>{m}</li>

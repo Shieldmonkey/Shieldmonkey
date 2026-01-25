@@ -4,9 +4,12 @@ import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { saveDirectoryHandle, getDirectoryHandle } from '../../utils/backupStorage';
 import { performBackup, performRestore } from '../../utils/backupManager';
+import { useI18n } from '../../context/I18nContext';
+
 
 const Settings = () => {
     const { theme, setTheme } = useApp();
+    const { t, locale, setLocale } = useI18n();
     const { showModal } = useModal();
 
     // Local state for backup UI
@@ -63,7 +66,7 @@ const Settings = () => {
             setLastBackupTime(time);
             chrome.storage.local.set({ lastBackupTime: time });
             setBackupStatus('success');
-            setBackupMessage(`Saved ${count} scripts`);
+            setBackupMessage(t('savedScriptsMsg', [String(count)]));
         } catch (e) {
             console.error("Backup failed", e);
             setBackupStatus('error');
@@ -78,8 +81,8 @@ const Settings = () => {
             const handle = await window.showDirectoryPicker();
             showModal(
                 'confirm',
-                'Restore Scripts',
-                `Restoring from "${handle.name}". This will merge/update existing scripts. Continue?`,
+                t('confirmRestoreTitle'),
+                t('confirmRestoreMsg', [handle.name]),
                 async () => {
                     try {
                         setRestoreStatus('idle');
@@ -90,13 +93,13 @@ const Settings = () => {
                         await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
 
                         setRestoreStatus('success');
-                        setRestoreMessage(`Restored ${count} scripts`);
-                        showModal('success', 'Restore Complete', `Successfully restored ${count} scripts.`);
+                        setRestoreMessage(t('restoreSuccessMsg', [String(count)]));
+                        showModal('success', t('restoreCompleteTitle'), t('restoreCompleteMsg', [String(count)]));
                     } catch (e) {
                         console.error("Restore failed", e);
                         setRestoreStatus('error');
                         setRestoreMessage((e as Error).message);
-                        showModal('error', 'Restore Failed', (e as Error).message);
+                        showModal('error', t('restoreFailedTitle'), (e as Error).message);
                     } finally {
                         setIsBackupLoading(false);
                     }
@@ -125,33 +128,61 @@ const Settings = () => {
     return (
         <div className="content-scroll">
             <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-                <h2 className="page-title" style={{ marginBottom: '20px' }}>Settings</h2>
+                <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('pageTitleSettings')}</h2>
 
                 <div style={{ marginBottom: '32px' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Appearance</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionAppearance')}</h3>
                     <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {(['light', 'dark', 'system'] as const).map((t) => (
+                        {(['light', 'dark', 'system'] as const).map((text) => (
                             <button
-                                key={t}
-                                className={theme === t ? 'btn-primary' : 'btn-secondary'}
-                                onClick={() => setTheme(t)}
+                                key={text}
+                                className={theme === text ? 'btn-primary' : 'btn-secondary'}
+                                onClick={() => setTheme(text)}
                                 style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '8px' }}
                             >
-                                {t === 'light' && <Sun size={16} />}
-                                {t === 'dark' && <Moon size={16} />}
-                                {t === 'system' && <Monitor size={16} />}
-                                {t}
+                                {text === 'light' && <Sun size={16} />}
+                                {text === 'dark' && <Moon size={16} />}
+                                {text === 'system' && <Monitor size={16} />}
+                                {t('theme' + text.charAt(0).toUpperCase() + text.slice(1))}
                             </button>
                         ))}
                     </div>
                 </div>
 
+                <div style={{ marginBottom: '32px' }}>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Language</h3>
+                    <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                            className={locale === 'en' ? 'btn-primary' : 'btn-secondary'}
+                            onClick={() => setLocale('en')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            English
+                        </button>
+                        <button
+                            className={locale === 'ja' ? 'btn-primary' : 'btn-secondary'}
+                            onClick={() => setLocale('ja')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            日本語
+                        </button>
+                        <button
+                            className={locale === 'system' ? 'btn-primary' : 'btn-secondary'}
+                            onClick={() => setLocale('system')}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            <Monitor size={16} />
+                            System
+                        </button>
+                    </div>
+                </div>
+
                 <div>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Backup & Restore</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionBackupRestore')}</h3>
                     <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 500 }}>Backup Directory</h4>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 500 }}>{t('sectionBackupDir')}</h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                         flex: 1,
@@ -163,11 +194,11 @@ const Settings = () => {
                                         color: backupDirName ? 'var(--text-primary)' : 'var(--text-secondary)',
                                         fontFamily: 'monospace'
                                     }}>
-                                        {backupDirName || 'No directory selected'}
+                                        {backupDirName || t('noDirSelected')}
                                     </div>
                                     <button className="btn-secondary" onClick={handleSelectBackupDir} disabled={isBackupLoading} title="Select backup folder">
                                         <FolderInput size={18} />
-                                        <span>Select</span>
+                                        <span>{t('btnSelect')}</span>
                                     </button>
                                 </div>
                             </div>
@@ -176,9 +207,9 @@ const Settings = () => {
 
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
-                                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 500 }}>Automatic Backup</h4>
+                                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 500 }}>{t('sectionAutoBackup')}</h4>
                                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        Automatically save scripts to the selected directory.
+                                        {t('autoBackupDesc')}
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -199,9 +230,9 @@ const Settings = () => {
                                             fontSize: '0.85rem'
                                         }}
                                     >
-                                        <option value="hourly">Every Hour</option>
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
+                                        <option value="hourly">{t('freqHourly')}</option>
+                                        <option value="daily">{t('freqDaily')}</option>
+                                        <option value="weekly">{t('freqWeekly')}</option>
                                     </select>
                                 </div>
                             </div>
@@ -215,32 +246,32 @@ const Settings = () => {
                                         style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
                                     >
                                         <Save size={18} />
-                                        <span>{isBackupLoading ? 'Working...' : 'Backup Now'}</span>
+                                        <span>{isBackupLoading ? t('btnWorking') : t('btnBackupNow')}</span>
                                     </button>
 
                                     {backupStatus === 'success' && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                             <Check size={18} />
-                                            <span>Done{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                            <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
                                         </div>
                                     )}
                                     {backupStatus === 'error' && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                             <AlertCircle size={18} />
-                                            <span>Error{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                            <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
                                         </div>
                                     )}
                                     {lastBackupTime && backupStatus !== 'success' && backupStatus !== 'error' && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                             <Clock size={14} />
-                                            <span>Last: {new Date(lastBackupTime).toLocaleString()}</span>
+                                            <span>{t('lastBackupPrefix')}{new Date(lastBackupTime).toLocaleString()}</span>
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Restore</h4>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>{t('sectionRestore')}</h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <button
                                         className="btn-secondary"
@@ -249,18 +280,18 @@ const Settings = () => {
                                         style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
                                     >
                                         <RotateCcw size={18} />
-                                        <span>Select Directory & Restore</span>
+                                        <span>{t('btnRestore')}</span>
                                     </button>
                                     {restoreStatus === 'success' && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                             <Check size={18} />
-                                            <span>Done{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                            <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
                                         </div>
                                     )}
                                     {restoreStatus === 'error' && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                             <AlertCircle size={18} />
-                                            <span>Error{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                            <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
                                         </div>
                                     )}
                                 </div>

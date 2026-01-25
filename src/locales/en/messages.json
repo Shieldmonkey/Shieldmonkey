@@ -1,0 +1,195 @@
+{
+  "appName": {
+    "message": "Shieldmonkey",
+    "description": "The name of the extension"
+  },
+  "appDescription": {
+    "message": "A Userscript manager for the modern web.",
+    "description": "The description of the extension"
+  },
+  "scriptsOnThisPage": {
+    "message": "Scripts on this page"
+  },
+  "noScriptsMatching": {
+    "message": "No scripts matching this page."
+  },
+  "createNewScript": {
+    "message": "Create New Script"
+  },
+  "confirmDeleteScript": {
+    "message": "Are you sure you want to delete script \"$1\"?",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "themeTooltip": {
+    "message": "Theme: $1",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "dashboardTooltip": {
+    "message": "Dashboard"
+  },
+  "editTooltip": {
+    "message": "Edit"
+  },
+  "checkForUpdatesTooltip": {
+    "message": "Check for updates"
+  },
+  "deleteTooltip": {
+    "message": "Delete"
+  },
+  "noUpdateUrlAlert": {
+    "message": "No update URL found for this script."
+  },
+  "myScripts": {
+    "message": "My Scripts ($1)",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "importFile": { "message": "Import File" },
+  "importFolder": { "message": "Import Folder" },
+  "newScript": { "message": "New Script" },
+  "noScriptsFound": { "message": "No scripts found" },
+  "createScriptToStart": { "message": "Create a new script to get started." },
+  "enabledHeader": { "message": "Enabled" },
+  "nameHeader": { "message": "Name" },
+  "namespaceHeader": { "message": "Namespace" },
+  "versionHeader": { "message": "Version" },
+  "sourceHeader": { "message": "Source" },
+  "installedHeader": { "message": "Installed" },
+  "actionsHeader": { "message": "Actions" },
+  "remoteLabel": { "message": "Remote" },
+  "localLabel": { "message": "Local" },
+  "deleteScriptConfirm": {
+    "message": "Are you sure you want to delete \"$1\"?",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteSuccess": {
+    "message": "Script \"$1\" deleted.",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteFailed": { "message": "Delete Failed" },
+  "selectedCount": {
+    "message": "$1 Selected",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "enableSelected": { "message": "Enable" },
+  "disableSelected": { "message": "Disable" },
+  "deleteSelected": { "message": "Delete" },
+  "importSuccessful": { "message": "Import Successful" },
+  "importFailed": { "message": "Import Failed" },
+  "importedScripts": {
+    "message": "Imported $1 scripts.",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "confirmDeleteMultiple": {
+    "message": "Are you sure you want to delete $1 scripts?",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deletedMultiple": {
+    "message": "Successfully deleted $1 scripts.",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteScriptsTitle": { "message": "Delete Scripts" },
+  "deleteScriptTitle": { "message": "Delete Script" },
+  "navScripts": { "message": "Scripts" },
+  "navSettings": { "message": "Settings" },
+  "navHelp": { "message": "Help" },
+  "extensionLabel": { "message": "Extension" },
+  "pageTitleSettings": { "message": "Settings" },
+  "sectionAppearance": { "message": "Appearance" },
+  "themeLight": { "message": "Light" },
+  "themeDark": { "message": "Dark" },
+  "themeSystem": { "message": "System" },
+  "sectionBackupRestore": { "message": "Backup & Restore" },
+  "sectionBackupDir": { "message": "Backup Directory" },
+  "noDirSelected": { "message": "No directory selected" },
+  "btnSelect": { "message": "Select" },
+  "sectionAutoBackup": { "message": "Automatic Backup" },
+  "autoBackupDesc": { "message": "Automatically save scripts to the selected directory." },
+  "freqHourly": { "message": "Every Hour" },
+  "freqDaily": { "message": "Daily" },
+  "freqWeekly": { "message": "Weekly" },
+  "btnBackupNow": { "message": "Backup Now" },
+  "btnWorking": { "message": "Working..." },
+  "backupDone": { "message": "Done" },
+  "backupError": { "message": "Error" },
+  "lastBackupPrefix": { "message": "Last: " },
+  "sectionRestore": { "message": "Restore" },
+  "btnRestore": { "message": "Select Directory & Restore" },
+  "confirmRestoreTitle": { "message": "Restore Scripts" },
+  "confirmRestoreMsg": {
+    "message": "Restoring from \"$1\". This will merge/update existing scripts. Continue?",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreSuccessMsg": {
+    "message": "Restored $1 scripts",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreCompleteTitle": { "message": "Restore Complete" },
+  "restoreCompleteMsg": {
+    "message": "Successfully restored $1 scripts.",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreFailedTitle": { "message": "Restore Failed" },
+  "savedScriptsMsg": {
+    "message": "Saved $1 scripts",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "navBack": { "message": "Back" },
+  "editorHeaderInfo": { "message": "Info" },
+  "editorLabelVersion": { "message": "Version" },
+  "editorLabelAuthor": { "message": "Author" },
+  "editorLabelInstalled": { "message": "Installed" },
+  "editorLabelPage": { "message": "Page" },
+  "editorLabelSource": { "message": "Source" },
+  "editorLabelUpdate": { "message": "Update" },
+  "editorLabelDownload": { "message": "Download" },
+  "editorHeaderPermissions": { "message": "Permissions" },
+  "editorHeaderMatches": { "message": "Matches" },
+  "editorBtnSave": { "message": "Save" },
+  "editorBtnSaving": { "message": "Saving..." },
+  "editorConfirmDeleteTitle": { "message": "Delete Script" },
+  "editorConfirmDeleteMsg": { "message": "Are you sure you want to delete this script?" },
+  "editorSaveFailed": { "message": "Save Failed" },
+  "editorScriptNotFound": { "message": "Script not found" },
+  "editorLoading": { "message": "Loading..." },
+  "installLoading": { "message": "Loading script..." },
+  "installErrorTitle": { "message": "Error" },
+  "installBtnClose": { "message": "Close" },
+  "installBtnRetry": { "message": "Retry" },
+  "installSuccessTitle": { "message": "Successfully Installed!" },
+  "installSuccessMsg": {
+    "message": "$1 is now active.",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "installClosingMsg": { "message": "Closing window in 2 seconds..." },
+  "installBtnCloseNow": { "message": "Close Now" },
+  "installHeaderInstall": { "message": "Install Script" },
+  "installHeaderUpdate": { "message": "Update Script" },
+  "installBtnSource": { "message": "Source" },
+  "installBtnDiff": { "message": "Diff" },
+  "installBtnCancel": { "message": "Cancel" },
+  "installBtnInstall": { "message": "Install" },
+  "installBtnUpdate": { "message": "Update" },
+  "installMetaAuthor": { "message": "Author:" },
+  "installMetaDescription": { "message": "Description:" },
+  "installMetaCurrent": { "message": "Current:" },
+  "installMetaSource": { "message": "Source:" },
+  "installHeaderPermissions": { "message": "Permissions" },
+  "installHeaderMatches": { "message": "Matches" },
+  "installErrorNoUrl": { "message": "No URL provided" },
+  "installErrorExpired": { "message": "Expired or invalid installation session." },
+  "backToScriptList": { "message": "Back to Script List" },
+  "nameDefinedInMetadata": { "message": "Name is defined in metadata block" },
+  "installErrorFailedToFetch": { "message": "Failed to fetch script content" }
+}

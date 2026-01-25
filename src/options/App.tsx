@@ -36,6 +36,8 @@ self.MonacoEnvironment = {
   }
 };
 
+import { I18nProvider } from '../context/I18nContext';
+
 const MonacoSetup = () => {
   useEffect(() => {
     const disposable = configureMonaco(monaco);
@@ -46,30 +48,32 @@ const MonacoSetup = () => {
 
 function App() {
   return (
-    <AppProvider>
-      <ModalProvider>
-        <HashRouter>
-          <MonacoSetup />
-          <Routes>
-            <Route path="/permission-help" element={
-              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-                <PermissionHelp />
-              </div>
-            } />
-            <Route path="/install" element={<Install />} />
+    <I18nProvider>
+      <AppProvider>
+        <ModalProvider>
+          <HashRouter>
+            <MonacoSetup />
+            <Routes>
+              <Route path="/permission-help" element={
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+                  <PermissionHelp />
+                </div>
+              } />
+              <Route path="/install" element={<Install />} />
 
-            <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/scripts" replace />} />
-              <Route path="/scripts" element={<Scripts />} />
+              <Route element={<Layout />}>
+                <Route path="/" element={<Navigate to="/scripts" replace />} />
+                <Route path="/scripts" element={<Scripts />} />
 
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/help" element={<Help />} />
-            </Route>
-            <Route path="/scripts/:id" element={<ScriptEditor />} />
-          </Routes>
-        </HashRouter>
-      </ModalProvider>
-    </AppProvider>
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/help" element={<Help />} />
+              </Route>
+              <Route path="/scripts/:id" element={<ScriptEditor />} />
+            </Routes>
+          </HashRouter>
+        </ModalProvider>
+      </AppProvider>
+    </I18nProvider>
   );
 }
 

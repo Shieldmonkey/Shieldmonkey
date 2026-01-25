@@ -1,0 +1,195 @@
+{
+  "appName": {
+    "message": "Shieldmonkey",
+    "description": "The name of the extension"
+  },
+  "appDescription": {
+    "message": "モダンウェブのためのユーザースクリプトマネージャー。",
+    "description": "The description of the extension"
+  },
+  "scriptsOnThisPage": {
+    "message": "このページのスクリプト"
+  },
+  "noScriptsMatching": {
+    "message": "このページにマッチするスクリプトはありません。"
+  },
+  "createNewScript": {
+    "message": "新規スクリプト作成"
+  },
+  "confirmDeleteScript": {
+    "message": "スクリプト「$1」を削除してもよろしいですか？",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "themeTooltip": {
+    "message": "テーマ: $1",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "dashboardTooltip": {
+    "message": "ダッシュボード"
+  },
+  "editTooltip": {
+    "message": "編集"
+  },
+  "checkForUpdatesTooltip": {
+    "message": "更新を確認"
+  },
+  "deleteTooltip": {
+    "message": "削除"
+  },
+  "noUpdateUrlAlert": {
+    "message": "このスクリプトの更新URLが見つかりません。"
+  },
+  "myScripts": {
+    "message": "マイスクリプト ($1)",
+    "placeholders": {
+        "1": {
+            "content": "$1"
+        }
+    }
+  },
+  "importFile": { "message": "ファイルをインポート" },
+  "importFolder": { "message": "フォルダをインポート" },
+  "newScript": { "message": "新規スクリプト" },
+  "noScriptsFound": { "message": "スクリプトが見つかりません" },
+  "createScriptToStart": { "message": "新しいスクリプトを作成して始めましょう。" },
+  "enabledHeader": { "message": "有効" },
+  "nameHeader": { "message": "名前" },
+  "namespaceHeader": { "message": "名前空間" },
+  "versionHeader": { "message": "バージョン" },
+  "sourceHeader": { "message": "ソース" },
+  "installedHeader": { "message": "インストール日" },
+  "actionsHeader": { "message": "操作" },
+  "remoteLabel": { "message": "リモート" },
+  "localLabel": { "message": "ローカル" },
+  "deleteScriptConfirm": {
+    "message": "「$1」を削除してもよろしいですか？",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteSuccess": {
+    "message": "スクリプト「$1」を削除しました。",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteFailed": { "message": "削除に失敗しました" },
+  "selectedCount": {
+    "message": "$1 選択済み",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "enableSelected": { "message": "有効にする" },
+  "disableSelected": { "message": "無効にする" },
+  "deleteSelected": { "message": "削除" },
+  "importSuccessful": { "message": "インポート成功" },
+  "importFailed": { "message": "インポート失敗" },
+  "importedScripts": {
+    "message": "$1 件のスクリプトをインポートしました。",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "confirmDeleteMultiple": {
+    "message": "$1 件のスクリプトを削除してもよろしいですか？",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deletedMultiple": {
+    "message": "$1 件のスクリプトを削除しました。",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "deleteScriptsTitle": { "message": "スクリプトの削除" },
+  "deleteScriptTitle": { "message": "スクリプトの削除" },
+  "navScripts": { "message": "スクリプト" },
+  "navSettings": { "message": "設定" },
+  "navHelp": { "message": "ヘルプ" },
+  "extensionLabel": { "message": "拡張機能" },
+  "pageTitleSettings": { "message": "設定" },
+  "sectionAppearance": { "message": "外観" },
+  "themeLight": { "message": "ライト" },
+  "themeDark": { "message": "ダーク" },
+  "themeSystem": { "message": "システム" },
+  "sectionBackupRestore": { "message": "バックアップと復元" },
+  "sectionBackupDir": { "message": "バックアップ保存先" },
+  "noDirSelected": { "message": "ディレクトリ未選択" },
+  "btnSelect": { "message": "選択" },
+  "sectionAutoBackup": { "message": "自動バックアップ" },
+  "autoBackupDesc": { "message": "スクリプトを選択したディレクトリに自動的に保存します。" },
+  "freqHourly": { "message": "1時間ごと" },
+  "freqDaily": { "message": "毎日" },
+  "freqWeekly": { "message": "毎週" },
+  "btnBackupNow": { "message": "今すぐバックアップ" },
+  "btnWorking": { "message": "処理中..." },
+  "backupDone": { "message": "完了" },
+  "backupError": { "message": "エラー" },
+  "lastBackupPrefix": { "message": "最終: " },
+  "sectionRestore": { "message": "復元" },
+  "btnRestore": { "message": "ディレクトリを選択して復元" },
+  "confirmRestoreTitle": { "message": "スクリプトの復元" },
+  "confirmRestoreMsg": {
+    "message": "「$1」から復元します。既存のスクリプトはマージまたは更新されます。続行しますか？",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreSuccessMsg": {
+    "message": "$1 件のスクリプトを復元しました",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreCompleteTitle": { "message": "復元完了" },
+  "restoreCompleteMsg": {
+    "message": "$1 件のスクリプトを正常に復元しました。",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "restoreFailedTitle": { "message": "復元失敗" },
+  "savedScriptsMsg": {
+    "message": "$1 件のスクリプトを保存しました",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "navBack": { "message": "戻る" },
+  "editorHeaderInfo": { "message": "情報" },
+  "editorLabelVersion": { "message": "バージョン" },
+  "editorLabelAuthor": { "message": "作者" },
+  "editorLabelInstalled": { "message": "インストール日" },
+  "editorLabelPage": { "message": "ページ" },
+  "editorLabelSource": { "message": "ソース" },
+  "editorLabelUpdate": { "message": "更新" },
+  "editorLabelDownload": { "message": "ダウンロード" },
+  "editorHeaderPermissions": { "message": "権限" },
+  "editorHeaderMatches": { "message": "マッチ" },
+  "editorBtnSave": { "message": "保存" },
+  "editorBtnSaving": { "message": "保存中..." },
+  "editorConfirmDeleteTitle": { "message": "スクリプトの削除" },
+  "editorConfirmDeleteMsg": { "message": "このスクリプトを削除してもよろしいですか？" },
+  "editorSaveFailed": { "message": "保存失敗" },
+  "editorScriptNotFound": { "message": "スクリプトが見つかりません" },
+  "editorLoading": { "message": "読み込み中..." },
+  "installLoading": { "message": "スクリプトを読み込み中..." },
+  "installErrorTitle": { "message": "エラー" },
+  "installBtnClose": { "message": "閉じる" },
+  "installBtnRetry": { "message": "再試行" },
+  "installSuccessTitle": { "message": "インストール完了！" },
+  "installSuccessMsg": {
+    "message": "$1 が有効になりました。",
+    "placeholders": { "1": { "content": "$1" } }
+  },
+  "installClosingMsg": { "message": "2秒後にウィンドウを閉じます..." },
+  "installBtnCloseNow": { "message": "すぐに閉じる" },
+  "installHeaderInstall": { "message": "スクリプトのインストール" },
+  "installHeaderUpdate": { "message": "スクリプトの更新" },
+  "installBtnSource": { "message": "ソース" },
+  "installBtnDiff": { "message": "差分" },
+  "installBtnCancel": { "message": "キャンセル" },
+  "installBtnInstall": { "message": "インストール" },
+  "installBtnUpdate": { "message": "更新" },
+  "installMetaAuthor": { "message": "作者:" },
+  "installMetaDescription": { "message": "説明:" },
+  "installMetaCurrent": { "message": "現在:" },
+  "installMetaSource": { "message": "ソース:" },
+  "installHeaderPermissions": { "message": "権限" },
+  "installHeaderMatches": { "message": "マッチ" },
+  "installErrorNoUrl": { "message": "URLが指定されていません" },
+  "installErrorExpired": { "message": "期限切れまたは無効なインストールセッションです。" },
+  "backToScriptList": { "message": "スクリプト一覧に戻る" },
+  "nameDefinedInMetadata": { "message": "名前はメタデータブロックで定義されています" },
+  "installErrorFailedToFetch": { "message": "スクリプトの取得に失敗しました" }
+}

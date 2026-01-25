@@ -3,6 +3,7 @@ import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor, Edit }
 import './App.css';
 import { parseMetadata } from '../utils/metadataParser';
 import { matchPattern } from '../utils/urlMatcher';
+import { useI18n } from '../context/I18nContext';
 
 interface Script {
   id: string;
@@ -28,6 +29,7 @@ function App() {
   const [currentUrl, setCurrentUrl] = useState<string>('');
   const [extensionEnabled, setExtensionEnabled] = useState(true);
   const [theme, setTheme] = useState<Theme>('dark');
+  const { t } = useI18n();
 
   const applyTheme = (newTheme: Theme) => {
     if (newTheme === 'system') {
@@ -115,7 +117,7 @@ function App() {
   };
 
   const deleteScript = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete script "${name}"?`)) {
+    if (confirm(t('confirmDeleteScript', [name]))) {
       setActiveScripts(prev => prev.filter(s => s.id !== id));
       await chrome.runtime.sendMessage({ type: 'DELETE_SCRIPT', scriptId: id });
     }
@@ -134,7 +136,7 @@ function App() {
       // preventing browser download prompts.
       chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
     } else {
-      alert('No update URL found for this script.');
+      alert(t('noUpdateUrlAlert'));
     }
   };
 
@@ -150,18 +152,18 @@ function App() {
       <header className="popup-header">
         <div className="logo-area">
           <img src="/icons/icon48.png" alt="Logo" className="logo-img" />
-          <h1>Shieldmonkey</h1>
+          <h1>{t('appName')}</h1>
         </div>
         <div className="global-switch-container">
           <ToggleSwitch checked={extensionEnabled} onChange={toggleGlobal} />
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={cycleTheme} className="icon-btn" title={`Theme: ${theme}`}>
+          <button onClick={cycleTheme} className="icon-btn" title={t('themeTooltip', [theme])}>
             {theme === 'light' && <Sun size={20} />}
             {theme === 'dark' && <Moon size={20} />}
             {theme === 'system' && <Monitor size={20} />}
           </button>
-          <button onClick={() => openDashboard(false)} className="icon-btn" title="Dashboard">
+          <button onClick={() => openDashboard(false)} className="icon-btn" title={t('dashboardTooltip')}>
             <Settings size={20} />
           </button>
         </div>
@@ -170,7 +172,7 @@ function App() {
         {activeScripts.length > 0 ? (
           <div className="script-list">
             <h2 className="list-title">
-              Scripts on this page
+              {t('scriptsOnThisPage')}
             </h2>
             {activeScripts.map(script => (
               <div key={script.id} className="script-item-row" style={{ opacity: extensionEnabled ? 1 : 0.6, pointerEvents: extensionEnabled ? 'auto' : 'none' }}>
@@ -179,15 +181,15 @@ function App() {
                   <span className="script-name" style={{ marginLeft: '12px' }} title={script.name}>{script.name}</span>
                 </div>
                 <div className="script-actions">
-                  <button className="icon-btn" title="Edit" onClick={() => editScript(script.id)} style={{ padding: '4px' }}>
+                  <button className="icon-btn" title={t('editTooltip')} onClick={() => editScript(script.id)} style={{ padding: '4px' }}>
                     <Edit size={14} />
                   </button>
                   {getUpdateUrl(script) && (
-                    <button className="icon-btn" title="Check for updates" onClick={() => checkForUpdate(script)} style={{ padding: '4px' }}>
+                    <button className="icon-btn" title={t('checkForUpdatesTooltip')} onClick={() => checkForUpdate(script)} style={{ padding: '4px' }}>
                       <RefreshCw size={14} />
                     </button>
                   )}
-                  <button className="icon-btn" title="Delete" onClick={() => deleteScript(script.id, script.name)} style={{ padding: '4px', color: '#ef4444' }}>
+                  <button className="icon-btn" title={t('deleteTooltip')} onClick={() => deleteScript(script.id, script.name)} style={{ padding: '4px', color: '#ef4444' }}>
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -197,7 +199,7 @@ function App() {
         ) : (
           <div className="empty-state">
             <FileText size={48} className="text-gray-400 mb-2" />
-            <p>No scripts matching this page.</p>
+            <p>{t('noScriptsMatching')}</p>
             {currentUrl && <p className="text-xs text-gray-500 mt-2 truncate max-w-200">{currentUrl}</p>}
           </div>
         )
@@ -205,7 +207,7 @@ function App() {
 
         <div style={{ padding: '0 16px 16px', marginTop: 'auto' }}>
           <button className="new-script-btn" onClick={() => openDashboard(true)}>
-            <Plus size={16} /> Create New Script
+            <Plus size={16} /> {t('createNewScript')}
           </button>
         </div>
       </main >

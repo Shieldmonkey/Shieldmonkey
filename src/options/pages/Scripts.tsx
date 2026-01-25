@@ -6,10 +6,12 @@ import { useModal } from '../context/useModal';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { parseMetadata } from '../../utils/metadataParser';
 import { importFromFile, importFromDirectory } from '../../utils/importManager';
+import { useI18n } from '../../context/I18nContext';
 import type { Script } from '../types';
 
 const Scripts = () => {
     const { scripts, toggleScript, deleteScript, setScripts, saveScript } = useApp();
+    const { t } = useI18n();
     const { showModal } = useModal();
     const navigate = useNavigate();
     const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
@@ -18,16 +20,16 @@ const Scripts = () => {
         const newScriptId = crypto.randomUUID();
         const newScript: Script = {
             id: newScriptId,
-            name: 'New Script',
+            name: t('newScript'),
             code: `// ==UserScript==
-// @name        New Script
+// @name        ${t('newScript')}
 // @match       <all_urls>
 // ==/UserScript==
 
 `,
             enabled: true,
             lastSavedCode: `// ==UserScript==
-// @name        New Script
+// @name        ${t('newScript')}
 // @match       <all_urls>
 // ==/UserScript==
 
@@ -62,17 +64,17 @@ const Scripts = () => {
 
     const handleBulkDelete = async () => {
         if (selectedScriptIds.size === 0) return;
-        showModal('confirm', 'Delete Scripts', `Are you sure you want to delete ${selectedScriptIds.size} scripts?`, async () => {
+        showModal('confirm', t('deleteScriptsTitle'), t('confirmDeleteMultiple', [String(selectedScriptIds.size)]), async () => {
             try {
                 for (const id of selectedScriptIds) {
                     await deleteScript(id);
                 }
                 setScripts((prev: Script[]) => prev.filter((s: Script) => !selectedScriptIds.has(s.id)));
                 setSelectedScriptIds(new Set());
-                showModal('success', 'Deleted', `Successfully deleted ${selectedScriptIds.size} scripts.`);
+                showModal('success', 'Deleted', t('deletedMultiple', [String(selectedScriptIds.size)]));
             } catch (e) {
                 console.error("Failed to delete", e);
-                showModal('error', 'Delete Failed', (e as Error).message);
+                showModal('error', t('deleteFailed'), (e as Error).message);
             }
         });
     };
@@ -86,9 +88,9 @@ const Scripts = () => {
             }
             await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
             // Update context? reloadScripts() from context would happen automatically via listener
-            showModal('success', 'Import Successful', `Imported ${importedScripts.length} scripts.`);
+            showModal('success', t('importSuccessful'), t('importedScripts', [String(importedScripts.length)]));
         } catch (e) {
-            showModal('error', 'Import Failed', (e as Error).message);
+            showModal('error', t('importFailed'), (e as Error).message);
         }
     };
 
@@ -100,9 +102,9 @@ const Scripts = () => {
                 await saveScript(script);
             }
             await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
-            showModal('success', 'Import Successful', `Imported ${importedScripts.length} scripts.`);
+            showModal('success', t('importSuccessful'), t('importedScripts', [String(importedScripts.length)]));
         } catch (e) {
-            showModal('error', 'Import Failed', (e as Error).message);
+            showModal('error', t('importFailed'), (e as Error).message);
         }
     };
 
@@ -137,13 +139,13 @@ const Scripts = () => {
     };
 
     const handleDeleteScript = (script: Script) => {
-        showModal('confirm', 'Delete Script', `Are you sure you want to delete "${script.name}"?`, async () => {
+        showModal('confirm', t('deleteScriptTitle'), t('deleteScriptConfirm', [script.name]), async () => {
             try {
                 await deleteScript(script.id);
-                showModal('success', 'Deleted', `Script "${script.name}" deleted.`);
+                showModal('success', 'Deleted', t('deleteSuccess', [script.name]));
             } catch (e) {
                 console.error("Failed to delete", e);
-                showModal('error', 'Delete Failed', (e as Error).message);
+                showModal('error', t('deleteFailed'), (e as Error).message);
             }
         });
     };
@@ -153,13 +155,13 @@ const Scripts = () => {
             <div className="script-table-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '100%', margin: 0 }}>
                 <div className="page-header" style={{ height: 'auto', minHeight: '40px', flexShrink: 0, padding: '32px 48px 24px 48px', marginBottom: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h2 className="page-title">My Scripts ({scripts.length})</h2>
+                        <h2 className="page-title">{t('myScripts', [String(scripts.length)])}</h2>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="btn-secondary" onClick={handleImportFile}><FileUp size={16} /> Import File</button>
-                            <button className="btn-secondary" onClick={handleImportFolder}><FolderUp size={16} /> Import Folder</button>
-                            <button className="btn-primary" onClick={handleNewScript}><Plus size={16} /> New Script</button>
+                            <button className="btn-secondary" onClick={handleImportFile}><FileUp size={16} /> {t('importFile')}</button>
+                            <button className="btn-secondary" onClick={handleImportFolder}><FolderUp size={16} /> {t('importFolder')}</button>
+                            <button className="btn-primary" onClick={handleNewScript}><Plus size={16} /> {t('newScript')}</button>
                         </div>
                     </div>
                 </div>
@@ -169,8 +171,8 @@ const Scripts = () => {
                         <div className="empty-icon-wrapper" style={{ background: 'var(--surface-bg)', borderRadius: '50%', padding: '2rem', display: 'inline-block', marginBottom: '1rem' }}>
                             <Terminal size={48} />
                         </div>
-                        <h3>No scripts found</h3>
-                        <p>Create a new script to get started.</p>
+                        <h3>{t('noScriptsFound')}</h3>
+                        <p>{t('createScriptToStart')}</p>
                     </div>
                 ) : (
                     <div style={{ overflow: 'auto', flex: 1, width: '100%', borderTop: '1px solid var(--border-color)', padding: '0 0 100px 0' }}>
@@ -180,13 +182,13 @@ const Scripts = () => {
                                     <th style={{ width: '40px', textAlign: 'center' }}>
                                         <input type="checkbox" checked={scripts.length > 0 && selectedScriptIds.size === scripts.length} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} />
                                     </th>
-                                    <th style={{ width: '60px' }}>Enabled</th>
-                                    <th>Name</th>
-                                    <th>Namespace</th>
-                                    <th>Version</th>
-                                    <th>Source</th>
-                                    <th>Installed</th>
-                                    <th className="col-actions">Actions</th>
+                                    <th style={{ width: '60px' }}>{t('enabledHeader')}</th>
+                                    <th>{t('nameHeader')}</th>
+                                    <th>{t('namespaceHeader')}</th>
+                                    <th>{t('versionHeader')}</th>
+                                    <th>{t('sourceHeader')}</th>
+                                    <th>{t('installedHeader')}</th>
+                                    <th className="col-actions">{t('actionsHeader')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -231,7 +233,7 @@ const Scripts = () => {
                                                     fontSize: '0.75rem',
                                                     whiteSpace: 'nowrap'
                                                 }}>
-                                                    {(script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'Remote' : 'Local'}
+                                                    {(script.sourceUrl || script.updateUrl || script.downloadUrl) ? t('remoteLabel') : t('localLabel')}
                                                 </span>
                                             </td>
                                             <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
@@ -239,14 +241,14 @@ const Scripts = () => {
                                             </td>
                                             <td className="col-actions">
                                                 {getUpdateUrl(script) && (
-                                                    <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleCheckUpdate(script); }} title="Check for Updates">
+                                                    <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleCheckUpdate(script); }} title={t('checkForUpdatesTooltip')}>
                                                         <RefreshCw size={16} />
                                                     </button>
                                                 )}
-                                                <button className="action-btn" onClick={() => navigate(`/scripts/${script.id}`)} title="Edit">
+                                                <button className="action-btn" onClick={() => navigate(`/scripts/${script.id}`)} title={t('editTooltip')}>
                                                     <Edit size={16} />
                                                 </button>
-                                                <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteScript(script); }} title="Delete">
+                                                <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteScript(script); }} title={t('deleteTooltip')}>
                                                     <Trash2 size={16} />
                                                 </button>
                                             </td>
@@ -276,14 +278,14 @@ const Scripts = () => {
                     animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <span style={{ fontSize: '0.9rem', fontWeight: 500, marginRight: '8px', color: 'var(--text-secondary)' }}>
-                        {selectedScriptIds.size} Selected
+                        {t('selectedCount', [String(selectedScriptIds.size)])}
                     </span>
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-color)' }}></div>
                     <button className="btn-secondary" onClick={handleBulkEnable} style={{ padding: '6px 12px', fontSize: '0.9rem' }} title="Enable Selected">
-                        <Play size={16} /> Enable
+                        <Play size={16} /> {t('enableSelected')}
                     </button>
                     <button className="btn-secondary" onClick={handleBulkDisable} style={{ padding: '6px 12px', fontSize: '0.9rem' }} title="Disable Selected">
-                        <Pause size={16} /> Disable
+                        <Pause size={16} /> {t('disableSelected')}
                     </button>
                     <button className="btn-danger action-btn delete" onClick={handleBulkDelete} style={{
                         padding: '6px 12px',
@@ -298,7 +300,7 @@ const Scripts = () => {
                         cursor: 'pointer'
                     }}>
                         <Trash2 size={16} />
-                        <span>Delete</span>
+                        <span>{t('deleteSelected')}</span>
                     </button>
                 </div>
             )}

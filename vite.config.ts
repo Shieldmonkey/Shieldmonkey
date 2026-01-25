@@ -11,18 +11,25 @@ export default defineConfig(({ mode }) => {
     crx({ manifest }),
   ];
 
+  const copyTargets = [
+    {
+      src: 'src/locales/*',
+      dest: '_locales'
+    }
+  ];
+
   if (mode === 'development') {
-    plugins.push(
-      viteStaticCopy({
-        targets: [
-          {
-            src: 'examples',
-            dest: '.'
-          }
-        ]
-      })
-    );
+    copyTargets.push({
+      src: 'examples',
+      dest: '.'
+    });
   }
+
+  plugins.push(
+    viteStaticCopy({
+      targets: copyTargets
+    })
+  );
 
   return {
     plugins,
