@@ -161,8 +161,10 @@ const Install = () => {
             code: code,
             enabled: true,
             grantedPermissions: (metadata.grant || []).filter(p => p !== 'none'),
-            scriptUrl: scriptUrl,
+            sourceUrl: scriptUrl,
             referrerUrl: referrerUrl,
+            updateUrl: updateURL,
+            downloadUrl: downloadURL,
             installDate: !existingScript ? Date.now() : undefined,
             updateDate: Date.now()
         };

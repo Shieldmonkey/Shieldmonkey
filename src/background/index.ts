@@ -234,7 +234,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       if (tab.url && tab.url !== 'about:blank') {
         referrer = tab.url;
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
 
     chrome.scripting.executeScript({
       target: { tabId: details.tabId },
@@ -285,7 +285,7 @@ async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
   // Wait for load
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error("Bridge tab execution timeout")), 15000);
-    const listener = (tid: number, info: any) => {
+    const listener = (tid: number, info: { status?: string }) => {
       if (tid === tab.id && info.status === 'complete') {
         clearTimeout(timeout);
         chrome.tabs.onUpdated.removeListener(listener);
@@ -330,7 +330,7 @@ async function fetchScriptContent(url: string): Promise<string> {
     if (response.ok) {
       return await response.text();
     }
-  } catch (e) {
+  } catch {
     // Expected to fail for remote URLs due to CSP
     console.log(`Direct fetch failed for ${url}, trying bridge...`); // Debug log
   }
