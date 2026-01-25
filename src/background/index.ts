@@ -172,26 +172,49 @@ async function reloadAllScripts() {
   await updateActiveTabBadge();
 }
 
-// Set to track tabs that should bypass the .user.js redirect
-// Detect navigation to .user.js files and redirect to installer
-// Track pending script installations: tabId -> scriptUrl
-const pendingInstallations = new Map<number, string>();
-
 // Detect navigation to .user.js files and redirect to loader page
+// Detect navigation to .user.js files
+// Instead of redirecting to the install page immediately, we:
+// 1. Stop the navigation (window.stop()) to keep the user on the current page (with cookies/session)
+// 2. Fetch the script content from the current page context
+// 3. Send the content to the background to open the install page
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId === 0 && details.url && /\.user\.js([?#].*)?$/i.test(details.url)) {
     console.log("Detected .user.js navigation:", details.url);
 
-    // For file:// URLs, we must avoid the external loader (security restriction).
-    // Redirect directly to the install page. The user MUST allow file access in extension settings.
-    if (details.url.startsWith('file:')) {
+    chrome.scripting.executeScript({
+      target: { tabId: details.tabId },
+      func: async (scriptUrl: string) => {
+        // Stop the pending navigation
+        window.stop();
+        console.log("Shieldmonkey: Navigation intercepted. Fetching script...", scriptUrl);
+
+        try {
+          const response = await fetch(scriptUrl);
+          if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          const content = await response.text();
+
+          chrome.runtime.sendMessage({
+            type: "INSTALL_SCRIPT_WITH_CONTENT",
+            url: scriptUrl,
+            content: content
+          });
+        } catch (err) {
+          console.error("Shieldmonkey: Failed to fetch script:", err);
+          chrome.runtime.sendMessage({
+            type: "INSTALL_SCRIPT_FETCH_FAILED",
+            url: scriptUrl,
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      },
+      args: [details.url]
+    }).catch((err) => {
+      console.warn("Shieldmonkey: Failed to inject interception script (probably restricted page). Fallback to redirect.", err);
+      // Fallback: Redirect to install page if we can't inject script (e.g. chrome:// pages or restricted domains)
       const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(details.url)}`;
       chrome.tabs.update(details.tabId, { url: installUrl });
-    } else {
-      // For http/https, use the safe trampoline to prompt/fetch content
-      pendingInstallations.set(details.tabId, details.url);
-      chrome.tabs.update(details.tabId, { url: 'https://shieldmonkey.github.io/' });
-    }
+    });
   }
 });
 
@@ -204,81 +227,34 @@ async function fetchScriptContent(url: string): Promise<string> {
   return response.text();
 }
 
-// Tab updates for badge
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Check if this is a pending installation tab that has finished loading the loader page
-  if (changeInfo.status === 'complete' && pendingInstallations.has(tabId) && tab.url?.startsWith('https://shieldmonkey.github.io/')) {
-    const targetUrl = pendingInstallations.get(tabId);
-    // Remove from pending map shortly after injection? 
-    // No, keep it until we redirect? Actually we can remove it now or let the script handle redirect.
-    // If we remove it now, subsequent reloads might fail if they stay on about:blank? 
-    // They will just show blank page. That's acceptable.
-    pendingInstallations.delete(tabId);
+// Handle messages from Content Script (INSTALL_SCRIPT_WITH_CONTENT)
+chrome.runtime.onMessage.addListener((message, _sender) => {
+  if (message.type === 'INSTALL_SCRIPT_WITH_CONTENT') {
+    const { url, content } = message;
+    const installId = crypto.randomUUID();
+    const key = `pending_install_${installId}`;
 
-    if (!targetUrl) return;
-
-    chrome.scripting.executeScript({
-      target: { tabId },
-      func: (url: string, installPageUrl: string) => {
-        // UI Construction in clean about:blank
-        document.body.style.fontFamily = 'system-ui, sans-serif';
-        document.body.style.display = 'flex';
-        document.body.style.flexDirection = 'column';
-        document.body.style.justifyContent = 'center';
-        document.body.style.alignItems = 'center';
-        document.body.style.height = '100vh';
-        document.body.style.background = '#222';
-        document.body.style.color = '#fff';
-        document.body.style.margin = '0';
-
-        const loader = document.createElement('div');
-        loader.style.border = '4px solid #333';
-        loader.style.borderTop = '4px solid #10b981';
-        loader.style.borderRadius = '50%';
-        loader.style.width = '40px';
-        loader.style.height = '40px';
-        loader.style.marginRight = '15px';
-
-        // Simple CSS animation via style injection
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        `;
-        document.head.appendChild(style);
-        loader.style.animation = 'spin 1s linear infinite';
-
-        const text = document.createElement('div');
-        text.textContent = 'Fetching script...';
-
-        const container = document.createElement('div');
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-
-        container.appendChild(loader);
-        container.appendChild(text);
-        document.body.appendChild(container);
-
-        // Fetch script directly from the loader page context
-        // Fetch script directly from the loader page context
-        fetch(url)
-          .then(res => {
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            return res.text();
-          })
-          .then(text => {
-            window.name = JSON.stringify({ type: 'SHIELDMONKEY_INSTALL_DATA', url: url, source: text });
-            // Request navigation via background to avoid blocking
-            chrome.runtime.sendMessage({ type: 'OPEN_INSTALL_PAGE', url: installPageUrl });
-          })
-          .catch(err => {
-            text.textContent = 'Error: ' + (err.message || 'Unknown error');
-            text.style.color = '#ef4444';
-          });
-      },
-      args: [targetUrl, chrome.runtime.getURL('src/install/index.html')],
+    // Store content temporarily
+    chrome.storage.local.set({ [key]: { url, content } }).then(() => {
+      const installUrl = chrome.runtime.getURL(`src/install/index.html?installId=${installId}`);
+      chrome.tabs.create({ url: installUrl });
     });
+    return; // No response needed
   }
 
+  if (message.type === 'INSTALL_SCRIPT_FETCH_FAILED') {
+    const { url, error } = message;
+    console.warn(`Content script failed to fetch ${url}: ${error}. Falling back to background fetch.`);
+
+    // Fallback: Open install page with URL only, let it request background fetch
+    const installUrl = chrome.runtime.getURL(`src/install/index.html?url=${encodeURIComponent(url)}`);
+    chrome.tabs.create({ url: installUrl });
+    return;
+  }
+});
+
+// Tab updates for badge
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Helper handling for badge
   if (changeInfo.status === 'complete' && tab.url && tab.url !== 'about:blank') {
     updateBadge(tabId, tab.url);
@@ -354,9 +330,9 @@ async function handleSaveScript(script: Script) {
   let uniqueName = script.name;
   let counter = 1;
   while (true) {
-    const conflict = scripts.find((s) => 
-      s.id !== script.id && 
-      s.name === uniqueName && 
+    const conflict = scripts.find((s) =>
+      s.id !== script.id &&
+      s.name === uniqueName &&
       (s.namespace || '') === (script.namespace || '')
     );
     if (!conflict) break;
@@ -499,19 +475,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === 'START_INSTALL_FLOW') {
     const { url } = message;
-
-    if (url.startsWith('file:')) {
-      // For file://, open install page directly
-      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
-      chrome.tabs.create({ url: installUrl });
-    } else {
-      // For web URLs, use the trampoline
-      chrome.tabs.create({ url: 'https://shieldmonkey.github.io/' }).then(tab => {
-        if (tab.id) {
-          pendingInstallations.set(tab.id, url);
-        }
-      });
-    }
+    const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
+    chrome.tabs.create({ url: installUrl });
     return true;
   }
 

@@ -131,8 +131,28 @@ const Install = () => {
             console.warn("Failed to parse window.name for script content", e);
         }
 
-        // Fallback: Query param + Fetch
+        // Check for installId (Passed via storage from Content Script)
         const query = new URLSearchParams(window.location.search);
+        const installId = query.get('installId');
+
+        if (installId) {
+            const key = `pending_install_${installId}`;
+            chrome.storage.local.get(key, (data) => {
+                const pend = data[key] as { url: string; content: string } | undefined;
+                if (pend && pend.content) {
+                    setScriptUrl(pend.url);
+                    loadScriptContent(pend.content);
+                    // Cleanup
+                    chrome.storage.local.remove(key);
+                } else {
+                    setStatus('error');
+                    setError('Expired or invalid installation session.');
+                }
+            });
+            return;
+        }
+
+        // Fallback: Query param + Fetch
         const url = query.get('url');
 
         if (!url) {

@@ -5,8 +5,6 @@
     "action": {
       "type": "modifyHeaders",
       "responseHeaders": [
-        { "header": "content-type", "operation": "set", "value": "text/plain" },
-        { "header": "content-disposition", "operation": "set", "value": "inline" },
         { "header": "Access-Control-Allow-Origin", "operation": "set", "value": "*" }
       ]
     },
