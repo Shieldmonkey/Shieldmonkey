@@ -228,7 +228,7 @@ async function fetchScriptContent(url: string): Promise<string> {
 }
 
 // Handle messages from Content Script (INSTALL_SCRIPT_WITH_CONTENT)
-chrome.runtime.onMessage.addListener((message, _sender) => {
+chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'INSTALL_SCRIPT_WITH_CONTENT') {
     const { url, content } = message;
     const installId = crypto.randomUUID();
