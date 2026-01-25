@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Save, Trash2, Globe, Calendar, Info } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import { useModal } from '../context/ModalContext';
+import { ArrowLeft, Save, Trash2, Calendar } from 'lucide-react';
+import { useApp } from '../context/useApp';
+import { useModal } from '../context/useModal';
 import PermissionModal from '../PermissionModal';
 import { parseMetadata } from '../../utils/metadataParser';
-import { Script } from '../types';
+import { type Script } from '../types';
 
 const ScriptEditor = () => {
     const { id } = useParams<{ id: string }>();
@@ -17,7 +17,7 @@ const ScriptEditor = () => {
     // Find script from context
     // Note: If scripts are loading, this might be undefined initially.
     // The AppContext initializes effectively on mount.
-    const scriptFromContext = scripts.find(s => s.id === id);
+    const scriptFromContext = scripts.find((s: Script) => s.id === id);
 
     const [code, setCode] = useState<string>('');
     const [name, setName] = useState('');

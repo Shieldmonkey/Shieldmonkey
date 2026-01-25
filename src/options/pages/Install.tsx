@@ -1,31 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import './index.css';
-import { parseMetadata, type Metadata } from '../utils/metadataParser';
-import Editor, { DiffEditor, loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
-import { configureMonaco } from '../options/monacoConfig';
+import './Install.css';
+import { parseMetadata, type Metadata } from '../../utils/metadataParser';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 
-// Configure Monaco loader
-loader.config({ monaco });
-
-// Import workers
-import editorWorkerUrl from 'monaco-editor/esm/vs/editor/editor.worker?worker&url';
-import jsonWorkerUrl from 'monaco-editor/esm/vs/language/json/json.worker?worker&url';
-import cssWorkerUrl from 'monaco-editor/esm/vs/language/css/css.worker?worker&url';
-import htmlWorkerUrl from 'monaco-editor/esm/vs/language/html/html.worker?worker&url';
-import tsWorkerUrl from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker&url';
-
-// Define MonacoEnvironment
-self.MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId, label) {
-        if (label === 'json') return chrome.runtime.getURL(jsonWorkerUrl);
-        if (label === 'css' || label === 'scss' || label === 'less') return chrome.runtime.getURL(cssWorkerUrl);
-        if (label === 'html' || label === 'handlebars' || label === 'razor') return chrome.runtime.getURL(htmlWorkerUrl);
-        if (label === 'typescript' || label === 'javascript') return chrome.runtime.getURL(tsWorkerUrl);
-        return chrome.runtime.getURL(editorWorkerUrl);
-    }
-};
-
+// Theme logic
 type Theme = 'light' | 'dark' | 'system';
 
 interface Script {
@@ -51,6 +29,10 @@ const Install = () => {
         chrome.storage.local.get('theme', (data) => {
             const storedTheme = (data.theme as Theme) || 'dark';
             setTheme(storedTheme);
+            // We don't set document attribute here because App.tsx or parent should handle it globally?
+            // But if we are standalone route, maybe we should?
+            // App.tsx doesn't seem to handle theme syncing to documentElement in the snippet I saw.
+            // Let's keep it safe.
             if (storedTheme === 'system') {
                 const isLight = window.matchMedia('(prefers-color-scheme: light)').matches;
                 document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
@@ -61,13 +43,6 @@ const Install = () => {
     }, []);
 
     const effectiveEditorTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'vs-dark';
-
-
-
-    useEffect(() => {
-        const disposable = configureMonaco(monaco);
-        return () => disposable.dispose();
-    }, []);
 
     const loadScriptContent = useCallback(async (text: string) => {
         try {
@@ -121,9 +96,6 @@ const Install = () => {
                 if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
                     setScriptUrl(data.url);
                     loadScriptContent(data.source);
-                    // Clear window.name to prevent reuse if reloaded manually? 
-                    // Maybe better to keep it so reload works? 
-                    // Let's keep it.
                     return;
                 }
             }
@@ -132,8 +104,22 @@ const Install = () => {
         }
 
         // Check for installId (Passed via storage from Content Script)
-        const query = new URLSearchParams(window.location.search);
-        const installId = query.get('installId');
+        // Note: HashRouter uses #, so query params might be after # or before #. 
+        // Chrome.tabs.create({ url: ... '.../index.html#/install?url=...' })
+        // or '.../index.html?url=...#/install' ?
+        // Usually React Router looks for search params in the location.
+        // If we use HashRouter, window.location.search is the query string before the hash.
+        // window.location.hash contains the hash path and potentially query string if using hash history with query.
+        // We should check both or use useSearchParams hook.
+        // But for simplicity with chrome APIs, we often pass params in the search part of the URL (before hash).
+
+        const searchParams = new URLSearchParams(window.location.search);
+        // Also check hash params if any (e.g. #/install?url=...)
+        const hash = window.location.hash;
+        const hashSearchParams = new URLSearchParams(hash.split('?')[1]);
+
+        const installId = searchParams.get('installId') || hashSearchParams.get('installId');
+        const url = searchParams.get('url') || hashSearchParams.get('url');
 
         if (installId) {
             const key = `pending_install_${installId}`;
@@ -152,10 +138,12 @@ const Install = () => {
             return;
         }
 
-        // Fallback: Query param + Fetch
-        const url = query.get('url');
-
         if (!url) {
+            // if we are just testing the page or opened without args
+            if (import.meta.env.DEV) {
+                // allow empty for dev
+                return;
+            }
             setStatus('error');
             setError('No URL provided');
             return;
@@ -189,6 +177,10 @@ const Install = () => {
             await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script });
             setStatus('success');
             setTimeout(() => {
+                // Determine if we should close the tab or navigate back
+                // If it was opened as a new tab/popup for install, close it.
+                // If we are in the options page... maybe navigate to list?
+                // The current behavior is window.close().
                 window.close();
             }, 2000);
         } catch (e) {
@@ -202,12 +194,12 @@ const Install = () => {
     };
 
     if (status === 'loading') {
-        return <div className="container" style={{ textAlign: 'center', paddingTop: '2rem' }}><h2>Loading script...</h2></div>;
+        return <div className="install-loading-container" style={{ textAlign: 'center' }}><h2>Loading script...</h2></div>;
     }
 
     if (status === 'error') {
         return (
-            <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '2rem' }}>
+            <div className="install-loading-container">
                 <h2>Error</h2>
                 <p style={{ color: '#ff6b6b' }}>{error}</p>
                 <div className="actions">
@@ -220,7 +212,7 @@ const Install = () => {
 
     if (status === 'success') {
         return (
-            <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '2rem' }}>
+            <div className="install-loading-container">
                 <h2>Successfully Installed!</h2>
                 <p>{metadata?.name} is now active.</p>
                 <p style={{ color: 'var(--text-secondary)' }}>Closing window in 2 seconds...</p>
@@ -239,9 +231,9 @@ const Install = () => {
     }
 
     return (
-        <div className="app-container">
-            <header className="header">
-                <div className="header-left">
+        <div className="install-container">
+            <header className="install-header">
+                <div className="install-header-left">
                     <h1>{existingScript ? 'Update Script' : 'Install Script'}</h1>
                     <div className="script-title-badge">
                         <span className="script-name">{metadata?.name}</span>
@@ -270,7 +262,7 @@ const Install = () => {
                     )}
                 </div>
 
-                <div className="header-actions">
+                <div className="install-header-actions">
                     <button className="btn-secondary" onClick={handleCancel}>Cancel</button>
                     <button className="btn-primary" onClick={handleInstall}>
                         {existingScript ? 'Update' : 'Install'}
@@ -278,11 +270,11 @@ const Install = () => {
                 </div>
             </header>
 
-            <div className="content-split">
-                <aside className="info-sidebar">
-                    <div className="info-section">
+            <div className="install-content-split">
+                <aside className="install-info-sidebar">
+                    <div className="install-info-section">
                         <h3>Metadata</h3>
-                        <div className="meta-grid">
+                        <div className="install-meta-grid">
                             <div className="meta-label">Author:</div>
                             <div>{metadata?.author || '-'}</div>
 
@@ -308,7 +300,7 @@ const Install = () => {
                         if (effectivePermissions.length === 0) return null;
 
                         return (
-                            <div className="info-section">
+                            <div className="install-info-section">
                                 <h3>Permissions</h3>
                                 <div className="chip-container">
                                     {effectivePermissions.map(p => (
@@ -320,7 +312,7 @@ const Install = () => {
                     })()}
 
                     {metadata?.match && metadata.match.length > 0 && (
-                        <div className="info-section">
+                        <div className="install-info-section">
                             <h3>Matches</h3>
                             <ul className="match-list">
                                 {metadata.match.map(m => (
@@ -331,7 +323,7 @@ const Install = () => {
                     )}
                 </aside>
 
-                <main className="editor-main">
+                <main className="install-editor-main">
                     {viewMode === 'diff' && existingScript ? (
                         <DiffEditor
                             height="100%"

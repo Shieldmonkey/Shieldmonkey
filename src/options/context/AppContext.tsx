@@ -1,21 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Script, Theme } from '../types';
-import { parseMetadata } from '../../utils/metadataParser';
+import React, { useState, useEffect, type ReactNode } from 'react';
+import { type Script, type Theme } from '../types';
+import { AppContext } from './AppContextDefinition';
 
-interface AppContextType {
-    scripts: Script[];
-    theme: Theme;
-    extensionEnabled: boolean;
-    setTheme: (theme: Theme) => void;
-    toggleExtension: (enabled: boolean) => void;
-    setScripts: React.Dispatch<React.SetStateAction<Script[]>>;
-    reloadScripts: () => Promise<void>;
-    saveScript: (script: Script) => Promise<void>;
-    deleteScript: (id: string) => Promise<void>;
-    toggleScript: (script: Script, enabled: boolean) => Promise<void>;
-}
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [scripts, setScripts] = useState<Script[]>([]);
@@ -55,7 +42,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     // For now, simple set.
                     // Warning: This could overwrite local unsaved changes if we are not careful?
                     // The Editor component should probably track its own "draft" code distinct from the context "scripts".
-                    setScripts((prev) => {
+                    setScripts(() => {
                         const newScripts = changes.scripts.newValue as Script[];
                         return newScripts.map(s => {
                             // Preserve lastSavedCode if we had it, or reset it?
@@ -160,8 +147,4 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
 };
 
-export const useApp = () => {
-    const context = useContext(AppContext);
-    if (!context) throw new Error('useApp must be used within an AppProvider');
-    return context;
-};
+

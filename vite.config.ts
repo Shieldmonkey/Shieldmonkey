@@ -34,7 +34,6 @@ export default defineConfig(({ mode }) => {
       sourcemap: process.env.DISABLE_SOURCEMAP === 'true' ? false : true,
       rollupOptions: {
         input: {
-          install: 'src/install/index.html'
         }
       }
     }

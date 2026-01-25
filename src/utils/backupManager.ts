@@ -1,4 +1,4 @@
-import { getDirectoryHandle } from './backupStorage';
+import { getDirectoryHandle, verifyPermission } from './backupStorage';
 
 interface Script {
     id: string;
@@ -23,38 +23,35 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
         throw new Error("No backup directory configured.");
     }
 
-    // Check permission without prompting (background friendly logic)
-    // If we are in the foreground (options page), we might have triggered verifyPermission earlier.
-    // In background, if this returns 'prompt', we fail.
-    const perm = await handle.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted') {
-        // If we are in background (no existingHandle passed implies periodic or manual trigger without direct handle),
-        // we might want to prompt the user. But we can't prompt in background.
-        // We can try to open the options page to let user re-grant.
-        if (!existingHandle) {
-            // Assuming this is running in background context or where we can't prompt
-            // We can check if we can request permission but that requires user gesture.
+    // Check permission using verifyPermission which handles 'prompt' by requesting permission
+    // This allows recovery if called from UI (User Gesture).
+    // If called from background without gesture, it might throw "User activation required".
+    try {
+        const hasPerm = await verifyPermission(handle, true);
+        if (!hasPerm) {
+            throw new Error("Permission denied or not granted.");
+        }
+    } catch (e) {
+        // Check for lack of user gesture (background case)
+        const err = e as Error;
+        const isInteractionError = err.name === 'SecurityError' ||
+            err.message.includes('activation') ||
+            err.message.includes('gesture');
 
-            // If we are indeed in background alarm, we should notify user.
-            // We can use notification or open a tab.
-            // Let's throw a specific error that the caller can handle or just fail with instruction.
-
-            // Attempt to recover by notifying via extension message if possible, or just log.
-            // Ideally we should show a notification.
-            if (chrome.notifications && chrome.runtime.id) { // Check runtime.id to ensure context is valid
+        if (isInteractionError) {
+            // In background, we can't prompt. Notify user.
+            if (!existingHandle && chrome.notifications && chrome.runtime.id) {
                 chrome.notifications.create({
                     type: 'basic',
                     iconUrl: '/icons/icon48.png',
-                    title: 'Shieldmonkey Backup Failed',
-                    message: 'Backup directory permission lost. Click here to fix.',
+                    title: 'Shieldmonkey Backup Issue',
+                    message: 'Backup permission lost. Please click "Backup Now" in Settings to re-grant.',
                     priority: 2
-                }, () => {
-                    // We can't easily add click listener here inside this function without side effects.
-                    // It is better to rely on the background script listener for notification clicks.
                 });
             }
+            throw new Error("Permission is 'prompt' (requires user interaction). Please use 'Backup Now' in Settings.");
         }
-        throw new Error(`Permission to backup directory is '${perm}'. Please re-configure backup in settings.`);
+        throw e;
     }
 
     const scripts = await new Promise<Script[]>((resolve) => {

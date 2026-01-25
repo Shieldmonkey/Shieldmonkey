@@ -12,7 +12,8 @@ import Scripts from './pages/Scripts';
 import ScriptEditor from './pages/ScriptEditor';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
-import PermissionHelp from './PermissionHelp';
+import PermissionHelp from './pages/PermissionHelp';
+import Install from './pages/Install';
 
 import './App.css';
 
@@ -55,6 +56,7 @@ function App() {
                 <PermissionHelp />
               </div>
             } />
+            <Route path="/install" element={<Install />} />
 
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/scripts" replace />} />

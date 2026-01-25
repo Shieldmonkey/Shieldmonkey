@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, FolderInput, Clock, Check, AlertCircle, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import { useModal } from '../context/ModalContext';
+import { useApp } from '../context/useApp';
+import { useModal } from '../context/useModal';
 import { saveDirectoryHandle, getDirectoryHandle } from '../../utils/backupStorage';
 import { performBackup, performRestore } from '../../utils/backupManager';
 

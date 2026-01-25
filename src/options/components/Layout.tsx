@@ -1,20 +1,22 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { Terminal, Settings, HelpCircle } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+
+// Simple sidebar link component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SidebarLink = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => (
+    <NavLink
+        to={to}
+        className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+    >
+        <Icon size={18} />
+        <span>{label}</span>
+    </NavLink>
+);
 
 const Layout = () => {
     const { version } = chrome.runtime.getManifest();
 
-    // Simple sidebar link component
-    const SidebarLink = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => (
-        <NavLink
-            to={to}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-        >
-            <Icon size={18} />
-            <span>{label}</span>
-        </NavLink>
-    );
+
 
     return (
         <div className="app-container">

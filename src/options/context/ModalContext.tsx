@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import Modal, { ModalType } from '../Modal';
+import React, { useState, type ReactNode } from 'react';
+import Modal, { type ModalType } from '../Modal';
+import { ModalContext } from './ModalContextDefinition';
 
 interface ModalConfig {
     isOpen: boolean;
@@ -10,13 +11,6 @@ interface ModalConfig {
     confirmLabel?: string;
     cancelLabel?: string;
 }
-
-interface ModalContextType {
-    showModal: (type: ModalType, title: string, message: React.ReactNode, onConfirm?: () => void, confirmLabel?: string, cancelLabel?: string) => void;
-    closeModal: () => void;
-}
-
-const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [config, setConfig] = useState<ModalConfig>({
@@ -51,8 +45,4 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
 };
 
-export const useModal = () => {
-    const context = useContext(ModalContext);
-    if (!context) throw new Error('useModal must be used within a ModalProvider');
-    return context;
-};
+

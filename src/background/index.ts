@@ -246,7 +246,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     }).catch((err) => {
       console.warn("Shieldmonkey: Failed to inject interception script (probably restricted page). Fallback to redirect.", err);
       // Fallback: Redirect to install page if we can't inject script (e.g. chrome:// pages or restricted domains)
-      const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(details.url)}`;
+      const installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(details.url)}`;
       chrome.tabs.update(details.tabId, { url: installUrl });
     });
   }
@@ -270,7 +270,7 @@ chrome.runtime.onMessage.addListener((message) => {
 
     // Store content temporarily
     chrome.storage.local.set({ [key]: { url, content } }).then(() => {
-      const installUrl = chrome.runtime.getURL(`src/install/index.html?installId=${installId}`);
+      const installUrl = chrome.runtime.getURL(`src/options/index.html#/install?installId=${installId}`);
       chrome.tabs.create({ url: installUrl });
     });
     return; // No response needed
@@ -281,7 +281,7 @@ chrome.runtime.onMessage.addListener((message) => {
     console.warn(`Content script failed to fetch ${url}: ${error}. Falling back to background fetch.`);
 
     // Fallback: Open install page with URL only, let it request background fetch
-    const installUrl = chrome.runtime.getURL(`src/install/index.html?url=${encodeURIComponent(url)}`);
+    const installUrl = chrome.runtime.getURL(`src/options/index.html#/install?url=${encodeURIComponent(url)}`);
     chrome.tabs.create({ url: installUrl });
     return;
   }
@@ -509,7 +509,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.type === 'START_INSTALL_FLOW') {
     const { url } = message;
-    const installUrl = chrome.runtime.getURL('src/install/index.html') + `?url=${encodeURIComponent(url)}`;
+    const installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(url)}`;
     chrome.tabs.create({ url: installUrl });
     return true;
   }
