@@ -5,11 +5,13 @@ export interface Script {
     enabled?: boolean;
     lastSavedCode?: string;
     grantedPermissions?: string[];
-    updateUrl?: string;
-    downloadUrl?: string;
     sourceUrl?: string;
+    referrerUrl?: string;
     namespace?: string;
     installDate?: number;
+    updateDate?: number;
+    updateUrl?: string;
+    downloadUrl?: string;
 }
 
 export type Theme = 'light' | 'dark' | 'system';

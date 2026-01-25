@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Save, Trash2, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import PermissionModal from '../PermissionModal';
@@ -15,8 +15,6 @@ const ScriptEditor = () => {
     const { showModal: showGenericModal } = useModal();
 
     // Find script from context
-    // Note: If scripts are loading, this might be undefined initially.
-    // The AppContext initializes effectively on mount.
     const scriptFromContext = scripts.find((s: Script) => s.id === id);
 
     const [code, setCode] = useState<string>('');
@@ -36,22 +34,10 @@ const ScriptEditor = () => {
             setCode(scriptFromContext.code);
             setName(scriptFromContext.name);
             initializedRef.current = true;
-        } else if (!scriptFromContext && scripts.length > 0 && id) {
-            // ID not found in loaded scripts
-            // navigate('/scripts'); // Or show error
         }
-    }, [scriptFromContext, scripts, id]);
-
-    // Handle updates from context (e.g. external save)
-    // If we are dirty, we might have a conflict. For now, let's just respect local state if dirty?
-    // The previous App.tsx logic was:
-    // code: (isEditing && isDirty) ? existing.code : s.code
-    // Here we have local `code` state. We only update it from props if we haven't touched it?
-    // or if we just saved it.
+    }, [scriptFromContext]);
 
     const isDirty = scriptFromContext ? code !== scriptFromContext.lastSavedCode : false;
-    // Wait, scriptFromContext.lastSavedCode might be updated after save.
-    // If we rely on scriptFromContext to determine "original", that works.
 
     const handleSave = useCallback(async () => {
         if (!scriptFromContext) return;
@@ -90,9 +76,6 @@ const ScriptEditor = () => {
             };
 
             await saveScript(updatedScript);
-
-            // Updates to `scripts` context will eventually propagate back to scriptFromContext,
-            // updating lastSavedCode, which will make isDirty false (if code matches).
             setName(updatedScript.name);
 
         } catch (e) {
@@ -137,97 +120,223 @@ const ScriptEditor = () => {
 
     // Theme handling for Monaco
     const { theme } = useApp();
-    const editorTheme = theme === 'light' ? 'vs' : 'vs-dark'; // Simple mapping, or better custom themes if configured
+    const editorTheme = theme === 'light' ? 'vs' : 'vs-dark';
 
     if (!scriptFromContext) {
         if (scripts.length === 0) return <div>Loading...</div>;
         return <div>Script not found</div>;
     }
 
-    // Metadata for header info
+    // Metadata for header/sidebar info
     const metadata = parseMetadata(code);
+    const sourceUrl = scriptFromContext.sourceUrl;
+    const referrerUrl = scriptFromContext.referrerUrl;
 
     return (
-        <div className="editor-container">
-            <header className="editor-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <button className="btn-secondary" onClick={() => navigate('/scripts', { replace: true })} title="Back to list" style={{ padding: '8px' }}>
-                        <ArrowLeft size={16} />
-                    </button>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="app-container">
+            <aside className="sidebar">
+                <div
+                    className="sidebar-header"
+                    style={{ cursor: 'pointer', justifyContent: 'flex-start', paddingLeft: '24px' }}
+                    onClick={() => navigate('/scripts')}
+                    title="Back to Script List"
+                >
+                    <ArrowLeft size={20} style={{ color: 'var(--text-secondary)' }} />
+                    <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>Back</h2>
+                </div>
+
+                <div className="content-scroll" style={{ padding: '0 24px 24px 24px' }}>
+
+                    {/* Info Section */}
+                    <div style={{ marginBottom: '32px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
+                            <Info size={16} />
+                            <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Info</h3>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 16px', fontSize: '0.85rem' }}>
+                            <div style={{ color: 'var(--text-secondary)' }}>Version</div>
+                            <div style={{ fontFamily: 'monospace' }}>{metadata.version || '-'}</div>
+
+                            <div style={{ color: 'var(--text-secondary)' }}>Author</div>
+                            <div>{metadata.author || '-'}</div>
+
+                            <div style={{ color: 'var(--text-secondary)' }}>Installed</div>
+                            <div>{scriptFromContext.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
+
+                            {referrerUrl && (
+                                <>
+                                    <div style={{ color: 'var(--text-secondary)' }}>Page</div>
+                                    <div style={{ wordBreak: 'break-all' }}>
+                                        <a href={referrerUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <LinkIcon size={12} style={{ flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{referrerUrl}</span>
+                                        </a>
+                                    </div>
+                                </>
+                            )}
+
+                            {sourceUrl && (
+                                <>
+                                    <div style={{ color: 'var(--text-secondary)' }}>Source</div>
+                                    <div style={{ wordBreak: 'break-all' }}>
+                                        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <LinkIcon size={12} style={{ flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{sourceUrl}</span>
+                                        </a>
+                                    </div>
+                                </>
+
+                            )}
+
+                            {(metadata.updateURL || scriptFromContext.updateUrl) && (
+                                <>
+                                    <div style={{ color: 'var(--text-secondary)' }}>Update</div>
+                                    <div style={{ wordBreak: 'break-all' }}>
+                                        <a href={metadata.updateURL || scriptFromContext.updateUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <LinkIcon size={12} style={{ flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.updateURL || scriptFromContext.updateUrl}</span>
+                                        </a>
+                                    </div>
+                                </>
+                            )}
+
+                            {(metadata.downloadURL || scriptFromContext.downloadUrl) && (
+                                <>
+                                    <div style={{ color: 'var(--text-secondary)' }}>Download</div>
+                                    <div style={{ wordBreak: 'break-all' }}>
+                                        <a href={metadata.downloadURL || scriptFromContext.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <LinkIcon size={12} style={{ flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.downloadURL || scriptFromContext.downloadUrl}</span>
+                                        </a>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Permissions Section */}
+                    {
+                        (metadata.grant || []).filter(p => p !== 'none').length > 0 && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
+                                    <Shield size={16} />
+                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Permissions</h3>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {(metadata.grant || []).filter(p => p !== 'none').map(p => (
+                                        <span key={p} style={{
+                                            fontSize: '0.75rem',
+                                            padding: '4px 8px',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            borderRadius: '4px',
+                                            color: 'var(--text-primary)',
+                                            fontFamily: 'monospace'
+                                        }}>
+                                            {p}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Matches Section */}
+                    {
+                        (metadata.match || []).length > 0 && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
+                                    <Globe size={16} />
+                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Matches</h3>
+                                </div>
+                                <ul style={{
+                                    listStyle: 'none',
+                                    padding: 0,
+                                    margin: 0,
+                                    fontSize: '0.8rem',
+                                    fontFamily: 'monospace',
+                                    color: 'var(--text-secondary)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px'
+                                }}>
+                                    {metadata.match.map((m, i) => (
+                                        <li key={i} style={{ wordBreak: 'break-all' }}>{m}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )
+                    }
+
+                </div >
+            </aside >
+
+            <main className="main-content">
+                <header className="editor-header">
+                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <input
                             type="text"
                             className="script-name-input"
                             value={name}
-                            onChange={(e) => setName(e.target.value)} // Visual only, name is parsed from metadata on save
+                            onChange={(e) => setName(e.target.value)}
                             readOnly
                             title="Name is defined in metadata block"
-                            style={{ cursor: 'default' }}
+                            style={{ cursor: 'default', marginLeft: 0 }}
                         />
                         {metadata.namespace && (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '12px', fontFamily: 'monospace' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {metadata.namespace}
                             </span>
                         )}
                     </div>
-                </div>
-                <div className="editor-actions">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginRight: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        {metadata.version && <span>v{metadata.version}</span>}
-                        {scriptFromContext.installDate && (
-                            <span title="Installed/Created">
-                                <Calendar size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                                {new Date(scriptFromContext.installDate).toLocaleDateString()}
-                            </span>
-                        )}
+
+                    <div className="editor-actions">
+                        <button
+                            className="btn-primary"
+                            onClick={handleSave}
+                            disabled={!isDirty || isSaving}
+                        >
+                            <Save size={16} />
+                            <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                        </button>
+                        <button
+                            className="btn-secondary"
+                            onClick={handleDelete}
+                            style={{ color: '#ef4444', borderColor: '#fee2e2' }}
+                        >
+                            <Trash2 size={16} />
+                        </button>
                     </div>
+                </header>
 
-                    <button
-                        className="btn-primary"
-                        onClick={handleSave}
-                        disabled={!isDirty || isSaving}
-                    >
-                        <Save size={16} />
-                        <span>{isSaving ? 'Saving...' : 'Save'}</span>
-                    </button>
-                    <button
-                        className="btn-secondary"
-                        onClick={handleDelete}
-                        style={{ color: '#ef4444', borderColor: '#fee2e2' }}
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                </div>
-            </header>
-
-            <div className="monaco-wrapper">
-                <Editor
-                    height="100%"
-                    defaultLanguage="javascript"
-                    path={`script-${id}.js`} // Unique path for model
-                    theme={editorTheme}
-                    value={code}
-                    onChange={(value) => {
-                        setCode(value || '');
-                        if (value) {
-                            const metadata = parseMetadata(value);
-                            if (metadata.name && metadata.name !== name) {
-                                setName(metadata.name);
+                <div className="monaco-wrapper">
+                    <Editor
+                        height="100%"
+                        defaultLanguage="javascript"
+                        path={`script-${id}.js`}
+                        theme={editorTheme}
+                        value={code}
+                        onChange={(value) => {
+                            setCode(value || '');
+                            if (value) {
+                                const metadata = parseMetadata(value);
+                                if (metadata.name && metadata.name !== name) {
+                                    setName(metadata.name);
+                                }
                             }
-                        }
-                    }}
-                    options={{
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                        fontLigatures: true,
-                        wordWrap: 'on',
-                        automaticLayout: true,
-                        scrollBeyondLastLine: false,
-                        padding: { top: 16, bottom: 16 }
-                    }}
-                />
-            </div>
+                        }}
+                        options={{
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                            fontLigatures: true,
+                            wordWrap: 'on',
+                            automaticLayout: true,
+                            scrollBeyondLastLine: false,
+                            padding: { top: 16, bottom: 16 }
+                        }}
+                    />
+                </div>
+            </main>
 
             <PermissionModal
                 isOpen={permissionModalOpen}
@@ -236,7 +345,7 @@ const ScriptEditor = () => {
                 onConfirm={handlePermissionConfirm}
                 onCancel={handlePermissionCancel}
             />
-        </div>
+        </div >
     );
 };
 

@@ -61,10 +61,11 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/scripts" replace />} />
               <Route path="/scripts" element={<Scripts />} />
-              <Route path="/scripts/:id" element={<ScriptEditor />} />
+
               <Route path="/settings" element={<Settings />} />
               <Route path="/help" element={<Help />} />
             </Route>
+            <Route path="/scripts/:id" element={<ScriptEditor />} />
           </Routes>
         </HashRouter>
       </ModalProvider>

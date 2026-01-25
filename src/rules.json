@@ -9,8 +9,8 @@
       ]
     },
     "condition": {
-      "urlFilter": "*://*/*.user.js",
-      "resourceTypes": ["main_frame", "xmlhttprequest"]
+      "regexFilter": "^[^?#]+\\.user\\.js([\\?#].*)?$",
+      "resourceTypes": ["xmlhttprequest"]
     }
   }
 ]

@@ -10,6 +10,12 @@ interface Script {
   code: string;
   enabled?: boolean;
   grantedPermissions?: string[];
+  sourceUrl?: string;
+  referrerUrl?: string;
+  updateUrl?: string;
+  downloadUrl?: string;
+  installDate?: number;
+  updateDate?: number;
   [key: string]: unknown;
 }
 
@@ -18,6 +24,12 @@ async function updateBadge(tabId: number, url: string) {
   try {
     const data = await chrome.storage.local.get('scripts');
     const scripts = (data.scripts || []) as Script[];
+
+    // Only allow supported schemes (whitelist)
+    if (!url || !(url.startsWith('http:') || url.startsWith('https:') || url.startsWith('file:'))) {
+      await chrome.action.setBadgeText({ tabId, text: '' });
+      return;
+    }
 
     const count = scripts.filter(script => {
       if (!script.enabled) return false;
@@ -212,13 +224,21 @@ async function reloadAllScripts() {
 // 1. Stop the navigation (window.stop()) to keep the user on the current page (with cookies/session)
 // 2. Fetch the script content from the current page context
 // 3. Send the content to the background to open the install page
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (details.frameId === 0 && details.url && /\.user\.js([?#].*)?$/i.test(details.url)) {
     console.log("Detected .user.js navigation:", details.url);
 
+    let referrer = '';
+    try {
+      const tab = await chrome.tabs.get(details.tabId);
+      if (tab.url && tab.url !== 'about:blank') {
+        referrer = tab.url;
+      }
+    } catch (e) { /* ignore */ }
+
     chrome.scripting.executeScript({
       target: { tabId: details.tabId },
-      func: async (scriptUrl: string) => {
+      func: async (scriptUrl: string, ref: string) => {
         // Stop the pending navigation
         window.stop();
         console.log("Shieldmonkey: Navigation intercepted. Fetching script...", scriptUrl);
@@ -230,46 +250,118 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 
           chrome.runtime.sendMessage({
             type: "INSTALL_SCRIPT_WITH_CONTENT",
-            url: scriptUrl,
-            content: content
+            url: scriptUrl, // download url
+            content: content,
+            referrer: ref // source page
           });
         } catch (err) {
           console.error("Shieldmonkey: Failed to fetch script:", err);
           chrome.runtime.sendMessage({
             type: "INSTALL_SCRIPT_FETCH_FAILED",
             url: scriptUrl,
+            referrer: ref,
             error: err instanceof Error ? err.message : String(err)
           });
         }
       },
-      args: [details.url]
+      args: [details.url, referrer]
     }).catch((err) => {
       console.warn("Shieldmonkey: Failed to inject interception script (probably restricted page). Fallback to redirect.", err);
       // Fallback: Redirect to install page if we can't inject script (e.g. chrome:// pages or restricted domains)
-      const installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(details.url)}`;
+      // Pass referrer in URL if possible
+      const installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(details.url)}&referrer=${encodeURIComponent(referrer)}`;
       chrome.tabs.update(details.tabId, { url: installUrl });
     });
   }
 });
 
+
+// Helper execution via bridge (Web Context) to bypass Extension CSP
+async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
+  // Open tab
+  const tab = await chrome.tabs.create({ url, active: false });
+  if (!tab.id) throw new Error("Failed to create bridge tab");
+
+  // Wait for load
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Bridge tab execution timeout")), 15000);
+    const listener = (tid: number, info: any) => {
+      if (tid === tab.id && info.status === 'complete') {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+
+  // Execute fetch in the page context
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: async (u: string) => {
+      try {
+        const res = await fetch(u);
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        return await res.text();
+      } catch (e) {
+        throw new Error(e instanceof Error ? e.message : String(e));
+      }
+    },
+    args: [targetUrl]
+  });
+
+  // Cleanup
+  chrome.tabs.remove(tab.id);
+
+  if (results && results[0] && results[0].result) {
+    return results[0].result;
+  }
+  // If execution threw an error, it might be in results[0]? No, scripting executeScript handles errors differently?
+  // If func throws, results might imply error? Actually executeScript usually throws if the function throws or returns promise reject.
+  // But strictly, let's check.
+  throw new Error("Failed to retrieve script content from bridge");
+}
+
 // Helper to fetch script content directly from background (used by Install page and others via Message)
 async function fetchScriptContent(url: string): Promise<string> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  // Try direct fetch first (Only works for same-origin or if CSP allows, which it likely doesn't for remote)
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      return await response.text();
+    }
+  } catch (e) {
+    // Expected to fail for remote URLs due to CSP
+    console.log(`Direct fetch failed for ${url}, trying bridge...`); // Debug log
   }
-  return response.text();
+
+  // Fallback to bridge
+  if (url.startsWith('https://shieldmonkey.github.io/bridge/install')) {
+    // Avoid loop if we are somehow trying to fetch the bridge itself?
+    // Actually if the target is the bridge, we should be able to fetch it via bridge? Valid.
+  }
+
+  const bridgeUrl = `https://shieldmonkey.github.io/bridge/install`;
+  console.log(`Fetching via bridge: ${url} using ${bridgeUrl}`);
+
+  try {
+    return await fetchViaBridge(bridgeUrl, url);
+  } catch (e) {
+    console.error("Bridge fetch failed", e);
+    throw new Error(`Failed to fetch script: ${(e as Error).message}`);
+  }
 }
+
 
 // Handle messages from Content Script (INSTALL_SCRIPT_WITH_CONTENT)
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'INSTALL_SCRIPT_WITH_CONTENT') {
-    const { url, content } = message;
+    const { url, content, referrer } = message;
     const installId = crypto.randomUUID();
     const key = `pending_install_${installId}`;
 
     // Store content temporarily
-    chrome.storage.local.set({ [key]: { url, content } }).then(() => {
+    chrome.storage.local.set({ [key]: { url, content, referrer } }).then(() => {
       const installUrl = chrome.runtime.getURL(`src/options/index.html#/install?installId=${installId}`);
       chrome.tabs.create({ url: installUrl });
     });
@@ -277,11 +369,15 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 
   if (message.type === 'INSTALL_SCRIPT_FETCH_FAILED') {
-    const { url, error } = message;
+    const { url, error, referrer } = message;
     console.warn(`Content script failed to fetch ${url}: ${error}. Falling back to background fetch.`);
 
     // Fallback: Open install page with URL only, let it request background fetch
-    const installUrl = chrome.runtime.getURL(`src/options/index.html#/install?url=${encodeURIComponent(url)}`);
+    // Pass referrer
+    let installUrl = chrome.runtime.getURL(`src/options/index.html#/install?url=${encodeURIComponent(url)}`);
+    if (referrer) {
+      installUrl += `&referrer=${encodeURIComponent(referrer)}`;
+    }
     chrome.tabs.create({ url: installUrl });
     return;
   }
@@ -327,17 +423,39 @@ async function handleSaveScript(script: Script) {
   const data = await chrome.storage.local.get('scripts');
   const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
   const index = scripts.findIndex((s) => s.id === script.id);
-
-  // Preserve permissions if not passed (though they should be passed from UI)
-  if (index !== -1 && !script.grantedPermissions) {
-    script.grantedPermissions = scripts[index].grantedPermissions || [];
-  }
+  const now = Date.now();
 
   if (index !== -1) {
+    const existing = scripts[index];
+    // Preserve fields from existing script if not present in new logical definitions or specifically for updates
+    // We overwrite with 'script' properties but want to keep installDate if script doesn't have it (it likely doesn't)
+    script.installDate = existing.installDate || now;
+    script.updateDate = now;
+
+    // Preserve enabled state if not explicitly passed? No, usually passed.
+    if (script.enabled === undefined) script.enabled = existing.enabled;
+
+    // Preserve permissions if not passed
+    if (!script.grantedPermissions) {
+      script.grantedPermissions = existing.grantedPermissions || [];
+    }
+
+    // Preserve URLs if not passed (important for updates via editor where URLs might not be in form data)
+    if (!script.sourceUrl && existing.sourceUrl) script.sourceUrl = existing.sourceUrl;
+    if (!script.updateUrl && existing.updateUrl) script.updateUrl = existing.updateUrl;
+    if (!script.downloadUrl && existing.downloadUrl) script.downloadUrl = existing.downloadUrl;
+    if (!script.referrerUrl && existing.referrerUrl) script.referrerUrl = existing.referrerUrl;
+
     scripts[index] = script;
   } else {
+    // New script
+    script.installDate = now;
+    script.updateDate = now;
+    if (script.enabled === undefined) script.enabled = true;
+    if (!script.grantedPermissions) script.grantedPermissions = [];
     scripts.push(script);
   }
+
   await chrome.storage.local.set({ scripts });
 
   // 2. Parse metadata

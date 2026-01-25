@@ -119,13 +119,12 @@ body {
 .content-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 48px;
+  padding: 32px 48px 100px 48px; /* Added bottom padding for overlay */
 }
 
 /* Script Table Styles */
 .script-table-container {
   width: 100%;
-  max-width: 1200px; /* Wider for more info */
   margin: 0 auto;
 }
 
@@ -146,17 +145,19 @@ body {
 
 .script-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate; /* Changed from collapse for sticky support */
+  border-spacing: 0;
   background: var(--surface-bg);
-  border-radius: 12px;
-  overflow: hidden;
+  /* overflow: hidden; Removed to avoid sticky clipping issues */
   border: 1px solid var(--border-color);
+  border-left: none; /* Let container handle or just keep */
+  border-right: none;
 }
 
 /* Compact Table Variant */
 .script-table.compact th,
 .script-table.compact td {
-    padding: 12px 20px;
+    padding: 8px 12px;
 }
 
 .script-table th {
@@ -165,10 +166,13 @@ body {
   color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: capitalize;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(0,0,0,0.1);
+  background: var(--surface-bg); /* Opaque background for sticky */
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .script-table td {
@@ -191,6 +195,25 @@ body {
   text-align: right;
   white-space: nowrap;
   width: 1%;
+  position: sticky;
+  right: 0;
+  background: var(--surface-bg);
+  z-index: 10;
+  /* Add border left for clear separation */
+  border-left: 1px solid var(--border-color);
+}
+
+.script-table tr:hover td.col-actions {
+  /* Ensure proper background on hover to prevent see-through or z-index issues */
+  background: var(--surface-bg);
+  /* Optionally blend slightly to indicate hover, but keep opaque */
+  background: color-mix(in srgb, var(--surface-bg), rgba(255, 255, 255, 0.05) 10%);
+}
+
+th.col-actions {
+    background: var(--surface-bg);
+    z-index: 30; /* Higher than normal th */
+    border-left: 1px solid var(--border-color); /* Match body cells */
 }
 
 .script-version {

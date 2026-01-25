@@ -42,9 +42,13 @@ function App() {
     const init = async () => {
       // Get current tab URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.url) return;
+      const url = tab.url;
+      // Only allow supported schemes (whitelist)
+      if (!url || !(url.startsWith('http:') || url.startsWith('https:') || url.startsWith('file:'))) {
+        return;
+      }
 
-      setCurrentUrl(tab.url);
+      setCurrentUrl(url);
 
       // Get settings and scripts
       const data = await chrome.storage.local.get(['scripts', 'extensionEnabled', 'theme']);
@@ -62,7 +66,7 @@ function App() {
         const metadata = parseMetadata(script.code);
         const patterns = [...metadata.match, ...metadata.include];
         const effectivePatterns = patterns.length > 0 ? patterns : ["<all_urls>"];
-        return effectivePatterns.some(pattern => matchPattern(pattern, tab.url!));
+        return effectivePatterns.some(pattern => matchPattern(pattern, url));
       });
 
       setActiveScripts(matched);

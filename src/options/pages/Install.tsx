@@ -17,6 +17,7 @@ interface Script {
 const Install = () => {
     const [status, setStatus] = useState<'loading' | 'confirm' | 'installing' | 'success' | 'error'>('loading');
     const [scriptUrl, setScriptUrl] = useState<string | null>(null);
+    const [referrerUrl, setReferrerUrl] = useState<string | null>(null);
     const [code, setCode] = useState<string>('');
     const [metadata, setMetadata] = useState<Metadata | null>(null);
     const [existingScript, setExistingScript] = useState<Script | null>(null);
@@ -29,10 +30,6 @@ const Install = () => {
         chrome.storage.local.get('theme', (data) => {
             const storedTheme = (data.theme as Theme) || 'dark';
             setTheme(storedTheme);
-            // We don't set document attribute here because App.tsx or parent should handle it globally?
-            // But if we are standalone route, maybe we should?
-            // App.tsx doesn't seem to handle theme syncing to documentElement in the snippet I saw.
-            // Let's keep it safe.
             if (storedTheme === 'system') {
                 const isLight = window.matchMedia('(prefers-color-scheme: light)').matches;
                 document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
@@ -61,9 +58,10 @@ const Install = () => {
 
             if (existing) {
                 setExistingScript(existing);
-                if (existing.code !== text) {
-                    setViewMode('diff');
-                }
+                // Default to Diff view for updates
+                setViewMode('diff');
+            } else {
+                setViewMode('code');
             }
 
             setStatus('confirm');
@@ -95,6 +93,7 @@ const Install = () => {
                 const data = JSON.parse(window.name);
                 if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
                     setScriptUrl(data.url);
+                    if (data.referrer) setReferrerUrl(data.referrer);
                     loadScriptContent(data.source);
                     return;
                 }
@@ -104,17 +103,7 @@ const Install = () => {
         }
 
         // Check for installId (Passed via storage from Content Script)
-        // Note: HashRouter uses #, so query params might be after # or before #. 
-        // Chrome.tabs.create({ url: ... '.../index.html#/install?url=...' })
-        // or '.../index.html?url=...#/install' ?
-        // Usually React Router looks for search params in the location.
-        // If we use HashRouter, window.location.search is the query string before the hash.
-        // window.location.hash contains the hash path and potentially query string if using hash history with query.
-        // We should check both or use useSearchParams hook.
-        // But for simplicity with chrome APIs, we often pass params in the search part of the URL (before hash).
-
         const searchParams = new URLSearchParams(window.location.search);
-        // Also check hash params if any (e.g. #/install?url=...)
         const hash = window.location.hash;
         const hashSearchParams = new URLSearchParams(hash.split('?')[1]);
 
@@ -124,9 +113,10 @@ const Install = () => {
         if (installId) {
             const key = `pending_install_${installId}`;
             chrome.storage.local.get(key, (data) => {
-                const pend = data[key] as { url: string; content: string } | undefined;
+                const pend = data[key] as { url: string; content: string; referrer?: string } | undefined;
                 if (pend && pend.content) {
                     setScriptUrl(pend.url);
+                    if (pend.referrer) setReferrerUrl(pend.referrer);
                     loadScriptContent(pend.content);
                     // Cleanup
                     chrome.storage.local.remove(key);
@@ -149,6 +139,9 @@ const Install = () => {
             return;
         }
 
+        const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer');
+        if (referrer) setReferrerUrl(referrer);
+
         setScriptUrl(url);
         fetchScript(url);
     }, [fetchScript, loadScriptContent]);
@@ -168,19 +161,16 @@ const Install = () => {
             code: code,
             enabled: true,
             grantedPermissions: (metadata.grant || []).filter(p => p !== 'none'),
-            sourceUrl: scriptUrl,
-            updateUrl: updateURL,
-            downloadUrl: downloadURL
+            scriptUrl: scriptUrl,
+            referrerUrl: referrerUrl,
+            installDate: !existingScript ? Date.now() : undefined,
+            updateDate: Date.now()
         };
 
         try {
             await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script });
             setStatus('success');
             setTimeout(() => {
-                // Determine if we should close the tab or navigate back
-                // If it was opened as a new tab/popup for install, close it.
-                // If we are in the options page... maybe navigate to list?
-                // The current behavior is window.close().
                 window.close();
             }, 2000);
         } catch (e) {
