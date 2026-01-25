@@ -88,7 +88,41 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 
   await reloadAllScripts();
+  await checkUserScriptsPermission();
 });
+
+chrome.runtime.onStartup.addListener(() => {
+  checkUserScriptsPermission();
+});
+
+// Check if userScripts permission is available, if not open help page
+// Check if userScripts permission is available, if not open help page
+async function checkUserScriptsPermission() {
+  if (!chrome.userScripts) {
+    console.warn("chrome.userScripts is undefined. Prompting user to enable permissions.");
+    // Open Options page with hash
+    chrome.runtime.openOptionsPage();
+    // Wait a brief moment to ensure options page is open then try to update tab or if unique...
+    // simpler: check if options page is open?
+    // chrome.runtime.openOptionsPage() will focus it if open.
+    // BUT we want to ensure it navigates to #permission-help.
+
+    // We can't easily pass args to openOptionsPage to change hash if already open.
+    // Instead we find the exact URL.
+    const optionsUrl = chrome.runtime.getURL('src/options/index.html');
+    const helpUrl = optionsUrl + '#permission-help';
+
+    const tabs = await chrome.tabs.query({ url: optionsUrl + '*' });
+    if (tabs.length > 0) {
+      const tab = tabs[0];
+      if (tab.id) {
+        chrome.tabs.update(tab.id, { url: helpUrl, active: true });
+      }
+    } else {
+      chrome.tabs.create({ url: helpUrl });
+    }
+  }
+}
 
 // Reusable function to reload/register all scripts from storage
 async function reloadAllScripts() {

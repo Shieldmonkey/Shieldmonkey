@@ -1,4 +1,9 @@
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
 :root {
+  box-sizing: border-box;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -20,8 +25,8 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  display: flex !important;
+  flex-direction: column;
   min-width: 320px;
   min-height: 100vh;
   background-color: #202020;

@@ -38,7 +38,7 @@ body {
   color: var(--text-primary);
 }
 
-.dashboard-container {
+.app-container {
   display: flex;
   height: 100vh;
   width: 100vw;
@@ -107,7 +107,7 @@ body {
 }
 
 /* Content Area */
-.content-area {
+.main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -231,11 +231,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
     background: var(--bg-color);
 }
 
