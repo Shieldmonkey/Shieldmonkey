@@ -26,21 +26,21 @@
     "react-router-dom": "7.13.0"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "2.0.0-beta.33",
+    "@crxjs/vite-plugin": "2.3.0",
     "@eslint/js": "9.39.2",
-    "@types/chrome": "0.1.35",
-    "@types/node": "24.10.9",
+    "@types/chrome": "0.1.36",
+    "@types/node": "25.0.10",
     "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
     "eslint": "9.39.2",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.4.26",
-    "globals": "16.5.0",
-    "sass": "1.97.2",
+    "globals": "17.1.0",
+    "sass": "1.97.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.53.1",
     "vite": "7.3.1",
-    "vite-plugin-static-copy": "3.1.5"
+    "vite-plugin-static-copy": "3.1.6"
   }
 }
