@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
-    "build": "tsc -b && vite build",
+    "dev": "NODE_OPTIONS=\"--max-old-space-size=4096\" vite build --watch --mode development",
+    "build": "tsc -b && NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "audit": "npm audit",

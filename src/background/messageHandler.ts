@@ -63,7 +63,10 @@ export function setupMessageListener() {
 
             // Store content temporarily
             chrome.storage.local.set({ [key]: { url, content, referrer } }).then(() => {
-                const installUrl = chrome.runtime.getURL(`src/options/index.html#/install?installId=${installId}`);
+                let installUrl = chrome.runtime.getURL(`src/options/index.html#/install?installId=${installId}&url=${encodeURIComponent(url)}`);
+                if (referrer) {
+                    installUrl += `&referrer=${encodeURIComponent(referrer)}`;
+                }
                 chrome.tabs.create({ url: installUrl });
             });
             return; // No response needed
