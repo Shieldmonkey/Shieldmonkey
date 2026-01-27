@@ -1,15 +1,13 @@
 import { test, expect } from 'vitest';
 import { launchExtension, getExtensionUrl, TIMEOUT } from './test-utils';
-import { BrowserContext, Page } from 'playwright';
+import { BrowserContext } from 'playwright';
 
 let browserContext: BrowserContext;
-let page: Page;
 let extensionId: string;
 
 test.beforeEach(async () => {
     const context = await launchExtension();
     browserContext = context.browserContext;
-    page = context.page;
     extensionId = context.extensionId;
 });
 
@@ -77,34 +75,35 @@ function createMockFileSystemHandle() {
 }
 
 test('Backup and Restore Logic', async () => {
-    await page.addInitScript(createMockFileSystemHandle());
-    await page.goto(getExtensionUrl(extensionId, '/src/options/index.html#/settings'));
+    const newPage = await browserContext.newPage();
+    await newPage.addInitScript(createMockFileSystemHandle());
+    await newPage.goto(getExtensionUrl(extensionId, '/src/options/index.html#/settings'));
 
     // Wait for page to fully initialize, especially on first run
-    await page.waitForTimeout(TIMEOUT.MEDIUM);
+    await newPage.waitForTimeout(TIMEOUT.MEDIUM);
 
-    const selectBtn = page.getByRole('button', { name: /Select$/i });
+    const selectBtn = newPage.getByRole('button', { name: /Select$/i });
     await selectBtn.waitFor({ state: 'visible' });
     await selectBtn.click();
 
-    await expect.poll(async () => page.getByText('mock-backup-dir').isVisible(), { timeout: 10000 }).toBe(true);
+    await expect.poll(async () => newPage.getByText('mock-backup-dir').isVisible(), { timeout: 10000 }).toBe(true);
 
-    const backupBtn = page.getByRole('button', { name: /Backup Now/i });
+    const backupBtn = newPage.getByRole('button', { name: /Backup Now/i });
     await backupBtn.click();
 
-    await expect.poll(async () => page.getByText(/Saved \d+ scripts/).isVisible()).toBe(true);
+    await expect.poll(async () => newPage.getByText(/Saved \d+ scripts/).isVisible()).toBe(true);
 
-    const restoreBtn = page.getByRole('button', { name: /Select Directory & Restore/i });
+    const restoreBtn = newPage.getByRole('button', { name: /Select Directory & Restore/i });
     await restoreBtn.click();
 
-    const modal = page.locator('.modal-content');
+    const modal = newPage.locator('.modal-content');
     await modal.waitFor({ state: 'visible' });
 
     const confirmBtn = modal.getByRole('button', { name: /OK/i });
     await confirmBtn.click();
 
-    await page.waitForTimeout(TIMEOUT.VERY_LONG);
+    await newPage.waitForTimeout(TIMEOUT.VERY_LONG);
 
-    await page.goto(getExtensionUrl(extensionId, '/src/options/index.html#/scripts'));
-    await expect.poll(async () => page.getByText('Restored Script').isVisible()).toBe(true);
+    await newPage.goto(getExtensionUrl(extensionId, '/src/options/index.html#/scripts'));
+    await expect.poll(async () => newPage.getByText('Restored Script').isVisible()).toBe(true);
 });
