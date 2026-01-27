@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "audit": "npm audit",
     "audit:fix": "npm audit fix",
-    "install:safe": "npm ci --ignore-scripts"
+    "install:safe": "npm ci --ignore-scripts",
+    "test:e2e": "vitest run --config vitest.config.e2e.ts"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -37,11 +38,14 @@
     "eslint": "9.39.2",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.4.26",
+    "fastify": "^5.7.2",
     "globals": "16.5.0",
+    "playwright": "^1.58.0",
     "sass": "1.97.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.53.1",
     "vite": "7.3.1",
-    "vite-plugin-static-copy": "3.1.5"
+    "vite-plugin-static-copy": "3.1.5",
+    "vitest": "^4.0.18"
   }
 }

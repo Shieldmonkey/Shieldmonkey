@@ -67,3 +67,25 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 
 4. 拡張機能の読み込み
    Chromeの `chrome://extensions` を開き、デベロッパーモードを有効にして、生成された `dist` ディレクトリを読み込んでください。
+
+## テスト
+
+E2Eテストを実行してShieldmonkeyの機能を検証できます。
+
+```bash
+# Playwright Browsersをインストール（初回のみ）
+npx playwright install chromium --with-deps
+
+# 拡張機能をビルド
+npm run build
+
+# E2Eテストを実行
+npm run test:e2e
+```
+
+テストには以下が含まれます：
+- スクリプトのインストールとインポート
+- オプションページでのスクリプト管理（作成、編集、削除）
+- バックアップとリストア機能
+- CSPポリシーの検証
+- ポップアップページの動作確認

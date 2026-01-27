@@ -26,3 +26,7 @@ dist-ssr
 # pnpm
 .pnpm-store
 
+
+# Test
+test-user-data-dir
+coverage
