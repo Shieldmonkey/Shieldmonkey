@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "NODE_OPTIONS=\"--max-old-space-size=4096\" vite build --watch --mode development",
     "build": "tsc -b && NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
