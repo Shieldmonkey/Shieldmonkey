@@ -43,14 +43,17 @@ async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
 
 // Helper to fetch script content directly from background (used by Install page and others via Message)
 export async function fetchScriptContent(url: string): Promise<string> {
-    // Try direct fetch first
-    try {
-        const response = await fetch(url);
-        if (response.ok) {
-            return await response.text();
+    // Optimization: Skip direct fetch for http/https to avoid CSP errors (User Request)
+    // Only try direct fetch for local/internal resources
+    if (url.startsWith('chrome-extension:') || url.startsWith('file:') || url.startsWith('data:')) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                return await response.text();
+            }
+        } catch {
+            // Fallback to bridge if direct fetch fails (though bridge might also fail for local)
         }
-    } catch {
-        // Expected to fail for remote URLs due to CSP
     }
 
     const bridgeUrl = `https://shieldmonkey.github.io/bridge/install`;

@@ -123,8 +123,16 @@ const Install = () => {
                     // Cleanup
                     chrome.storage.local.remove(key);
                 } else {
-                    setStatus('error');
-                    setError(t('installErrorExpired'));
+                    // Fallback to URL fetch if storage is missing (e.g. expired or race condition)
+                    if (url) {
+                        console.warn('Install session expired or missing, falling back to direct fetch via bridge/background');
+                        setScriptUrl(url);
+                        if (referrer) setReferrerUrl(referrer);
+                        fetchScript(url);
+                    } else {
+                        setStatus('error');
+                        setError(t('installErrorExpired'));
+                    }
                 }
             });
             return;
