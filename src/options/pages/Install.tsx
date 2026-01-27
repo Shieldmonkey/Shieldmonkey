@@ -24,6 +24,21 @@ const Install = () => {
     const [existingScript, setExistingScript] = useState<Script | null>(null);
     const [error, setError] = useState<string>('');
     const [viewMode, setViewMode] = useState<'code' | 'diff'>('code');
+
+    const sanitizeUrl = (url: string | null): string => {
+        if (!url) {
+            return 'about:blank';
+        }
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                return parsed.toString();
+            }
+        } catch {
+            // fall through to safe default
+        }
+        return 'about:blank';
+    };
     const [theme, setTheme] = useState<Theme>('dark');
     const { t } = useI18n();
 
@@ -292,7 +307,7 @@ const Install = () => {
 
                             <div className="meta-label">{t('installMetaSource')}</div>
                             <div style={{ wordBreak: 'break-all', fontSize: '0.85em' }}>
-                                <a href={scriptUrl!} target="_blank" rel="noreferrer">{scriptUrl}</a>
+                                <a href={sanitizeUrl(scriptUrl)} target="_blank" rel="noreferrer">{scriptUrl}</a>
                             </div>
                         </div>
                     </div>
