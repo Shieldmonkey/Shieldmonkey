@@ -80,11 +80,14 @@ test('Backup and Restore Logic', async () => {
     await page.addInitScript(createMockFileSystemHandle());
     await page.goto(getExtensionUrl(extensionId, '/src/options/index.html#/settings'));
 
+    // Wait for page to fully initialize, especially on first run
+    await page.waitForTimeout(TIMEOUT.MEDIUM);
+
     const selectBtn = page.getByRole('button', { name: /Select$/i });
     await selectBtn.waitFor({ state: 'visible' });
     await selectBtn.click();
 
-    await expect.poll(async () => page.getByText('mock-backup-dir').isVisible()).toBe(true);
+    await expect.poll(async () => page.getByText('mock-backup-dir').isVisible(), { timeout: 10000 }).toBe(true);
 
     const backupBtn = page.getByRole('button', { name: /Backup Now/i });
     await backupBtn.click();

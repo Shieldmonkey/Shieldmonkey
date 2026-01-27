@@ -68,6 +68,6 @@ test('Install from .user.js URL', async () => {
 
     await page.goto(getExtensionUrl(extensionId, '/src/options/index.html'));
 
-    const rows = page.locator('table tbody tr');
-    expect(await rows.count()).toBe(1);
+    // Check that our specific script is installed (ignore other scripts from other tests)
+    await expect.poll(async () => page.getByText('TEST').isVisible()).toBe(true);
 });
