@@ -2,9 +2,31 @@ name: Test
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/test.yml'
+      - '.github/workflows/build.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'vitest.config.e2e.ts'
+      - 'tsconfig*.json'
   pull_request:
-    branches: [main, master]
+    branches: [ main, master ]
+    paths:
+      - '.github/workflows/test.yml'
+      - '.github/workflows/build.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'vitest.config.e2e.ts'
+      - 'tsconfig*.json'
   workflow_dispatch:
 
 permissions:

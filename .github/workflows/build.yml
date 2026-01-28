@@ -3,8 +3,24 @@ name: Build Extension
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - '.github/workflows/build.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
   pull_request:
     branches: [ main, master ]
+    paths:
+      - '.github/workflows/build.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
   workflow_dispatch:
 
 permissions:
