@@ -51,7 +51,10 @@ export async function launchExtension(): Promise<ExtensionContext> {
 
     await enableUserScriptsIfNeeded(browserContext, extensionId);
 
-    return { browserContext, page, extensionId };
+    // Create a new page just in case the page is not available
+    const newPage = await browserContext.newPage();
+
+    return { browserContext, page: newPage, extensionId };
 }
 
 // Helper: Wait for service worker to be available
