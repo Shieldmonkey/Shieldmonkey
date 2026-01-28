@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
-import enMessages from '../locales/en/messages.json';
-import jaMessages from '../locales/ja/messages.json';
+import enMessages from '../../public/_locales/en/messages.json';
+import jaMessages from '../../public/_locales/ja/messages.json';
 
 type Locale = 'en' | 'ja' | 'system';
 type Messages = Record<string, { message: string, description?: string, placeholders?: Record<string, { content: string }> }>;
@@ -88,3 +88,6 @@ export const useI18n = () => {
     }
     return context;
 };
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useTranslation = useI18n;

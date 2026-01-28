@@ -1,7 +1,10 @@
+import { isUserScriptsAvailable } from '../utils/browserPolyfill';
+
 // Check if userScripts permission is available, if not open help page
 export async function checkUserScriptsPermission() {
-    if (!chrome.userScripts) {
-        console.warn("chrome.userScripts is undefined. Prompting user to enable permissions.");
+    const available = await isUserScriptsAvailable();
+    if (!available) {
+        console.warn("userScripts API is not available (or permission missing). Prompting user.");
         chrome.runtime.openOptionsPage();
 
         const optionsUrl = chrome.runtime.getURL('src/options/index.html');

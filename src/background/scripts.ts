@@ -3,6 +3,13 @@ import { getGMAPIScript } from '../utils/scriptGenerator';
 import type { Script } from './types';
 import { updateActiveTabBadge } from './badge';
 import { fetchScriptContent } from './fetcher';
+import {
+    isUserScriptsAvailable,
+    configureUserScriptsWorld,
+    getUserScripts,
+    unregisterUserScripts,
+    registerUserScripts
+} from '../utils/browserPolyfill';
 
 export async function preloadExampleScripts() {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -34,9 +41,9 @@ export async function preloadExampleScripts() {
 }
 
 export async function reloadAllScripts() {
-    if (chrome.userScripts) {
+    if (await isUserScriptsAvailable()) {
         try {
-            await chrome.userScripts.configureWorld({
+            await configureUserScriptsWorld({
                 messaging: true,
             });
 
@@ -49,10 +56,10 @@ export async function reloadAllScripts() {
             }
 
             try {
-                const existing = await chrome.userScripts.getScripts();
+                const existing = (await getUserScripts()) as chrome.userScripts.UserScript[];
                 const ids = existing.map(s => s.id);
                 if (ids.length > 0) {
-                    await chrome.userScripts.unregister({ ids });
+                    await unregisterUserScripts({ ids });
                 }
             } catch (e) {
                 console.warn("Failed to unregister existing scripts", e);
@@ -69,7 +76,7 @@ export async function reloadAllScripts() {
                         const runAt = metadata['run-at'] || 'document_end';
                         const granted = script.grantedPermissions || [];
 
-                        await chrome.userScripts.register([{
+                        await registerUserScripts([{
                             id: script.id,
                             matches: matches.length > 0 ? matches : ["<all_urls>"],
                             excludeMatches: excludes,
@@ -108,7 +115,7 @@ export async function handleToggleGlobal(enabled: boolean) {
 }
 
 export async function handleSaveScript(script: Script) {
-    if (!chrome.userScripts) throw new Error("API unavailable");
+    if (!await isUserScriptsAvailable()) throw new Error("API unavailable");
 
     // 1. Update in Storage
     const data = await chrome.storage.local.get('scripts');
@@ -182,13 +189,13 @@ export async function handleSaveScript(script: Script) {
 
     // 3. Register with UserScripts API
     try {
-        await chrome.userScripts.unregister({ ids: [script.id] });
+        await unregisterUserScripts({ ids: [script.id] });
     } catch {
         // Ignore error
     }
 
     if (script.enabled) {
-        await chrome.userScripts.register([{
+        await registerUserScripts([{
             id: script.id,
             matches: matches.length > 0 ? matches : ["<all_urls>"],
             excludeMatches: excludes,
@@ -211,7 +218,7 @@ export async function handleSaveScript(script: Script) {
 }
 
 export async function handleToggleScript(scriptId: string, enabled: boolean) {
-    if (!chrome.userScripts) return;
+    if (!await isUserScriptsAvailable()) return;
 
     const data = await chrome.storage.local.get('scripts');
     const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
@@ -227,8 +234,8 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
             const excludes = metadata.exclude;
             const granted = script.grantedPermissions || [];
 
-            await chrome.userScripts.unregister({ ids: [script.id] });
-            await chrome.userScripts.register([{
+            await unregisterUserScripts({ ids: [script.id] });
+            await registerUserScripts([{
                 id: script.id,
                 matches: matches.length > 0 ? matches : ["<all_urls>"],
                 excludeMatches: excludes,
@@ -245,20 +252,20 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
                 world: 'USER_SCRIPT'
             }]);
         } else {
-            await chrome.userScripts.unregister({ ids: [scriptId] });
+            await unregisterUserScripts({ ids: [scriptId] });
         }
         await updateActiveTabBadge();
     }
 }
 
 export async function handleDeleteScript(scriptId: string) {
-    if (!chrome.userScripts) return;
+    if (!await isUserScriptsAvailable()) return;
 
     const data = await chrome.storage.local.get('scripts');
     const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
     const newScripts = scripts.filter((s) => s.id !== scriptId);
     await chrome.storage.local.set({ scripts: newScripts });
 
-    await chrome.userScripts.unregister({ ids: [scriptId] });
+    await unregisterUserScripts({ ids: [scriptId] });
     await updateActiveTabBadge();
 }

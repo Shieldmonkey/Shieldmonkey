@@ -6,13 +6,14 @@
   "description": "__MSG_appDescription__",
   "permissions": [
     "storage",
-    "userScripts",
     "tabs",
     "activeTab",
     "notifications",
+    "scripting",
     "webNavigation",
     "contextMenus",
     "declarativeNetRequest",
+    "webRequest",
     "alarms"
   ],
   "host_permissions": [
@@ -35,7 +36,7 @@
     "open_in_tab": true
   },
   "background": {
-    "service_worker": "src/background/index.ts",
+    "scripts": ["src/background/index.ts"],
     "type": "module"
   },
   "icons": {
@@ -45,5 +46,14 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; style-src 'unsafe-inline'; default-src 'none'"
-  }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "shieldmonkey@toshs.dev",
+      "strict_min_version": "120.0"
+    }
+  },
+  "optional_permissions": [
+    "userScripts"
+  ]
 }

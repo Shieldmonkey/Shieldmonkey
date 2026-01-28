@@ -6,7 +6,9 @@
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "NODE_OPTIONS=\"--max-old-space-size=4096\" vite build --watch --mode development",
+    "dev:firefox": "TARGET_BROWSER=firefox NODE_OPTIONS=\"--max-old-space-size=4096\" vite build --watch --mode development",
     "build": "tsc -b && NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
+    "build:firefox": "tsc -b && TARGET_BROWSER=firefox NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
     "lint": "eslint .",
     "test:e2e": "vitest run --config vitest.config.e2e.ts"
   },
@@ -40,7 +42,6 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.53.1",
     "vite": "7.3.1",
-    "vite-plugin-static-copy": "3.1.5",
     "vitest": "4.0.17"
   }
 }

@@ -32,7 +32,7 @@ test('Create new script opens options page with editor', async () => {
     await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
 
     // Click create new script button
-    const newScriptBtn = page.locator('button:has-text("Create new script")'); // Using text based selector from translation key 'createNewScript' which is likely 'Create new script' or similar. 
+    // Using text based selector from translation key 'createNewScript' which is likely 'Create new script' or similar. 
     // Actually, looking at App.tsx, the button has text "{t('createNewScript')}". 
     // Let's assume English locale or check the element structure.
     // The button has class 'new-script-btn'.

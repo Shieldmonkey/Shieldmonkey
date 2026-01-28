@@ -1,11 +1,21 @@
 
+import { useState } from 'react';
+import { useTranslation } from '../../context/I18nContext';
+import { isFirefox, requestPermission } from '../../utils/browserPolyfill';
 
 const PermissionHelp = () => {
-    // Calculate Chrome version directly since userAgent is constant
+    const { t } = useTranslation();
+    const [granting, setGranting] = useState(false);
+
+    // Firefox flow
+    const isFirefoxBrowser = isFirefox();
+
+    // Chrome specific logic
     const chromeVersion = (() => {
         const match = navigator.userAgent.match(/Chrome\/(\d+)/);
         return (match && match[1]) ? parseInt(match[1], 10) : 0;
     })();
+    const isNewWay = chromeVersion >= 138;
 
     const openExtensionsPage = () => {
         if (chrome.tabs) {
@@ -19,7 +29,15 @@ const PermissionHelp = () => {
         chrome.runtime.reload();
     };
 
-    const isNewWay = chromeVersion >= 138;
+    const handleGrantPermission = async () => {
+        setGranting(true);
+        const granted = await requestPermission(['userScripts']);
+        if (granted) {
+            reloadExtension();
+        } else {
+            setGranting(false);
+        }
+    };
 
     return (
         <div style={{
@@ -33,10 +51,11 @@ const PermissionHelp = () => {
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
-            <h1 style={{ marginBottom: '1rem', color: 'var(--accent-color, #22c55e)', fontSize: '1.8rem' }}>Setup Required</h1>
+            <h1 style={{ marginBottom: '1rem', color: 'var(--accent-color, #22c55e)', fontSize: '1.8rem' }}>
+                {t('permissionHelpTitle')}
+            </h1>
             <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary, #999)', lineHeight: 1.6 }}>
-                Shieldmonkey needs the <strong>UserScripts</strong> permission to function.
-                <br />This permission is not enabled by default and must be turned on manually.
+                {t('permissionHelpDesc')}
             </p>
 
             <div style={{
@@ -47,43 +66,65 @@ const PermissionHelp = () => {
                 marginBottom: '2rem',
                 border: '1px solid var(--border-color, rgba(255,255,255,0.1))'
             }}>
-                {isNewWay ? (
+                {isFirefoxBrowser ? (
                     <>
                         <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-primary, #e6e6e6)', fontWeight: 600 }}>
-                            For Chrome 138+:
+                            {t('permissionFirefoxTitle')}
+                        </p>
+                        <p style={{ color: 'var(--text-secondary, #999)' }}>
+                            {t('permissionFirefoxDesc')}
+                        </p>
+                    </>
+                ) : isNewWay ? (
+                    <>
+                        <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-primary, #e6e6e6)', fontWeight: 600 }}>
+                            {t('permissionChromeNewTitle')}
                         </p>
                         <ol style={{ paddingLeft: '1.5rem', margin: 0, color: 'var(--text-primary, #e6e6e6)' }}>
-                            <li style={{ marginBottom: '0.75rem' }}>Click <strong>Open Extension Settings</strong> below.</li>
-                            <li>Enable the <strong>Allow User Scripts</strong> toggle.</li>
+                            <li style={{ marginBottom: '0.75rem' }}>{t('permissionChromeNewStep1')}</li>
+                            <li>{t('permissionChromeNewStep2')}</li>
                         </ol>
                     </>
                 ) : (
                     <>
                         <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-primary, #e6e6e6)', fontWeight: 600 }}>
-                            Instruction:
+                            {t('permissionChromeInstruction')}
                         </p>
                         <ol style={{ paddingLeft: '1.5rem', margin: 0, color: 'var(--text-primary, #e6e6e6)' }}>
-                            <li style={{ marginBottom: '0.75rem' }}>Click <strong>Open Extension Settings</strong> below.</li>
+                            <li style={{ marginBottom: '0.75rem' }}>{t('permissionChromeNewStep1')}</li>
                             {chromeVersion > 0 && chromeVersion < 120 ? (
-                                <li style={{ color: '#ff6b6b' }}>Warning: Your Chrome version ({chromeVersion}) is too old. Extensions requires Chrome 120+.</li>
+                                <li style={{ color: '#ff6b6b' }}>{t('permissionChromeWarning', chromeVersion.toString())}</li>
                             ) : (
-                                <li>Enable <strong>Developer mode</strong> (top right corner of the extensions page).</li>
+                                <li>{t('permissionChromeOldStep2')}</li>
                             )}
                         </ol>
                         <p style={{ fontSize: '0.9em', marginTop: '1rem', color: 'var(--text-secondary, #999)' }}>
-                            <em>Note: On newer Chrome versions (138+), look for "Allow User Scripts" toggle instead.</em>
+                            <em>{t('permissionChromeNote')}</em>
                         </p>
                     </>
                 )}
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn-secondary" onClick={openExtensionsPage} style={{ padding: '0.8rem 1.5rem' }}>
-                    Open Extension Settings
-                </button>
-                <button className="btn-primary" onClick={reloadExtension} style={{ padding: '0.8rem 1.5rem' }}>
-                    I've Enabled It
-                </button>
+                {isFirefoxBrowser ? (
+                    <button
+                        className="btn-primary"
+                        onClick={handleGrantPermission}
+                        disabled={granting}
+                        style={{ padding: '0.8rem 1.5rem' }}
+                    >
+                        {t('btnGrantPermission')}
+                    </button>
+                ) : (
+                    <>
+                        <button className="btn-secondary" onClick={openExtensionsPage} style={{ padding: '0.8rem 1.5rem' }}>
+                            {t('btnOpenSettings')}
+                        </button>
+                        <button className="btn-primary" onClick={reloadExtension} style={{ padding: '0.8rem 1.5rem' }}>
+                            {t('btnReloadExtension')}
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
