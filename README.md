@@ -1,3 +1,9 @@
+[![Build Extension](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml)
+[![Test](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Shieldmonkey/Shieldmonkey?style=flat-square)](https://github.com/Shieldmonkey/Shieldmonkey/commits/main)
+[![GitHub issues](https://img.shields.io/github/issues/Shieldmonkey/Shieldmonkey?style=flat-square&color=blue)](https://github.com/Shieldmonkey/Shieldmonkey/issues)
+[![License](https://img.shields.io/github/license/Shieldmonkey/Shieldmonkey?style=flat-square&color=orange)](LICENSE)
+
 # Shieldmonkey
 
 Shieldmonkeyは、セキュリティと監査可能性を最優先に設計されたManifest V3準拠のユーザースクリプトマネージャーです。
