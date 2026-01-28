@@ -8,10 +8,6 @@
     "dev": "NODE_OPTIONS=\"--max-old-space-size=4096\" vite build --watch --mode development",
     "build": "tsc -b && NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "audit": "npm audit",
-    "audit:fix": "npm audit fix",
-    "install:safe": "npm ci --ignore-scripts",
     "test:e2e": "vitest run --config vitest.config.e2e.ts"
   },
   "engines": {
