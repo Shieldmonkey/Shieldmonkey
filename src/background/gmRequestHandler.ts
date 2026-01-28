@@ -1,6 +1,12 @@
 import type { Script } from './types';
 import { parseMetadata } from '../utils/metadataParser';
 
+function globToRegexPattern(glob: string): string {
+    // Escape all regex metacharacters, including backslash, then convert glob "*" to ".*"
+    const escaped = glob.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(/\\\*/g, '.*');
+}
+
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
@@ -88,7 +94,8 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
                     // Normalize rule
                     if (rule.includes('*')) {
                         // simple glob conversion
-                        const regex = new RegExp('^' + rule.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+                        const pattern = globToRegexPattern(rule);
+                        const regex = new RegExp('^' + pattern + '$');
                         return regex.test(targetDomain);
                     }
 
