@@ -216,6 +216,9 @@ export async function installScriptFromPath(page: Page, extensionId: string, scr
         await page.goto(settingsUrl);
     }
 
+    // Wait for page to fully initialize, especially important in CI environments
+    await page.waitForTimeout(TIMEOUT.MEDIUM);
+
     // 3. Trigger restore
     const dropdownBtn = page.getByRole('button', { name: /Select$/i });
     await dropdownBtn.waitFor({ state: 'visible' });
