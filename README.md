@@ -4,46 +4,49 @@
 [![GitHub issues](https://img.shields.io/github/issues/Shieldmonkey/Shieldmonkey?style=flat-square&color=blue)](https://github.com/Shieldmonkey/Shieldmonkey/issues)
 [![License](https://img.shields.io/github/license/Shieldmonkey/Shieldmonkey?style=flat-square&color=orange)](LICENSE)
 
+[日本語版 README (Japanese)](README.ja.md)
+
 # Shieldmonkey
 
-Shieldmonkeyは、セキュリティと監査可能性を最優先に設計されたManifest V3準拠のユーザースクリプトマネージャーです。
+Shieldmonkey is a Manifest V3 compliant userscript manager designed with security and auditability as the top priorities.
 
-## 設計と特徴
+## Design and Features
 
-### 強固なセキュリティポリシー (CSP)
-Shieldmonkeyは、拡張機能自身が外部と意図しない通信を行うことを防ぐため、厳格なContent Security Policy (CSP) を設定しています。
-Background Scriptや各ページからの外部接続は遮断されます。これに伴い、以下の機能は意図的に排除されています。
+### Strict Content Security Policy (CSP)
+Shieldmonkey enforces a strict Content Security Policy (CSP) to prevent the extension from communicating with external entities unintentionally.
+External connections from Background Scripts and injected pages are blocked. Consequently, the following features are intentionally excluded:
 
-- `GM_xmlHttpRequest` などのCORSを回避する関数
-- `require` による外部スクリプトの動的読み込み
-- クラウドサービスへの自動バックアップ
-- スクリプトの自動更新
+- Functions that bypass CORS, such as `GM_xmlHttpRequest`
+- Dynamic loading of external scripts via `require`
+- Automatic backup to cloud services
+- Automatic script updates
 
-全ての更新はユーザーの手動操作によってのみ行われ、バックグラウンドでの意図しないコードの書き換えや実行を防ぎます。
+All updates are performed manually by the user, preventing unintentional code replacement or execution in the background.
 
-### サプライチェーンの安全性
-開発およびビルドプロセスにおいてNPMのベストプラクティスを採用し、サプライチェーン攻撃への耐性を高めています。
+### Supply Chain Security
+We leverage [pnpm's supply chain security features](https://pnpm.io/supply-chain-security) throughout the development and build processes to enhance resilience against attacks.
 
-- `npm ci` の使用による、lockファイルに基づいた厳密なバージョン管理
-- `postinstall` などの自動実行スクリプトの禁止
+- **`ignore-scripts=true`**: This setting is enforced via `.npmrc`, so running `pnpm install` will never automatically execute scripts like `postinstall` from dependencies. This proactively prevents the execution of malicious scripts.
+- **Strict Dependency Management**: By default, pnpm does not create a flat `node_modules`, preventing access to undeclared dependencies (phantom dependencies).
+- **`pnpm-lock.yaml`**: We rely on `pnpm install --frozen-lockfile` (default behavior in CI) to enforce strict version management based on the lockfile, preventing unintended package injection.
 
-### 監査可能なビルド
-透明性を確保するため、以下のビルド方針を採用しています。
+### Auditable Builds
+To ensure transparency, we follow these build policies:
 
-- ビルドされた拡張機能のソースコードは、監査のしやすさを優先し、意図的にMinify（圧縮・難読化）を行っていません。
-- デバッグと検証のためにSourceMapを同梱しています。
-- 配布サイズを考慮したMinify版も提供されますが、非Minify版の利用を推奨します。
+- The source code of the built extension is intentionally not minified (compressed or obfuscated) to prioritize ease of auditing.
+- SourceMaps are included for debugging and verification.
+- A minified version is also provided for distribution size considerations, but we recommend using the non-minified version.
 
-利用者が自らの手でソースコードからビルドし、その中身が検証可能であることを最も重視しています。各ストアからのインストールも可能ですが、GitHub上のソースコードからビルドしたものの利用を第一に推奨します。
+We place the highest importance on users being able to build the extension from source and verify its content. While installation from stores is possible, building from the GitHub source code is primarily recommended.
 
-## 機能
+## Features
 
-- スクリプトの管理（インストール、編集、削除、無効化）
-- Monaco Editorによる編集環境（TypeScript/JavaScriptサポート）
-- `.user.js` 形式への対応
-- ローカルへのインポート・エクスポート
+- Script management (install, edit, delete, disable)
+- Editing environment powered by Monaco Editor (TypeScript/JavaScript support)
+- `.user.js` format support
+- Local import/export
 
-## 技術スタック
+## Tech Stack
 
 - React 19
 - Vite (w/ CRXJS)
@@ -52,46 +55,46 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 - IndexedDB
 - Vanilla CSS / Sass
 
-## インストールとビルド
+## Installation and Build
 
-1. リポジトリのクローン
+1. Clone the repository
    ```bash
    git clone https://github.com/shieldmonkey/shieldmonkey.git
    cd shieldmonkey
    ```
 
-2. 依存関係のインストール
-   セキュリティのため `npm ci` を使用し、スクリプトの自動実行を無効化します。
+2. Install dependencies
+   Since `ignore-scripts=true` is set in `.npmrc`, you can safely install dependencies using:
    ```bash
-   npm ci --ignore-scripts
+   pnpm install
    ```
 
-3. ビルド
+3. Build
    ```bash
-   npm run build
+   pnpm run build
    ```
 
-4. 拡張機能の読み込み
-   Chromeの `chrome://extensions` を開き、デベロッパーモードを有効にして、生成された `dist` ディレクトリを読み込んでください。
+4. Load the extension
+   Open `chrome://extensions` in Chrome, enable Developer Mode, and load the generated `dist` directory.
 
-## テスト
+## testing
 
-E2Eテストを実行してShieldmonkeyの機能を検証できます。
+You can run E2E tests to verify Shieldmonkey's functionality.
 
 ```bash
-# Playwright Browsersをインストール（初回のみ）
-npx playwright install chromium --with-deps
+# Install Playwright Browsers (first time only)
+pnpm exec playwright install chromium --with-deps
 
-# 拡張機能をビルド
-npm run build
+# Build the extension
+pnpm run build
 
-# E2Eテストを実行
-npm run test:e2e
+# Run E2E tests
+pnpm run test:e2e
 ```
 
-テストには以下が含まれます：
-- スクリプトのインストールとインポート
-- オプションページでのスクリプト管理（作成、編集、削除）
-- バックアップとリストア機能
-- CSPポリシーの検証
-- ポップアップページの動作確認
+Tests include:
+- Script installation and import
+- Script management on the options page (create, edit, delete)
+- Backup and restore functionality
+- CSP policy verification
+- Popup page behavior check

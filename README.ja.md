@@ -1,0 +1,100 @@
+[![Build Extension](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml)
+[![Test](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Shieldmonkey/Shieldmonkey?style=flat-square)](https://github.com/Shieldmonkey/Shieldmonkey/commits/main)
+[![GitHub issues](https://img.shields.io/github/issues/Shieldmonkey/Shieldmonkey?style=flat-square&color=blue)](https://github.com/Shieldmonkey/Shieldmonkey/issues)
+[![License](https://img.shields.io/github/license/Shieldmonkey/Shieldmonkey?style=flat-square&color=orange)](LICENSE)
+
+[English README](README.md)
+
+# Shieldmonkey
+
+Shieldmonkeyは、セキュリティと監査可能性を最優先に設計されたManifest V3準拠のユーザースクリプトマネージャーです。
+
+## 設計と特徴
+
+### 強固なセキュリティポリシー (CSP)
+Shieldmonkeyは、拡張機能自身が外部と意図しない通信を行うことを防ぐため、厳格なContent Security Policy (CSP) を設定しています。
+Background Scriptや各ページからの外部接続は遮断されます。これに伴い、以下の機能は意図的に排除されています。
+
+- `GM_xmlHttpRequest` などのCORSを回避する関数
+- `require` による外部スクリプトの動的読み込み
+- クラウドサービスへの自動バックアップ
+- スクリプトの自動更新
+
+全ての更新はユーザーの手動操作によってのみ行われ、バックグラウンドでの意図しないコードの書き換えや実行を防ぎます。
+
+### サプライチェーンの安全性
+開発およびビルドプロセスにおいて [pnpmのサプライチェーンセキュリティ機能](https://pnpm.io/ja/supply-chain-security) を活用し、攻撃への耐性を高めています。
+
+- **`ignore-scripts=true`**: `.npmrc` でこの設定を強制しているため、`pnpm install` 実行時にパッケージの `postinstall` などのスクリプトが自動実行されることはありません。これにより、悪意あるスクリプトの実行を未然に防ぎます。
+- **厳格な依存関係管理**: pnpmはデフォルトでフラットな `node_modules` を作成せず、宣言されていない依存関係へのアクセスを防ぎます（Phantom dependenciesの防止）。
+- **`pnpm-lock.yaml`**: `pnpm install --frozen-lockfile`（CI等でのデフォルト）により、ロックファイルに基づいた厳密なバージョン管理を行い、意図しないパッケージの混入を防ぎます。
+
+### 監査可能なビルド
+透明性を確保するため、以下のビルド方針を採用しています。
+
+- ビルドされた拡張機能のソースコードは、監査のしやすさを優先し、意図的にMinify（圧縮・難読化）を行っていません。
+- デバッグと検証のためにSourceMapを同梱しています。
+- 配布サイズを考慮したMinify版も提供されますが、非Minify版の利用を推奨します。
+
+利用者が自らの手でソースコードからビルドし、その中身が検証可能であることを最も重視しています。各ストアからのインストールも可能ですが、GitHub上のソースコードからビルドしたものの利用を第一に推奨します。
+
+## 機能
+
+- スクリプトの管理（インストール、編集、削除、無効化）
+- Monaco Editorによる編集環境（TypeScript/JavaScriptサポート）
+- `.user.js` 形式への対応
+- ローカルへのインポート・エクスポート
+
+## 技術スタック
+
+- React 19
+- Vite (w/ CRXJS)
+- TypeScript
+- Monaco Editor
+- IndexedDB
+- Vanilla CSS / Sass
+
+## インストールとビルド
+
+1. リポジトリのクローン
+   ```bash
+   git clone https://github.com/shieldmonkey/shieldmonkey.git
+   cd shieldmonkey
+   ```
+
+2. 依存関係のインストール
+   `.npmrc` により `ignore-scripts=true` が設定されているため、以下のコマンドで安全にインストールできます。
+   ```bash
+   pnpm install
+   ```
+
+3. ビルド
+   ```bash
+   pnpm run build
+   ```
+
+4. 拡張機能の読み込み
+   Chromeの `chrome://extensions` を開き、デベロッパーモードを有効にして、生成された `dist` ディレクトリを読み込んでください。
+
+## テスト
+
+E2Eテストを実行してShieldmonkeyの機能を検証できます。
+
+```bash
+# Playwright Browsersをインストール（初回のみ）
+pnpm exec playwright install chromium --with-deps
+
+# 拡張機能をビルド
+pnpm run build
+
+# E2Eテストを実行
+pnpm run test:e2e
+```
+
+テストには以下が含まれます：
+- スクリプトのインストールとインポート
+- オプションページでのスクリプト管理（作成、編集、削除）
+- バックアップとリストア機能
+- CSPポリシーの検証
+- ポップアップページの動作確認
