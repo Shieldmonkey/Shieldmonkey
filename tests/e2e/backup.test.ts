@@ -15,64 +15,7 @@ test.afterEach(async () => {
     await browserContext.close();
 });
 
-function createMockFileSystemHandle() {
-    return `
-        const mockBackupData = {
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-            scripts: [{
-                id: 'restored-script',
-                name: 'Restored Script',
-                code: '// restored',
-                enabled: true
-            }]
-        };
-
-        const mockHandle = {
-            kind: 'directory',
-            name: 'mock-backup-dir',
-            getFileHandle: async (name, options) => ({
-                kind: 'file',
-                name: name,
-                createWritable: async () => ({
-                    write: async (content) => {
-                        console.log('[MOCK] Writing to ' + name);
-                        window._lastWrittenFile = { name, content };
-                    },
-                    close: async () => {}
-                }),
-                getFile: async () => new Blob([JSON.stringify(mockBackupData)], { type: 'application/json' })
-            }),
-            getDirectoryHandle: async (name, options) => ({
-                kind: 'directory',
-                name: name,
-                entries: async function* () {},
-                removeEntry: async () => {},
-                getFileHandle: async (fileName, opts) => ({
-                    kind: 'file',
-                    name: fileName,
-                    createWritable: async () => ({
-                        write: async () => {},
-                        close: async () => {}
-                    }),
-                    getFile: async () => new Blob([JSON.stringify(mockBackupData)], { type: 'application/json' })
-                })
-            }),
-            queryPermission: async () => 'granted',
-            requestPermission: async () => 'granted',
-            values: async function* () {
-                yield { kind: 'file', name: 'shieldmonkey_dump.json' };
-            }
-        };
-
-        window.showDirectoryPicker = async () => {
-            console.log('[MOCK] showDirectoryPicker called');
-            return mockHandle;
-        };
-
-        window.__mockBackupDirectoryHandle = mockHandle;
-    `;
-}
+import { createMockFileSystemHandle } from './test-utils';
 
 test('Backup and Restore Logic', async () => {
     const newPage = await browserContext.newPage();

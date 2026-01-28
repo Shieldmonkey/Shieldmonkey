@@ -243,8 +243,8 @@
         });
         
         addBtn('Test GM_openInTab', () => {
-            GM_openInTab('https://example.com', { active: true, insert: true });
-            log('Opened example.com in new tab.');
+            GM_openInTab('https://shieldmonkey.github.io/Shieldmonkey/', { active: true, insert: true });
+            log('Opened shieldmonkey.github.io in new tab.');
         });
 
         addBtn('Test Isolation (Window)', () => {
