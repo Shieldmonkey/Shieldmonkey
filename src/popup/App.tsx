@@ -92,7 +92,7 @@ function App() {
       if (currentUrl) {
         url += `?match=${encodeURIComponent(currentUrl)}`;
       }
-      url += '#new';
+      url += '#/new';
       chrome.tabs.create({ url: chrome.runtime.getURL(url) });
     } else {
       chrome.runtime.openOptionsPage();
@@ -143,7 +143,7 @@ function App() {
   const editScript = (id: string) => {
     // Open directly using the hash routing supported by Options App
     // Format: src/options/index.html#scripts/<id>
-    const url = `src/options/index.html#scripts/${id}`;
+    const url = `src/options/index.html#/scripts/${id}`;
     chrome.tabs.create({ url: url });
   };
 

@@ -27,3 +27,37 @@ test('Popup page opens successfully', async () => {
     const appElement = page.locator('#root');
     expect(await appElement.isVisible()).toBe(true);
 });
+
+test('Create new script opens options page with editor', async () => {
+    await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
+
+    // Click create new script button
+    const newScriptBtn = page.locator('button:has-text("Create new script")'); // Using text based selector from translation key 'createNewScript' which is likely 'Create new script' or similar. 
+    // Actually, looking at App.tsx, the button has text "{t('createNewScript')}". 
+    // Let's assume English locale or check the element structure.
+    // The button has class 'new-script-btn'.
+    const btn = page.locator('.new-script-btn');
+    await btn.click();
+
+    // Expect a new tab/page to open
+    const newPage = await browserContext.waitForEvent('page');
+    await newPage.waitForLoadState();
+
+    const url = newPage.url();
+    expect(url).toContain('#/new'); // Or it might redirect to /scripts/:id immediately if we logic is fast? 
+    // Wait, my logic says: setCode(template) -> handleSave -> navigate. 
+    // So initially it should be at #/new.
+
+    // Check if editor is loaded
+    await newPage.waitForSelector('.monaco-editor');
+
+    // Check if "New Script" is in the name input
+    const nameInput = newPage.locator('.script-name-input');
+    await nameInput.waitFor();
+    expect(await nameInput.inputValue()).toBe('New Script');
+
+    // Check if default code is present (partial match)
+    // Monaco content is hard to read directly, but we can check if we are not in "Script Not Found" state.
+    const notFound = newPage.locator('text=Script not found');
+    expect(await notFound.isVisible()).toBe(false);
+});

@@ -11,6 +11,7 @@ import { useI18n } from '../../context/I18nContext';
 
 const ScriptEditor = () => {
     const { id } = useParams<{ id: string }>();
+    const isNew = !id;
     const navigate = useNavigate();
     const { scripts, saveScript, deleteScript } = useApp();
     const { showModal: showGenericModal } = useModal();
@@ -19,30 +20,72 @@ const ScriptEditor = () => {
     // Find script from context
     const scriptFromContext = scripts.find((s: Script) => s.id === id);
 
+    // Initial state setup
     const [code, setCode] = useState<string>('');
     const [name, setName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    // New script specific state
+    const [newScriptId] = useState(() => crypto.randomUUID());
 
     // Permission Modal
     const [permissionModalOpen, setPermissionModalOpen] = useState(false);
     const [requestedPermissions, setRequestedPermissions] = useState<string[]>([]);
     const [pendingSaveResolved, setPendingSaveResolved] = useState<((allowed: boolean) => void) | null>(null);
 
-    // Track if we have initialized from context
+    // Track if we have initialized
     const initializedRef = useRef(false);
 
     useEffect(() => {
-        if (scriptFromContext && !initializedRef.current) {
+        if (!initializedRef.current) {
+            if (isNew) {
+                // Initialize new script
+                const params = new URLSearchParams(window.location.search);
+                const matchUrl = params.get('match') || 'http://*/*';
+
+                const template = `// ==UserScript==
+// @name        New Script
+// @namespace   Violentmonkey Scripts
+// @match       ${matchUrl}
+// @grant       none
+// @version     1.0
+// @author      -
+// @description 
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    // Your code here...
+})();
+`;
+                setCode(template);
+                setName('New Script');
+                initializedRef.current = true;
+            } else if (scriptFromContext) {
+                // Initialize existing script
+                setCode(scriptFromContext.code);
+                setName(scriptFromContext.name);
+                initializedRef.current = true;
+            }
+        }
+    }, [scriptFromContext, isNew]);
+
+    // For existing scripts, if we change IDs (renaming? no), or just switching scripts
+    useEffect(() => {
+        if (!isNew && scriptFromContext && scriptFromContext.id !== id) {
+            // ID changed in URL but we might need to reset if we haven't? 
+            // Actually, the key prop on Route usually handles component reset, 
+            // but here we obey the same component.
             setCode(scriptFromContext.code);
             setName(scriptFromContext.name);
-            initializedRef.current = true;
         }
-    }, [scriptFromContext]);
+    }, [scriptFromContext, id, isNew]);
 
-    const isDirty = scriptFromContext ? code !== scriptFromContext.lastSavedCode : false;
+
+    const lastSavedCode = isNew ? '' : (scriptFromContext?.lastSavedCode || '');
+    const isDirty = code !== lastSavedCode;
 
     const handleSave = useCallback(async () => {
-        if (!scriptFromContext) return;
         setIsSaving(true);
         try {
             const currentCode = code;
@@ -50,10 +93,10 @@ const ScriptEditor = () => {
             const requested = metadata.grant || [];
             const needed = requested.filter(p => p !== 'none');
 
-            const currentGranted = new Set(scriptFromContext.grantedPermissions || []);
+            const currentGranted = new Set(isNew ? [] : (scriptFromContext?.grantedPermissions || []));
             const newPermissions = needed.filter(p => !currentGranted.has(p));
 
-            let grantedPermissions = scriptFromContext.grantedPermissions;
+            let grantedPermissions = isNew ? [] : scriptFromContext?.grantedPermissions;
 
             if (newPermissions.length > 0) {
                 const allowed = await new Promise<boolean>((resolve) => {
@@ -70,15 +113,24 @@ const ScriptEditor = () => {
             }
 
             const updatedScript: Script = {
-                ...scriptFromContext,
+                id: isNew ? newScriptId : scriptFromContext!.id,
+                name: metadata.name || (isNew ? 'New Script' : scriptFromContext!.name),
+                namespace: metadata.namespace || (isNew ? undefined : scriptFromContext!.namespace),
                 code: currentCode,
-                name: metadata.name || scriptFromContext.name || t('newScript'),
-                namespace: metadata.namespace || scriptFromContext.namespace,
-                grantedPermissions
+                enabled: isNew ? true : scriptFromContext!.enabled,
+                grantedPermissions,
+                installDate: isNew ? Date.now() : scriptFromContext!.installDate,
+                updateDate: Date.now()
             };
 
             await saveScript(updatedScript);
             setName(updatedScript.name);
+
+            if (isNew) {
+                // Navigate to the edit URL for the new script so we are no longer in "new" mode
+                // Replace: true so we don't go back to /new
+                navigate(`/scripts/${updatedScript.id}`, { replace: true });
+            }
 
         } catch (e) {
             console.error("Failed to save", e);
@@ -86,9 +138,13 @@ const ScriptEditor = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [code, scriptFromContext, saveScript, showGenericModal, t]);
+    }, [code, scriptFromContext, saveScript, showGenericModal, t, isNew, newScriptId, navigate]);
 
     const handleDelete = () => {
+        if (isNew) {
+            navigate('/scripts');
+            return;
+        }
         if (!scriptFromContext) return;
         showGenericModal('confirm', t('editorConfirmDeleteTitle'), t('editorConfirmDeleteMsg'), async () => {
             await deleteScript(scriptFromContext.id);
@@ -124,15 +180,15 @@ const ScriptEditor = () => {
     const { theme } = useApp();
     const editorTheme = theme === 'light' ? 'vs' : 'vs-dark';
 
-    if (!scriptFromContext) {
+    if (!isNew && !scriptFromContext) {
         if (scripts.length === 0) return <div>{t('editorLoading')}</div>;
         return <div>{t('editorScriptNotFound')}</div>;
     }
 
     // Metadata for header/sidebar info
     const metadata = parseMetadata(code);
-    const sourceUrl = scriptFromContext.sourceUrl;
-    const referrerUrl = scriptFromContext.referrerUrl;
+    const sourceUrl = scriptFromContext?.sourceUrl;
+    const referrerUrl = scriptFromContext?.referrerUrl;
 
     return (
         <div className="app-container">
@@ -163,7 +219,7 @@ const ScriptEditor = () => {
                             <div>{metadata.author || '-'}</div>
 
                             <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelInstalled')}</div>
-                            <div>{scriptFromContext.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
+                            <div>{scriptFromContext?.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
 
                             {referrerUrl && (
                                 <>
@@ -190,25 +246,25 @@ const ScriptEditor = () => {
 
                             )}
 
-                            {(metadata.updateURL || scriptFromContext.updateUrl) && (
+                            {(metadata.updateURL || scriptFromContext?.updateUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.updateURL || scriptFromContext.updateUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.updateURL || scriptFromContext?.updateUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.updateURL || scriptFromContext.updateUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.updateURL || scriptFromContext?.updateUrl}</span>
                                         </a>
                                     </div>
                                 </>
                             )}
 
-                            {(metadata.downloadURL || scriptFromContext.downloadUrl) && (
+                            {(metadata.downloadURL || scriptFromContext?.downloadUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.downloadURL || scriptFromContext.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.downloadURL || scriptFromContext?.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.downloadURL || scriptFromContext.downloadUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.downloadURL || scriptFromContext?.downloadUrl}</span>
                                         </a>
                                     </div>
                                 </>
@@ -342,7 +398,7 @@ const ScriptEditor = () => {
 
             <PermissionModal
                 isOpen={permissionModalOpen}
-                scriptName={scriptFromContext.name}
+                scriptName={scriptFromContext?.name || name}
                 permissions={requestedPermissions}
                 onConfirm={handlePermissionConfirm}
                 onCancel={handlePermissionCancel}

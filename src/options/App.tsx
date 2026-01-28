@@ -69,6 +69,7 @@ function App() {
                 <Route path="/help" element={<Help />} />
               </Route>
               <Route path="/scripts/:id" element={<ScriptEditor />} />
+              <Route path="/new" element={<ScriptEditor />} />
             </Routes>
           </HashRouter>
         </ModalProvider>

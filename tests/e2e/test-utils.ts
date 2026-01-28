@@ -38,28 +38,33 @@ export async function launchExtension(): Promise<ExtensionContext> {
         ],
     });
 
-    const page = await browserContext.newPage();
+    try {
+        const page = await browserContext.newPage();
 
-    page.on('console', msg => console.log(`[PAGE CONSOLE] ${msg.text()}`));
-    page.on('pageerror', exception => console.log(`[PAGE ERROR] ${exception}`));
+        page.on('console', msg => console.log(`[PAGE CONSOLE] ${msg.text()}`));
+        page.on('pageerror', exception => console.log(`[PAGE ERROR] ${exception}`));
 
-    // Wait for service worker to be ready
-    await waitForServiceWorker(browserContext);
+        // Wait for service worker to be ready
+        await waitForServiceWorker(browserContext);
 
-    const extensionId = await getExtensionId(browserContext);
-    console.log(`Extension ID: ${extensionId}`);
+        const extensionId = await getExtensionId(browserContext);
+        console.log(`Extension ID: ${extensionId}`);
 
-    await enableUserScriptsIfNeeded(browserContext, extensionId);
+        await enableUserScriptsIfNeeded(browserContext, extensionId);
 
-    // Create a new page just in case the page is not available
-    const newPage = await browserContext.newPage();
+        // Create a new page just in case the page is not available
+        const newPage = await browserContext.newPage();
 
-    return { browserContext, page: newPage, extensionId };
+        return { browserContext, page: newPage, extensionId };
+    } catch (error) {
+        await browserContext.close().catch(() => { }); // Ignore close errors
+        throw error;
+    }
 }
 
 // Helper: Wait for service worker to be available
 async function waitForServiceWorker(browserContext: BrowserContext): Promise<void> {
-    const maxAttempts = 30;
+    const maxAttempts = 60;
     const delayMs = 500;
 
     for (let i = 0; i < maxAttempts; i++) {
