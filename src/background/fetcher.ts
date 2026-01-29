@@ -24,9 +24,10 @@ async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
             try {
                 const res = await fetch(u);
                 if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-                return await res.text();
+                const text = await res.text();
+                return { success: true, data: text };
             } catch (e) {
-                throw new Error(e instanceof Error ? e.message : String(e));
+                return { success: false, error: e instanceof Error ? e.message : String(e) };
             }
         },
         args: [targetUrl]
@@ -35,33 +36,57 @@ async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
     // Cleanup
     chrome.tabs.remove(tab.id);
 
+    // Process results
     if (results && results[0] && results[0].result) {
-        return results[0].result;
-    }
-    throw new Error("Failed to retrieve script content from bridge");
-}
-
-// Helper to fetch script content directly from background (used by Install page and others via Message)
-export async function fetchScriptContent(url: string): Promise<string> {
-    // Optimization: Skip direct fetch for http/https to avoid CSP errors (User Request)
-    // Only try direct fetch for local/internal resources
-    if (url.startsWith('chrome-extension:') || url.startsWith('file:') || url.startsWith('data:')) {
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                return await response.text();
-            }
-        } catch {
-            // Fallback to bridge if direct fetch fails (though bridge might also fail for local)
+        const res = results[0].result as { success: boolean, data?: string, error?: string };
+        if (res.success && typeof res.data === 'string') {
+            return res.data;
+        } else {
+            throw new Error(res.error || "Unknown bridge fetch error");
         }
     }
 
-    const bridgeUrl = `https://shieldmonkey.github.io/bridge/install`;
+    throw new Error("Failed to retrieve script content from bridge (empty result)");
+}
+
+const pendingFetches = new Map<string, Promise<string>>();
+
+// Helper to fetch script content directly from background (used by Install page and others via Message)
+export async function fetchScriptContent(url: string): Promise<string> {
+    // Check for pending requests to avoid multiple tabs
+    if (pendingFetches.has(url)) {
+        return pendingFetches.get(url)!;
+    }
+
+    const fetchPromise = (async () => {
+        // Optimization: Skip bridge for local resources where CSP allows fetch
+        // This includes extensions resources, data URIs, etc.
+        if (url.startsWith('chrome-extension:') || url.startsWith('file:') || url.startsWith('data:') || url.startsWith('moz-extension:')) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    return await response.text();
+                }
+            } catch {
+                // Fallback to bridge if direct fetch fails (though bridge might also fail for local)
+            }
+        }
+
+        const bridgeUrl = `https://shieldmonkey.github.io/bridge/install`;
+
+        try {
+            return await fetchViaBridge(bridgeUrl, url);
+        } catch (e) {
+            console.error("Bridge fetch failed", e);
+            throw new Error(`Failed to fetch script: ${(e as Error).message}`);
+        }
+    })();
+
+    pendingFetches.set(url, fetchPromise);
 
     try {
-        return await fetchViaBridge(bridgeUrl, url);
-    } catch (e) {
-        console.error("Bridge fetch failed", e);
-        throw new Error(`Failed to fetch script: ${(e as Error).message}`);
+        return await fetchPromise;
+    } finally {
+        pendingFetches.delete(url);
     }
 }

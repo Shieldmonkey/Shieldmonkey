@@ -224,5 +224,14 @@
   "helpCreatedBy": { "message": "作成者:" },
   "scriptInfo": { "message": "スクリプト情報" },
   "editorLabelName": { "message": "名前" },
-  "editorLabelNamespace": { "message": "名前空間" }
+  "editorLabelNamespace": { "message": "名前空間" },
+  "globalStatusActive": { "message": "有効" },
+  "globalStatusPaused": { "message": "一時停止中" },
+  "globalStatusDescActive": { "message": "現在、ユーザースクリプトは正常に動作しています。" },
+  "globalStatusDescPaused": { "message": "すべてのユーザースクリプトの実行が停止されています。" },
+  "sectionExportImport": { "message": "インポートとエクスポート" },
+  "exportDesc": { "message": "すべてのスクリプトを単一のJSONファイルとして保存します。" },
+  "importDesc": { "message": "以前にエクスポートしたJSONファイルからスクリプトを復元します。" },
+  "btnExport": { "message": "スクリプトをエクスポート" },
+  "btnImport": { "message": "スクリプトをインポート" }
 }

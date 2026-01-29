@@ -45,7 +45,7 @@
       "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; style-src 'unsafe-inline'; default-src 'none'"
+    "extension_pages": "script-src 'self'; connect-src 'self'; object-src 'none'; style-src 'unsafe-inline'; default-src 'none'"
   },
   "browser_specific_settings": {
     "gecko": {

@@ -224,5 +224,14 @@
   "helpCreatedBy": { "message": "Created by:" },
   "scriptInfo": { "message": "Script Info" },
   "editorLabelName": { "message": "Name" },
-  "editorLabelNamespace": { "message": "Namespace" }
+  "editorLabelNamespace": { "message": "Namespace" },
+  "globalStatusActive": { "message": "Active" },
+  "globalStatusPaused": { "message": "Paused" },
+  "globalStatusDescActive": { "message": "User scripts are running normally." },
+  "globalStatusDescPaused": { "message": "Execution of all user scripts is suspended." },
+  "sectionExportImport": { "message": "Export / Import" },
+  "exportDesc": { "message": "Save all your scripts to a single JSON file." },
+  "importDesc": { "message": "Restore scripts from a previously exported JSON file." },
+  "btnExport": { "message": "Export Scripts" },
+  "btnImport": { "message": "Import Scripts" }
 }

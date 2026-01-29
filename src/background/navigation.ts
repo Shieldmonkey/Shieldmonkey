@@ -1,7 +1,7 @@
 // Detect navigation to .user.js files and redirect to loader page
 export function setupNavigationListener() {
     chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-        if (details.frameId === 0 && details.url && /\.user\.js([?#].*)?$/i.test(details.url)) {
+        if (details.frameId === 0 && details.url && /^[^?#]+\.user\.js([?#].*)?$/i.test(details.url)) {
             let referrer = '';
             try {
                 const tab = await chrome.tabs.get(details.tabId);

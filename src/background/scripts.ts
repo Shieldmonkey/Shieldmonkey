@@ -2,7 +2,6 @@ import { parseMetadata } from '../utils/metadataParser';
 import { getGMAPIScript } from '../utils/scriptGenerator';
 import type { Script } from './types';
 import { updateActiveTabBadge } from './badge';
-import { fetchScriptContent } from './fetcher';
 import {
     isUserScriptsAvailable,
     configureUserScriptsWorld,
@@ -11,34 +10,6 @@ import {
     registerUserScripts
 } from '../utils/browserPolyfill';
 
-export async function preloadExampleScripts() {
-    if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        const examples = [
-            'gm_api_test.user.js',
-            'gm_permission_violation.user.js',
-            'isolation_test_A.user.js',
-            'isolation_test_B.user.js',
-            'compatibility_test.user.js'
-        ];
-
-        for (const filename of examples) {
-            try {
-                const url = chrome.runtime.getURL(`examples/${filename}`);
-                const code = await fetchScriptContent(url);
-                const id = `dev-example-${filename.replace('.user.js', '').replace(/[^a-z0-9]/g, '-')}`;
-
-                await handleSaveScript({
-                    id,
-                    name: filename,
-                    code,
-                    enabled: true
-                });
-            } catch (e) {
-                console.warn(`Failed to load example script ${filename}:`, e);
-            }
-        }
-    }
-}
 
 export async function reloadAllScripts() {
     if (await isUserScriptsAvailable()) {

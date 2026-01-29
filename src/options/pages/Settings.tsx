@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Save, FolderInput, Clock, Check, AlertCircle, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
+import { Save, FolderInput, Clock, Check, AlertCircle, RotateCcw, Sun, Moon, Monitor, Upload, Download } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { saveDirectoryHandle, getDirectoryHandle } from '../../utils/backupStorage';
@@ -99,13 +99,18 @@ const Settings = () => {
             t('confirmRestoreTitle'),
             t('confirmRestoreMsg', [file.name]),
             async () => {
+                let count = 0;
                 try {
                     setRestoreStatus('idle');
                     setRestoreMessage('');
                     setIsBackupLoading(true);
 
-                    const count = await performRestoreLegacy(file);
-                    await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                    count = await performRestoreLegacy(file);
+                    try {
+                        await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                    } catch (msgError) {
+                        console.warn("Failed to notify background script of restore:", msgError);
+                    }
 
                     setRestoreStatus('success');
                     setRestoreMessage(t('restoreSuccessMsg', [String(count)]));
@@ -137,13 +142,18 @@ const Settings = () => {
                 t('confirmRestoreTitle'),
                 t('confirmRestoreMsg', [handle.name]),
                 async () => {
+                    let count = 0;
                     try {
                         setRestoreStatus('idle');
                         setRestoreMessage('');
                         setIsBackupLoading(true);
 
-                        const count = await performRestore(handle);
-                        await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                        count = await performRestore(handle);
+                        try {
+                            await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                        } catch (msgError) {
+                            console.warn("Failed to notify background script of restore:", msgError);
+                        }
 
                         setRestoreStatus('success');
                         setRestoreMessage(t('restoreSuccessMsg', [String(count)]));
@@ -185,14 +195,44 @@ const Settings = () => {
 
                 {/* Status Section for Mobile (or general access) since sidebar hidden on mobile */}
                 <div style={{ marginBottom: '32px' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('extensionLabel') || 'Extension Status'}</h3>
-                    <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontWeight: 600 }}>{extensionEnabled ? t('enabled') || 'Enabled' : t('disabled') || 'Disabled'}</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>v{chrome.runtime.getManifest().version}</span>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('extensionLabel')}</h3>
+                    <div className="settings-card" style={{
+                        background: 'var(--surface-bg)',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        border: extensionEnabled ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        boxShadow: extensionEnabled ? '0 0 0 1px var(--accent-color)' : 'none',
+                        transition: 'all 0.2s ease'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '80%' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{
+                                    fontWeight: 700,
+                                    fontSize: '1.1rem',
+                                    color: extensionEnabled ? 'var(--accent-color)' : 'var(--text-secondary)'
+                                }}>
+                                    {extensionEnabled ? (t('globalStatusActive') || 'Active') : (t('globalStatusPaused') || 'Paused')}
+                                </span>
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    background: 'var(--bg-color)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-secondary)'
+                                }}>
+                                    v{chrome.runtime.getManifest().version}
+                                </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                {extensionEnabled ? (t('globalStatusDescActive') || 'User scripts are running normally.') : (t('globalStatusDescPaused') || 'Execution of all user scripts is suspended.')}
+                            </p>
                         </div>
-                        {/* Toggle Switch Component - Reusing existing class based switch or importing ToggleSwitch if available */}
-                        <label className="switch">
+
+                        <label className="switch" style={{ transform: 'scale(1.2)', marginRight: '8px' }}>
                             <input type="checkbox" checked={extensionEnabled} onChange={(e) => toggleExtension(e.target.checked)} />
                             <span className="slider"></span>
                         </label>
@@ -247,145 +287,218 @@ const Settings = () => {
                 </div>
 
                 <div>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionBackupRestore')}</h3>
-                    <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600 }}>{t('sectionBackupDir')}</h4>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{
-                                        flex: 1,
-                                        background: fsSupported ? 'rgba(0,0,0,0.2)' : 'var(--bg-color)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '6px',
-                                        padding: '8px 12px',
-                                        fontSize: '0.9rem',
-                                        color: (backupDirName && fsSupported) ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                        fontFamily: 'monospace'
-                                    }}>
-                                        {!fsSupported
-                                            ? "Directory backup not supported in this browser. Please use 'Backup Now' to download."
-                                            : (backupDirName || t('noDirSelected'))}
+                    {fsSupported ? (
+                        /* CHROMIUM / FILE SYSTEM API SUPPORTED UI */
+                        <>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionBackupRestore')}</h3>
+                            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600 }}>{t('sectionBackupDir')}</h4>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                flex: 1,
+                                                background: fsSupported ? 'rgba(0,0,0,0.2)' : 'var(--bg-color)',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '6px',
+                                                padding: '8px 12px',
+                                                fontSize: '0.9rem',
+                                                color: (backupDirName && fsSupported) ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                fontFamily: 'monospace'
+                                            }}>
+                                                {backupDirName || t('noDirSelected')}
+                                            </div>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={handleSelectBackupDir}
+                                                disabled={isBackupLoading}
+                                                title="Select backup folder"
+                                            >
+                                                <FolderInput size={18} />
+                                                <span>{t('btnSelect')}</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button
-                                        className="btn-secondary"
-                                        onClick={handleSelectBackupDir}
-                                        disabled={isBackupLoading || !fsSupported}
-                                        title={fsSupported ? "Select backup folder" : "Not available"}
-                                        style={!fsSupported ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                                    >
-                                        <FolderInput size={18} />
-                                        <span>{t('btnSelect')}</span>
-                                    </button>
+
+                                    <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '8px 0' }} />
+
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 600 }}>{t('sectionAutoBackup')}</h4>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                {t('autoBackupDesc')}
+                                            </p>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <label className="switch">
+                                                <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={!backupDirName} />
+                                                <span className="slider"></span>
+                                            </label>
+                                            <select
+                                                value={backupFrequency}
+                                                onChange={(e) => handleFrequencyChange(e.target.value)}
+                                                disabled={!autoBackup || !backupDirName}
+                                                style={{
+                                                    background: 'var(--bg-color)',
+                                                    color: 'var(--text-primary)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '6px',
+                                                    padding: '4px 8px',
+                                                    fontSize: '0.85rem',
+                                                    opacity: (!autoBackup) ? 0.5 : 1
+                                                }}
+                                            >
+                                                <option value="hourly">{t('freqHourly')}</option>
+                                                <option value="daily">{t('freqDaily')}</option>
+                                                <option value="weekly">{t('freqWeekly')}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {backupDirName && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                                            <button
+                                                className="btn-primary"
+                                                onClick={handleManualBackup}
+                                                disabled={isBackupLoading}
+                                                style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <Save size={18} />
+                                                <span>{isBackupLoading ? t('btnWorking') : t('btnBackupNow')}</span>
+                                            </button>
+
+                                            {backupStatus === 'success' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                    <Check size={18} />
+                                                    <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                            {backupStatus === 'error' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                    <AlertCircle size={18} />
+                                                    <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                            {lastBackupTime && backupStatus !== 'success' && backupStatus !== 'error' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                    <Clock size={14} />
+                                                    <span>{t('lastBackupPrefix')}{new Date(lastBackupTime).toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('sectionRestore')}</h4>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={handleManualRestore}
+                                                disabled={isBackupLoading}
+                                                style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <RotateCcw size={18} />
+                                                <span>{t('btnRestore')}</span>
+                                            </button>
+                                            {restoreStatus === 'success' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                    <Check size={18} />
+                                                    <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                            {restoreStatus === 'error' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                    <AlertCircle size={18} />
+                                                    <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                        </>
+                    ) : (
+                        /* FIREFOX / LEGACY FALLBACK UI */
+                        <>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionExportImport') || 'Export / Import'}</h3>
+                            <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '0', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
 
-                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '8px 0' }} />
-
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 600 }}>{t('sectionAutoBackup')}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        {t('autoBackupDesc')}
+                                {/* EXPORT */}
+                                <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
+                                    <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Download size={20} className="text-secondary" />
+                                        {t('btnExport') || 'Export'}
+                                    </h4>
+                                    <p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        {t('exportDesc') || 'Save all your scripts to a single JSON file.'}
                                     </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <button
+                                            className="btn-primary"
+                                            onClick={handleManualBackup}
+                                            disabled={isBackupLoading}
+                                        >
+                                            <Download size={18} />
+                                            <span>{isBackupLoading ? t('btnWorking') : (t('btnExport') || 'Export')}</span>
+                                        </button>
+
+                                        {backupStatus === 'success' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                <Check size={18} />
+                                                <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                            </div>
+                                        )}
+                                        {backupStatus === 'error' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                <AlertCircle size={18} />
+                                                <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <label className="switch" style={!fsSupported ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
-                                        <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={(!backupDirName && fsSupported) || !fsSupported} />
-                                        <span className="slider"></span>
-                                    </label>
-                                    <select
-                                        value={backupFrequency}
-                                        onChange={(e) => handleFrequencyChange(e.target.value)}
-                                        disabled={!autoBackup || (!backupDirName && fsSupported) || !fsSupported}
-                                        style={{
-                                            background: 'var(--bg-color)',
-                                            color: 'var(--text-primary)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '6px',
-                                            padding: '4px 8px',
-                                            fontSize: '0.85rem',
-                                            opacity: (!autoBackup || !fsSupported) ? 0.5 : 1
-                                        }}
-                                    >
-                                        <option value="hourly">{t('freqHourly')}</option>
-                                        <option value="daily">{t('freqDaily')}</option>
-                                        <option value="weekly">{t('freqWeekly')}</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            {/* Manual Backup Button - Always available (fallback or FS) */}
-                            {(backupDirName || !fsSupported) && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-                                    <button
-                                        className="btn-primary"
-                                        onClick={handleManualBackup}
-                                        disabled={isBackupLoading}
-                                        style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                    >
-                                        <Save size={18} />
-                                        <span>{isBackupLoading ? t('btnWorking') : t('btnBackupNow')}</span>
-                                    </button>
-
-                                    {backupStatus === 'success' && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
-                                            <Check size={18} />
-                                            <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
-                                        </div>
-                                    )}
-                                    {backupStatus === 'error' && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
-                                            <AlertCircle size={18} />
-                                            <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
-                                        </div>
-                                    )}
-                                    {lastBackupTime && backupStatus !== 'success' && backupStatus !== 'error' && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                            <Clock size={14} />
-                                            <span>{t('lastBackupPrefix')}{new Date(lastBackupTime).toLocaleString()}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('sectionRestore')}</h4>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    {/* Uncontrolled input for legacy restore */}
-                                    <input
-                                        type="file"
-                                        accept=".json"
-                                        ref={restoreInputRef}
-                                        style={{ display: 'none' }}
-                                        onChange={handleRestoreFileSelected}
-                                    />
-
-                                    <button
-                                        className="btn-secondary"
-                                        onClick={handleManualRestore}
-                                        disabled={isBackupLoading}
-                                        style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                    >
-                                        <RotateCcw size={18} />
-                                        <span>{t('btnRestore')}</span>
-                                    </button>
-                                    {restoreStatus === 'success' && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
-                                            <Check size={18} />
-                                            <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
-                                        </div>
-                                    )}
-                                    {restoreStatus === 'error' && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
-                                            <AlertCircle size={18} />
-                                            <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
-                                        </div>
-                                    )}
+                                {/* IMPORT */}
+                                <div style={{ padding: '24px' }}>
+                                    <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Upload size={20} className="text-secondary" />
+                                        {t('btnImport') || 'Import'}
+                                    </h4>
+                                    <p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        {t('importDesc') || 'Restore scripts from a previously exported JSON file.'}
+                                    </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <input
+                                            type="file"
+                                            accept=".json"
+                                            ref={restoreInputRef}
+                                            style={{ display: 'none' }}
+                                            onChange={handleRestoreFileSelected}
+                                        />
+                                        <button
+                                            className="btn-secondary"
+                                            onClick={() => restoreInputRef.current?.click()}
+                                            disabled={isBackupLoading}
+                                        >
+                                            <Upload size={18} />
+                                            <span>{t('btnImport') || 'Import'}</span>
+                                        </button>
+                                        {restoreStatus === 'success' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                <Check size={18} />
+                                                <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                            </div>
+                                        )}
+                                        {restoreStatus === 'error' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                <AlertCircle size={18} />
+                                                <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
