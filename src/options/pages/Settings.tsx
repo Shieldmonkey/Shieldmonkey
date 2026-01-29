@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Save, FolderInput, Clock, Check, AlertCircle, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { saveDirectoryHandle, getDirectoryHandle } from '../../utils/backupStorage';
-import { performBackup, performRestore } from '../../utils/backupManager';
+import { performBackup, performRestore, performBackupLegacy, performRestoreLegacy } from '../../utils/backupManager';
 import { useI18n } from '../../context/I18nContext';
+import { isFileSystemSupported } from '../../utils/browserPolyfill';
 
 
 const Settings = () => {
@@ -22,13 +23,20 @@ const Settings = () => {
     const [restoreMessage, setRestoreMessage] = useState<string>('');
     const [autoBackup, setAutoBackup] = useState(false);
     const [backupFrequency, setBackupFrequency] = useState('daily');
+    const [fsSupported, setFsSupported] = useState(true);
+    const restoreInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        getDirectoryHandle().then(async (handle) => {
-            if (handle) {
-                setBackupDirName(handle.name);
-            }
-        });
+        const supported = isFileSystemSupported();
+        setFsSupported(supported);
+
+        if (supported) {
+            getDirectoryHandle().then(async (handle) => {
+                if (handle) {
+                    setBackupDirName(handle.name);
+                }
+            });
+        }
 
         chrome.storage.local.get(['lastBackupTime', 'autoBackup', 'backupFrequency'], (res) => {
             if (res.lastBackupTime) setLastBackupTime(res.lastBackupTime as string);
@@ -38,6 +46,7 @@ const Settings = () => {
     }, []);
 
     const handleSelectBackupDir = async () => {
+        if (!fsSupported) return;
         try {
             setBackupStatus('idle');
             setBackupMessage('');
@@ -61,7 +70,12 @@ const Settings = () => {
             setBackupStatus('idle');
             setBackupMessage('');
             setIsBackupLoading(true);
-            const count = await performBackup();
+            let count;
+            if (fsSupported) {
+                count = await performBackup();
+            } else {
+                count = await performBackupLegacy();
+            }
             const time = new Date().toISOString();
             setLastBackupTime(time);
             chrome.storage.local.set({ lastBackupTime: time });
@@ -76,7 +90,46 @@ const Settings = () => {
         }
     };
 
+    const handleRestoreFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        showModal(
+            'confirm',
+            t('confirmRestoreTitle'),
+            t('confirmRestoreMsg', [file.name]),
+            async () => {
+                try {
+                    setRestoreStatus('idle');
+                    setRestoreMessage('');
+                    setIsBackupLoading(true);
+
+                    const count = await performRestoreLegacy(file);
+                    await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+
+                    setRestoreStatus('success');
+                    setRestoreMessage(t('restoreSuccessMsg', [String(count)]));
+                    showModal('success', t('restoreCompleteTitle'), t('restoreCompleteMsg', [String(count)]));
+                } catch (err) {
+                    console.error("Restore failed", err);
+                    setRestoreStatus('error');
+                    setRestoreMessage((err as Error).message);
+                    showModal('error', t('restoreFailedTitle'), (err as Error).message);
+                } finally {
+                    setIsBackupLoading(false);
+                    // Reset input
+                    if (restoreInputRef.current) restoreInputRef.current.value = '';
+                }
+            }
+        );
+    };
+
     const handleManualRestore = async () => {
+        if (!fsSupported) {
+            restoreInputRef.current?.click();
+            return;
+        }
+
         try {
             const handle = await window.showDirectoryPicker();
             showModal(
@@ -186,17 +239,25 @@ const Settings = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                         flex: 1,
-                                        background: 'rgba(0,0,0,0.2)',
+                                        background: fsSupported ? 'rgba(0,0,0,0.2)' : 'var(--bg-color)',
                                         border: '1px solid var(--border-color)',
                                         borderRadius: '6px',
                                         padding: '8px 12px',
                                         fontSize: '0.9rem',
-                                        color: backupDirName ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                        color: (backupDirName && fsSupported) ? 'var(--text-primary)' : 'var(--text-secondary)',
                                         fontFamily: 'monospace'
                                     }}>
-                                        {backupDirName || t('noDirSelected')}
+                                        {!fsSupported
+                                            ? "Directory backup not supported in this browser. Please use 'Backup Now' to download."
+                                            : (backupDirName || t('noDirSelected'))}
                                     </div>
-                                    <button className="btn-secondary" onClick={handleSelectBackupDir} disabled={isBackupLoading} title="Select backup folder">
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={handleSelectBackupDir}
+                                        disabled={isBackupLoading || !fsSupported}
+                                        title={fsSupported ? "Select backup folder" : "Not available"}
+                                        style={!fsSupported ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                    >
                                         <FolderInput size={18} />
                                         <span>{t('btnSelect')}</span>
                                     </button>
@@ -213,21 +274,22 @@ const Settings = () => {
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <label className="switch">
-                                        <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={!backupDirName} />
+                                    <label className="switch" style={!fsSupported ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
+                                        <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={(!backupDirName && fsSupported) || !fsSupported} />
                                         <span className="slider"></span>
                                     </label>
                                     <select
                                         value={backupFrequency}
                                         onChange={(e) => handleFrequencyChange(e.target.value)}
-                                        disabled={!autoBackup || !backupDirName}
+                                        disabled={!autoBackup || (!backupDirName && fsSupported) || !fsSupported}
                                         style={{
                                             background: 'var(--bg-color)',
                                             color: 'var(--text-primary)',
                                             border: '1px solid var(--border-color)',
                                             borderRadius: '6px',
                                             padding: '4px 8px',
-                                            fontSize: '0.85rem'
+                                            fontSize: '0.85rem',
+                                            opacity: (!autoBackup || !fsSupported) ? 0.5 : 1
                                         }}
                                     >
                                         <option value="hourly">{t('freqHourly')}</option>
@@ -237,7 +299,8 @@ const Settings = () => {
                                 </div>
                             </div>
 
-                            {backupDirName && (
+                            {/* Manual Backup Button - Always available (fallback or FS) */}
+                            {(backupDirName || !fsSupported) && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
                                     <button
                                         className="btn-primary"
@@ -273,6 +336,15 @@ const Settings = () => {
                             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
                                 <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>{t('sectionRestore')}</h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {/* Uncontrolled input for legacy restore */}
+                                    <input
+                                        type="file"
+                                        accept=".json"
+                                        ref={restoreInputRef}
+                                        style={{ display: 'none' }}
+                                        onChange={handleRestoreFileSelected}
+                                    />
+
                                     <button
                                         className="btn-secondary"
                                         onClick={handleManualRestore}

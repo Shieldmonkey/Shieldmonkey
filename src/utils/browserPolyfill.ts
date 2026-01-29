@@ -19,6 +19,10 @@ export const isFirefox = (): boolean => {
     return !!globalScope.browser && !!globalScope.browser.runtime;
 };
 
+export const isFileSystemSupported = (): boolean => {
+    return 'showDirectoryPicker' in window;
+};
+
 /**
  * Request permissions using the appropriate API.
  * Firefox uses browser.permissions.request (Promise)

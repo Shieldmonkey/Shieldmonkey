@@ -111,6 +111,65 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
     return scripts.length;
 }
 
+export async function performBackupLegacy(): Promise<number> {
+    const scripts = await new Promise<Script[]>((resolve) => {
+        chrome.storage.local.get(['scripts'], (result) => {
+            resolve((result.scripts as Script[]) || []);
+        });
+    });
+
+    const data = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        version: chrome.runtime.getManifest().version,
+        scripts: scripts
+    }, null, 2);
+
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shieldmonkey_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    return scripts.length;
+}
+
+export async function performRestoreLegacy(file: File): Promise<number> {
+    const text = await file.text();
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch {
+        throw new Error("Invalid backup file format.");
+    }
+
+    if (!data.scripts || !Array.isArray(data.scripts)) {
+        throw new Error("Invalid backup format: No scripts array found.");
+    }
+
+    const restoreScripts = data.scripts as Script[];
+
+    const currentData = await new Promise<{ scripts: Script[] }>((resolve) => {
+        chrome.storage.local.get(['scripts'], (res) => resolve(res as { scripts: Script[] }));
+    });
+    const currentScripts = currentData.scripts || [];
+
+    const scriptMap = new Map<string, Script>();
+    currentScripts.forEach(s => scriptMap.set(s.id, s));
+
+    for (const script of restoreScripts) {
+        scriptMap.set(script.id, script);
+    }
+
+    const newScripts = Array.from(scriptMap.values());
+    await chrome.storage.local.set({ scripts: newScripts });
+
+    return restoreScripts.length;
+}
+
 export async function performRestore(existingHandle?: FileSystemDirectoryHandle): Promise<number> {
     let handle = existingHandle;
     if (!handle) {

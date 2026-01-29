@@ -26,8 +26,38 @@ export async function processScriptContent(content: string): Promise<Script> {
     };
 }
 
-export async function importFromFile(): Promise<Script[]> {
+export async function importFromFileLegacy(): Promise<Script[]> {
+    return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.user.js,.js';
+        input.multiple = true;
+        input.style.display = 'none';
 
+        input.onchange = async () => {
+            const files = Array.from(input.files || []);
+            const scripts: Script[] = [];
+            for (const file of files) {
+                const text = await file.text();
+                scripts.push(await processScriptContent(text));
+            }
+            resolve(scripts);
+            input.remove();
+        };
+        input.oncancel = () => { // Note: cancel event might not fire in all older browsers but good for modern
+            resolve([]);
+            input.remove();
+        };
+
+        document.body.appendChild(input);
+        input.click();
+    });
+}
+
+export async function importFromFile(): Promise<Script[]> {
+    if (!('showOpenFilePicker' in window)) {
+        return importFromFileLegacy();
+    }
 
     let handles;
     try {
@@ -49,7 +79,45 @@ export async function importFromFile(): Promise<Script[]> {
     return scripts;
 }
 
+export async function importFromDirectoryLegacy(): Promise<Script[]> {
+    return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        // Non-standard attributes for directory selection
+        input.setAttribute('webkitdirectory', '');
+        input.setAttribute('directory', '');
+        input.multiple = true;
+        input.style.display = 'none';
+
+        input.onchange = async () => {
+            const files = Array.from(input.files || []);
+            const scripts: Script[] = [];
+            for (const file of files) {
+                if (file.name.endsWith('.user.js') || file.name.endsWith('.js')) {
+                    const text = await file.text();
+                    if (text.includes('==UserScript==')) {
+                        scripts.push(await processScriptContent(text));
+                    }
+                }
+            }
+            resolve(scripts);
+            input.remove();
+        };
+        input.oncancel = () => {
+            resolve([]);
+            input.remove();
+        };
+
+        document.body.appendChild(input);
+        input.click();
+    });
+}
+
 export async function importFromDirectory(): Promise<Script[]> {
+    if (!('showDirectoryPicker' in window)) {
+        return importFromDirectoryLegacy();
+    }
+
     let dirHandle;
     try {
         dirHandle = await window.showDirectoryPicker();
