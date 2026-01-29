@@ -1,4 +1,4 @@
-import { BrowserContext, Page, chromium } from 'playwright';
+import { type BrowserContext, type Page, chromium } from 'playwright';
 import { readFileSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 

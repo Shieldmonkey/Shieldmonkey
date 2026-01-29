@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import { launchExtension, TIMEOUT, installScriptFromPath } from './test-utils';
-import { BrowserContext, Page } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 import path from 'path';
 
 let browserContext: BrowserContext;

@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import { launchExtension, getExtensionUrl, TIMEOUT } from './test-utils';
-import { BrowserContext } from 'playwright';
+import type { BrowserContext } from 'playwright';
 
 let browserContext: BrowserContext;
 let extensionId: string;
