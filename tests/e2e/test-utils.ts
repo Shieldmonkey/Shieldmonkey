@@ -1,5 +1,5 @@
 import { BrowserContext, Page, chromium } from 'playwright';
-import { readFileSync } from 'fs';
+import { readFileSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 
 // Constants
@@ -28,6 +28,15 @@ export interface MockScript {
 
 // Main extension launcher
 export async function launchExtension(): Promise<ExtensionContext> {
+    // Clean up previous user data dir to avoid SingletonLock errors
+    if (existsSync(USER_DATA_DIR)) {
+        try {
+            rmSync(USER_DATA_DIR, { recursive: true, force: true });
+        } catch (e) {
+            console.warn(`[WARN] Failed to clean up user data dir: ${e}`);
+        }
+    }
+
     const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
         headless: false, // Use --headless=new in args instead
         locale: 'en',
