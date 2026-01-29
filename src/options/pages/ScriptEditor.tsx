@@ -204,6 +204,16 @@ const ScriptEditor = () => {
         }
     };
 
+    const isValidLink = (urlStr: string | undefined): boolean => {
+        if (!urlStr) return false;
+        try {
+            const url = new URL(urlStr);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    };
+
     return (
         <div className="app-container">
             {/* Mobile Overlay */}
@@ -217,7 +227,16 @@ const ScriptEditor = () => {
             <aside className={`script-editor-sidebar ${isMobileInfoOpen ? 'open' : ''}`}>
                 <div
                     className="sidebar-header"
-                    style={{ cursor: 'pointer', justifyContent: 'space-between', paddingLeft: '24px', paddingRight: '16px' }}
+                    style={{
+                        cursor: 'pointer',
+                        justifyContent: 'space-between',
+                        paddingLeft: '24px',
+                        paddingRight: '16px',
+                        height: '60px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxSizing: 'border-box'
+                    }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button
@@ -228,6 +247,7 @@ const ScriptEditor = () => {
                         >
                             <ArrowLeft size={20} />
                         </button>
+                        <Info size={16} />
                         <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: 0 }}>{t('scriptInfo')}</h2>
                     </div>
                     {/* Mobile Close Button */}
@@ -243,10 +263,6 @@ const ScriptEditor = () => {
 
                     {/* Info Section */}
                     <div style={{ marginBottom: '32px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
-                            <Info size={16} />
-                            <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderInfo')}</h3>
-                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 16px', fontSize: '0.85rem' }}>
                             {/* Name & Namespace (Mobile: visible here) */}
                             <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelName')}</div>
@@ -264,83 +280,56 @@ const ScriptEditor = () => {
                             <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelInstalled')}</div>
                             <div>{scriptFromContext?.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
 
-                            {referrerUrl && (
+                            {isValidLink(referrerUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelPage')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={referrerUrl} target="_blank" rel="noopener noreferrer" title={referrerUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(referrerUrl)}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(referrerUrl!)}</span>
                                         </a>
                                     </div>
                                 </>
                             )}
 
-                            {sourceUrl && (
+                            {isValidLink(sourceUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelSource')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title={sourceUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(sourceUrl)}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(sourceUrl!)}</span>
                                         </a>
                                     </div>
                                 </>
 
                             )}
 
-                            {metadata.updateURL && (
+                            {isValidLink(metadata.updateURL) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={metadata.updateURL} target="_blank" rel="noopener noreferrer" title={metadata.updateURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL)}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL!)}</span>
                                         </a>
                                     </div>
                                 </>
                             )}
 
-                            {metadata.downloadURL && (
+                            {isValidLink(metadata.downloadURL) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
                                         <a href={metadata.downloadURL} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL)}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL!)}</span>
                                         </a>
                                     </div>
                                 </>
                             )}
                         </div>
                     </div>
-
-                    {/* Permissions Section */}
-                    {
-                        (metadata.grant || []).filter(p => p !== 'none').length > 0 && (
-                            <div style={{ marginBottom: '32px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
-                                    <Shield size={16} />
-                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderPermissions')}</h3>
-                                </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                    {(metadata.grant || []).filter(p => p !== 'none').map(p => (
-                                        <span key={p} style={{
-                                            fontSize: '0.75rem',
-                                            padding: '4px 8px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            borderRadius: '4px',
-                                            color: 'var(--text-primary)',
-                                            fontFamily: 'monospace'
-                                        }}>
-                                            {p}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    }
-
                     {/* Matches Section */}
                     {
                         (metadata.match || []).length > 0 && (
@@ -367,6 +356,27 @@ const ScriptEditor = () => {
                             </div>
                         )
                     }
+
+
+                    {/* Permissions Section */}
+                    {
+                        (metadata.grant || []).filter(p => p !== 'none').length > 0 && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--accent-color)' }}>
+                                    <Shield size={16} />
+                                    <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderPermissions')}</h3>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {(metadata.grant || []).filter(p => p !== 'none').map(p => (
+                                        <span key={p} className="permission-chip">
+                                            {p}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
 
                 </div >
             </aside >

@@ -11,6 +11,10 @@
   --accent-hover: #16a34a;
   --primary-color: var(--accent-color);
   --border-color: rgba(255, 255, 255, 0.1);
+  /* Global Chip Variables */
+  --chip-bg: #3f3f46;
+  --chip-text: #f4f4f5;
+  --chip-border: #52525b;
   color-scheme: dark;
 }
 
@@ -26,7 +30,24 @@
   --accent-hover: #16a34a;
   --primary-color: var(--accent-color);
   --border-color: #e2e8f0; /* Slate 200 */
+  
+  /* Global Chip Variables */
+  --chip-bg: #e5e7eb;
+  --chip-text: #1f2937;
+  --chip-border: #d1d5db;
   color-scheme: light;
+}
+
+/* Global Chip Class */
+.permission-chip {
+    background: var(--chip-bg);
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--chip-text);
+    font-family: monospace;
+    border: 1px solid var(--chip-border);
+    font-weight: 500;
 }
 
 body {

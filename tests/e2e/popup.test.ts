@@ -39,7 +39,7 @@ test('Create new script opens options page with editor', async () => {
     const btn = page.locator('.new-script-btn');
 
     // Expect a new tab/page to open, prevent race condition by setting up listener first
-    const pagePromise = browserContext.waitForEvent('page');
+    const pagePromise = browserContext.waitForEvent('page', page => page.url().includes(extensionId));
     await btn.click();
     const newPage = await pagePromise;
     await newPage.waitForLoadState();
@@ -55,7 +55,7 @@ test('Create new script opens options page with editor', async () => {
     // Check if "New Script" is in the name input
     const nameInput = newPage.locator('.script-name-input');
     await nameInput.waitFor();
-    expect(await nameInput.inputValue()).toBe('New Script');
+    expect(await nameInput.innerText()).toBe('New Script');
 
     // Check if default code is present (partial match)
     // Monaco content is hard to read directly, but we can check if we are not in "Script Not Found" state.
