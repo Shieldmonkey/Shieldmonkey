@@ -205,7 +205,7 @@ const Scripts = () => {
                                             </td>
                                             <td style={{ cursor: 'pointer', maxWidth: '300px' }} onClick={() => navigate(`/scripts/${script.id}`)}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                                    <span style={{ fontWeight: 500, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{script.name}</span>
+                                                    <span style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{script.name}</span>
                                                 </div>
                                             </td>
                                             <td style={{ maxWidth: '200px' }}>
@@ -229,7 +229,7 @@ const Scripts = () => {
                                                     backgroundColor: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
                                                     color: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? '#60a5fa' : '#9ca3af',
                                                     border: `1px solid ${(script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)'}`,
-                                                    fontWeight: 500,
+                                                    fontWeight: 600,
                                                     fontSize: '0.75rem',
                                                     whiteSpace: 'nowrap'
                                                 }}>
@@ -277,7 +277,7 @@ const Scripts = () => {
                     zIndex: 100,
                     animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500, marginRight: '8px', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, marginRight: '8px', color: 'var(--text-secondary)' }}>
                         {t('selectedCount', [String(selectedScriptIds.size)])}
                     </span>
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-color)' }}></div>

@@ -52,7 +52,7 @@ const Help = () => {
 
                     {/* Permissions Section */}
                     <div id="permission-help" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Key size={18} />
                             <span>{t('installHeaderPermissions')}</span>
                         </h3>
@@ -75,7 +75,7 @@ const Help = () => {
                                     color: 'white',
                                     cursor: 'pointer',
                                     fontSize: '0.9rem',
-                                    fontWeight: 500
+                                    fontWeight: 600
                                 }}
                             >
                                 {t('btnGrantPermission')}
@@ -95,7 +95,7 @@ const Help = () => {
                                         color: 'var(--text-primary)',
                                         cursor: 'pointer',
                                         fontSize: '0.9rem',
-                                        fontWeight: 500,
+                                        fontWeight: 600,
                                         width: 'fit-content'
                                     }}
                                 >
@@ -126,7 +126,7 @@ const Help = () => {
                     </div>
 
                     <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>Links</h3>
+                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>Links</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <li>
                                 <a href="https://github.com/shieldmonkey/shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
@@ -154,7 +154,7 @@ const Help = () => {
                 </div>
 
                 <div style={{ marginTop: '24px', padding: '24px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500 }}>About Shieldmonkey</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600 }}>About Shieldmonkey</h3>
                     <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '0.95rem', marginBottom: '16px' }}>
                         {t('appDescription')}
                     </p>

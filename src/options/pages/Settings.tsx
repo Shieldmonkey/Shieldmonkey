@@ -184,7 +184,7 @@ const Settings = () => {
                 <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('pageTitleSettings')}</h2>
 
                 <div style={{ marginBottom: '32px' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionAppearance')}</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionAppearance')}</h3>
                     <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {(['light', 'dark', 'system'] as const).map((text) => (
                             <button
@@ -203,7 +203,7 @@ const Settings = () => {
                 </div>
 
                 <div style={{ marginBottom: '32px' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Language</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Language</h3>
                     <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                             className={locale === 'en' ? 'btn-primary' : 'btn-secondary'}
@@ -231,11 +231,11 @@ const Settings = () => {
                 </div>
 
                 <div>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionBackupRestore')}</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionBackupRestore')}</h3>
                     <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 500 }}>{t('sectionBackupDir')}</h4>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600 }}>{t('sectionBackupDir')}</h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                         flex: 1,
@@ -268,7 +268,7 @@ const Settings = () => {
 
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
-                                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 500 }}>{t('sectionAutoBackup')}</h4>
+                                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', fontWeight: 600 }}>{t('sectionAutoBackup')}</h4>
                                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                         {t('autoBackupDesc')}
                                     </p>
@@ -334,7 +334,7 @@ const Settings = () => {
                             )}
 
                             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-color)' }}>
-                                <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 500 }}>{t('sectionRestore')}</h4>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('sectionRestore')}</h4>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     {/* Uncontrolled input for legacy restore */}
                                     <input

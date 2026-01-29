@@ -21,7 +21,11 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     const showModal = (type: ModalType, title: string, message: React.ReactNode, onConfirm?: () => void, confirmLabel?: string, cancelLabel?: string) => {
-        setConfig({ isOpen: true, type, title, message, onConfirm, confirmLabel, cancelLabel });
+        const handleConfirm = () => {
+            if (onConfirm) onConfirm();
+            closeModal();
+        };
+        setConfig({ isOpen: true, type, title, message, onConfirm: handleConfirm, confirmLabel, cancelLabel });
     };
 
     const closeModal = () => {
