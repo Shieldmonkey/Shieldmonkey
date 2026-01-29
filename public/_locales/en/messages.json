@@ -209,5 +209,20 @@
   "btnReloadExtension": { "message": "I've Enabled It" },
   "btnGrantPermission": { "message": "Grant Permission" },
   "btnPermissionGranted": { "message": "Permission Granted" },
-  "permissionStatusActive": { "message": "Permission is active." }
+  "permissionStatusActive": { "message": "Permission is active." },
+  "permissionGrantedDesc": { "message": "Shieldmonkey is ready to run user scripts." },
+  "permissionMissingDesc": { "message": "Shieldmonkey cannot run scripts without this permission." },
+  "helpHeaderLinks": { "message": "Links" },
+  "linkGithubRepo": { "message": "GitHub Repository" },
+  "linkGithubRepoDesc": { "message": "View source code & documentation." },
+  "linkReportIssue": { "message": "Report an Issue" },
+  "linkReportIssueDesc": { "message": "Found a bug? Let us know!" },
+  "linkReportVuln": { "message": "Report Vulnerability" },
+  "linkReportVulnDesc": { "message": "Security issues & advisories." },
+  "helpHeaderAbout": { "message": "About Shieldmonkey" },
+  "helpVersionPrefix": { "message": "Version" },
+  "helpCreatedBy": { "message": "Created by:" },
+  "scriptInfo": { "message": "Script Info" },
+  "editorLabelName": { "message": "Name" },
+  "editorLabelNamespace": { "message": "Namespace" }
 }

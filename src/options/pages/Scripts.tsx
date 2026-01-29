@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Trash2, FileUp, FolderUp, Plus, Terminal, Edit, RefreshCw } from 'lucide-react';
+import { Play, Pause, Trash2, FileUp, FolderUp, Plus, Terminal, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import ToggleSwitch from '../components/ToggleSwitch';
@@ -17,33 +17,19 @@ const Scripts = () => {
     const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
 
     const handleNewScript = async () => {
-        const newScriptId = crypto.randomUUID();
-        const newScript: Script = {
-            id: newScriptId,
-            name: t('newScript'),
-            code: `// ==UserScript==
-// @name        ${t('newScript')}
-// @match       <all_urls>
-// ==/UserScript==
-
-`,
-            enabled: true,
-            lastSavedCode: `// ==UserScript==
-// @name        ${t('newScript')}
-// @match       <all_urls>
-// ==/UserScript==
-
-`,
-            grantedPermissions: [],
-            installDate: Date.now()
-        };
-        // We need to add it to state first or save it?
-        // Let's add it to state via context
-        setScripts((prev: Script[]) => [...prev, newScript]);
-        // And actually save it to storage so it persists if we reload
-        await saveScript(newScript);
-
-        navigate(`/scripts/${newScriptId}`);
+        // We will just navigate to a new ID, but we won't save it yet.
+        // The ScriptEditor handles "new" state if the ID is not found in context?
+        // Actually ScriptEditor says `const isNew = !id;`. So we need to navigate to `/scripts/new`?
+        // But the route is probably `/scripts/:id`.
+        // If we navigate to a random ID that doesn't exist, ScriptEditor shows "Script Not Found".
+        // We need a route for creating new scripts, e.g., `/scripts/new` or query param.
+        // Let's assume the router handles `/scripts/new` as a special case or we add it.
+        // Check Layout or router config? I can't see router config easily but I can try navigating to /scripts/new
+        // If I change ScriptEditor to handle "new" as ID, that would work.
+        // Previously ScriptEditor logic: `const isNew = !id;`... wait, useParams returns {} if no ID?
+        // If route provides ID, it is not "new" by that logic unless ID is undefined.
+        // Let's use a dedicated "new" path.
+        navigate('/scripts/new');
     };
 
     const handleBulkEnable = async () => {
@@ -158,7 +144,7 @@ const Scripts = () => {
                         <h2 className="page-title">{t('myScripts', [String(scripts.length)])}</h2>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="header-actions">
                             <button className="btn-secondary" onClick={handleImportFile}><FileUp size={16} /> {t('importFile')}</button>
                             <button className="btn-secondary" onClick={handleImportFolder}><FolderUp size={16} /> {t('importFolder')}</button>
                             <button className="btn-primary" onClick={handleNewScript}><Plus size={16} /> {t('newScript')}</button>
@@ -223,31 +209,30 @@ const Scripts = () => {
                                                 )}
                                             </td>
                                             <td>
-                                                <span style={{
-                                                    padding: '2px 8px',
-                                                    borderRadius: '12px',
-                                                    backgroundColor: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                                                    color: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? '#60a5fa' : '#9ca3af',
-                                                    border: `1px solid ${(script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)'}`,
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {(script.sourceUrl || script.updateUrl || script.downloadUrl) ? t('remoteLabel') : t('localLabel')}
-                                                </span>
+                                                <div className="remote-label-container">
+                                                    <span style={{
+                                                        padding: '2px 8px',
+                                                        borderRadius: '12px',
+                                                        backgroundColor: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                                                        color: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? '#60a5fa' : '#9ca3af',
+                                                        border: `1px solid ${(script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)'}`,
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {(script.sourceUrl || script.updateUrl || script.downloadUrl) ? t('remoteLabel') : t('localLabel')}
+                                                    </span>
+                                                    {getUpdateUrl(script) && (
+                                                        <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleCheckUpdate(script); }} title={t('checkForUpdatesTooltip')} style={{ padding: '4px', marginLeft: 0 }}>
+                                                            <RefreshCw size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                                 {script.installDate ? new Date(script.installDate).toLocaleDateString() : '-'}
                                             </td>
                                             <td className="col-actions">
-                                                {getUpdateUrl(script) && (
-                                                    <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleCheckUpdate(script); }} title={t('checkForUpdatesTooltip')}>
-                                                        <RefreshCw size={16} />
-                                                    </button>
-                                                )}
-                                                <button className="action-btn" onClick={() => navigate(`/scripts/${script.id}`)} title={t('editTooltip')}>
-                                                    <Edit size={16} />
-                                                </button>
                                                 <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteScript(script); }} title={t('deleteTooltip')}>
                                                     <Trash2 size={16} />
                                                 </button>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import PermissionModal from '../PermissionModal';
@@ -11,7 +11,7 @@ import { useI18n } from '../../context/I18nContext';
 
 const ScriptEditor = () => {
     const { id } = useParams<{ id: string }>();
-    const isNew = !id;
+    const isNew = !id || id === 'new';
     const navigate = useNavigate();
     const { scripts, saveScript, deleteScript } = useApp();
     const { showModal: showGenericModal } = useModal();
@@ -32,6 +32,9 @@ const ScriptEditor = () => {
     const [permissionModalOpen, setPermissionModalOpen] = useState(false);
     const [requestedPermissions, setRequestedPermissions] = useState<string[]>([]);
     const [pendingSaveResolved, setPendingSaveResolved] = useState<((allowed: boolean) => void) | null>(null);
+
+    // Mobile Sidebar State
+    const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
     // Track if we have initialized
     const initializedRef = useRef(false);
@@ -167,7 +170,7 @@ const ScriptEditor = () => {
     // Keyboard shortcut
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 handleSave();
             }
@@ -175,6 +178,31 @@ const ScriptEditor = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleSave]);
+
+    // Warn on unsaved changes
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+
+    // Block navigation if dirty using a custom check since React Router v6 doesn't have usePrompt/useBlocker stable yet in all versions
+    // But since we are using useNavigate() for our own buttons:
+    const handleBack = () => {
+        if (isDirty) {
+            showGenericModal('confirm', t('unsavedChangesTitle') || 'Unsaved Changes', t('unsavedChangesMsg') || 'You have unsaved changes. Are you sure you want to leave?', () => {
+                navigate('/scripts');
+            });
+        } else {
+            navigate('/scripts');
+        }
+    };
 
     // Theme handling for Monaco
     const { theme } = useApp();
@@ -190,17 +218,58 @@ const ScriptEditor = () => {
     const sourceUrl = scriptFromContext?.sourceUrl;
     const referrerUrl = scriptFromContext?.referrerUrl;
 
+    // URL truncation helper
+    const formatDisplayUrl = (urlStr: string) => {
+        if (!urlStr) return '';
+        try {
+            if (urlStr.length <= 60) return urlStr;
+            const url = new URL(urlStr);
+            const origin = url.origin;
+            const pathname = url.pathname;
+            const filename = pathname.split('/').pop();
+
+            if (pathname === '/' || !filename) {
+                return `${origin}/...`;
+            }
+            return `${origin}/.../${filename}`;
+        } catch {
+            return urlStr.length > 60 ? `${urlStr.slice(0, 40)}...` : urlStr;
+        }
+    };
+
     return (
         <div className="app-container">
-            <aside className="sidebar">
+            {/* Mobile Overlay */}
+            {isMobileInfoOpen && (
+                <div
+                    className="script-editor-sidebar-overlay"
+                    onClick={() => setIsMobileInfoOpen(false)}
+                />
+            )}
+
+            <aside className={`script-editor-sidebar ${isMobileInfoOpen ? 'open' : ''}`}>
                 <div
                     className="sidebar-header"
-                    style={{ cursor: 'pointer', justifyContent: 'flex-start', paddingLeft: '24px' }}
-                    onClick={() => navigate('/scripts')}
-                    title={t('backToScriptList')}
+                    style={{ cursor: 'pointer', justifyContent: 'space-between', paddingLeft: '24px', paddingRight: '16px' }}
                 >
-                    <ArrowLeft size={20} style={{ color: 'var(--text-secondary)' }} />
-                    <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>{t('navBack')}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            className="icon-btn"
+                            onClick={() => navigate('/scripts')}
+                            title={t('backToScripts')}
+                            style={{ padding: '8px', marginLeft: '-8px' }}
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: 0 }}>{t('scriptInfo')}</h2>
+                    </div>
+                    {/* Mobile Close Button */}
+                    <button
+                        className="icon-btn mobile-toggle-btn"
+                        onClick={() => setIsMobileInfoOpen(false)}
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
 
                 <div className="content-scroll" style={{ padding: '0 24px 24px 24px' }}>
@@ -212,6 +281,13 @@ const ScriptEditor = () => {
                             <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('editorHeaderInfo')}</h3>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '12px 16px', fontSize: '0.85rem' }}>
+                            {/* Name & Namespace (Mobile: visible here) */}
+                            <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelName')}</div>
+                            <div style={{ wordBreak: 'break-all', fontWeight: 600 }}>{name}</div>
+
+                            <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelNamespace')}</div>
+                            <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{metadata.namespace || '-'}</div>
+
                             <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelVersion')}</div>
                             <div style={{ fontFamily: 'monospace' }}>{metadata.version || '-'}</div>
 
@@ -225,9 +301,9 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelPage')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={referrerUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={referrerUrl} target="_blank" rel="noopener noreferrer" title={referrerUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{referrerUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(referrerUrl)}</span>
                                         </a>
                                     </div>
                                 </>
@@ -237,9 +313,9 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelSource')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title={sourceUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{sourceUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(sourceUrl)}</span>
                                         </a>
                                     </div>
                                 </>
@@ -250,9 +326,9 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.updateURL || scriptFromContext?.updateUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.updateURL || scriptFromContext?.updateUrl} target="_blank" rel="noopener noreferrer" title={metadata.updateURL || scriptFromContext?.updateUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.updateURL || scriptFromContext?.updateUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL || scriptFromContext?.updateUrl || '')}</span>
                                         </a>
                                     </div>
                                 </>
@@ -262,9 +338,9 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.downloadURL || scriptFromContext?.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.downloadURL || scriptFromContext?.downloadUrl} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL || scriptFromContext?.downloadUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{metadata.downloadURL || scriptFromContext?.downloadUrl}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL || scriptFromContext?.downloadUrl || '')}</span>
                                         </a>
                                     </div>
                                 </>
@@ -330,7 +406,27 @@ const ScriptEditor = () => {
 
             <main className="main-content">
                 <header className="editor-header">
-                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {/* Mobile Back Button */}
+                        <button
+                            className="icon-btn mobile-toggle-btn"
+                            style={{ marginRight: '8px' }}
+                            onClick={handleBack}
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+
+                        {/* Mobile Info Toggle */}
+                        <button
+                            className="icon-btn mobile-toggle-btn"
+                            style={{ marginRight: '12px' }}
+                            onClick={() => setIsMobileInfoOpen(true)}
+                        >
+                            <Info size={20} />
+                        </button>
+                    </div>
+
+                    <div className="script-info-header" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <input
                             type="text"
                             className="script-name-input"
@@ -346,6 +442,7 @@ const ScriptEditor = () => {
                             </span>
                         )}
                     </div>
+
 
                     <div className="editor-actions">
                         <button
@@ -380,6 +477,49 @@ const ScriptEditor = () => {
                                 if (metadata.name && metadata.name !== name) {
                                     setName(metadata.name);
                                 }
+                            }
+                        }}
+                        onMount={(editor, monaco) => {
+                            // Detect if on Mac
+                            const isMac = navigator.userAgent.includes('Mac');
+                            if (isMac) {
+                                // Add Emacs-style bindings for Mac
+                                // Ctrl+P: Cursor Up
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyP, () => {
+                                    editor.trigger('keyboard', 'cursorUp', null);
+                                });
+                                // Ctrl+N: Cursor Down
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyN, () => {
+                                    editor.trigger('keyboard', 'cursorDown', null);
+                                });
+                                // Ctrl+F: Cursor Right (Default usually might be find, but we want cursor right for Emacs)
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyF, () => {
+                                    editor.trigger('keyboard', 'cursorRight', null);
+                                });
+                                // Ctrl+B: Cursor Left
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyB, () => {
+                                    editor.trigger('keyboard', 'cursorLeft', null);
+                                });
+                                // Ctrl+A: Cursor Home
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyA, () => {
+                                    editor.trigger('keyboard', 'cursorHome', null);
+                                });
+                                // Ctrl+E: Cursor End
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyE, () => {
+                                    editor.trigger('keyboard', 'cursorEnd', null);
+                                });
+
+                                // Ensure Cmd+F triggers Find (Monaco defaults usually handle this if OS detected, but we force it)
+                                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+                                    editor.trigger('keyboard', 'actions.find', null);
+                                });
+                                // Ensure Cmd+Z triggers Undo
+                                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
+                                    editor.trigger('keyboard', 'undo', null);
+                                });
+
+                                // Unbind conflicting Ctrl commands if necessary?
+                                // Monaco's addCommand with matching keychord usually overrides.
                             }
                         }}
                         options={{

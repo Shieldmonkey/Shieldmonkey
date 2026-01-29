@@ -3,8 +3,10 @@ import './Install.css';
 import { parseMetadata, type Metadata } from '../../utils/metadataParser';
 import Editor, { DiffEditor } from '@monaco-editor/react';
 import { useI18n } from '../../context/I18nContext';
+import { Info, X } from 'lucide-react';
 
 // Theme logic
+// ... (Theme type and Script interface remain same)
 type Theme = 'light' | 'dark' | 'system';
 
 interface Script {
@@ -25,6 +27,10 @@ const Install = () => {
     const [error, setError] = useState<string>('');
     const [viewMode, setViewMode] = useState<'code' | 'diff'>('code');
 
+    // Mobile Sidebar State
+    const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
+
+    // ... (sanitizeUrl and theme logic remain same)
     const sanitizeUrl = (url: string | null): string => {
         if (!url) {
             return 'about:blank';
@@ -58,6 +64,7 @@ const Install = () => {
 
     const effectiveEditorTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'vs-dark';
 
+    // ... (loadScriptContent, fetchScript, useEffect, handleInstall, handleCancel remain same)
     const loadScriptContent = useCallback(async (text: string) => {
         try {
             const meta = parseMetadata(text);
@@ -249,8 +256,23 @@ const Install = () => {
 
     return (
         <div className="install-container">
+            {/* Mobile Overlay */}
+            {isMobileInfoOpen && (
+                <div
+                    className="install-sidebar-overlay"
+                    onClick={() => setIsMobileInfoOpen(false)}
+                />
+            )}
+
             <header className="install-header">
                 <div className="install-header-left">
+                    <button
+                        className="icon-btn mobile-info-toggle"
+                        onClick={() => setIsMobileInfoOpen(true)}
+                    >
+                        <Info size={20} />
+                    </button>
+                    <img src="/icons/icon48.png" className="logo-img" alt="ShieldMonkey" style={{ width: '32px', height: '32px' }} />
                     <h1>{existingScript ? t('installHeaderUpdate') : t('installHeaderInstall')}</h1>
                     <div className="script-title-badge">
                         <span className="script-name">{metadata?.name}</span>
@@ -258,7 +280,7 @@ const Install = () => {
                     </div>
                 </div>
 
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                <div className="install-header-center">
                     {existingScript && (
                         <div className="view-toggle" style={{ display: 'flex', background: 'var(--chip-bg)', borderRadius: '6px', padding: '2px' }}>
                             <button
@@ -288,7 +310,14 @@ const Install = () => {
             </header>
 
             <div className="install-content-split">
-                <aside className="install-info-sidebar">
+                <aside className={`install-info-sidebar ${isMobileInfoOpen ? 'open' : ''}`}>
+                    <div className="mobile-sidebar-header">
+                        <h3>{t('scriptInfo') || 'Script Info'}</h3>
+                        <button className="icon-btn" onClick={() => setIsMobileInfoOpen(false)}>
+                            <X size={20} />
+                        </button>
+                    </div>
+
                     <div className="install-info-section">
                         <h3>Metadata</h3>
                         <div className="install-meta-grid">

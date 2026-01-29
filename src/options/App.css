@@ -41,8 +41,69 @@ body {
 .app-container {
   display: flex;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
 }
+
+/* Script Editor Sidebar Specifics */
+/* Default desktop behavior matches .sidebar */
+.script-editor-sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+@media (max-width: 900px) {
+    .script-editor-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 85%; /* Mostly cover screen but leave a gap */
+        max-width: 320px;
+        z-index: 100;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.5);
+        transform: translateX(-100%); /* Hidden by default */
+    }
+
+    .script-editor-sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .script-editor-sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 99;
+        backdrop-filter: blur(2px);
+        animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Ensure mobile toggle buttons are visible and flex */
+    button.mobile-toggle-btn.icon-btn,
+    .mobile-toggle-btn {
+        display: flex !important;
+    }
+}
+
+/* Hide by default on desktop with high specificity */
+button.mobile-toggle-btn,
+.mobile-toggle-btn {
+    display: none !important;
+}
+
 
 /* Sidebar Styles */
 .sidebar {
@@ -141,6 +202,12 @@ body {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap; /* Allow wrapping by default if needed, or controlled by media query */
 }
 
 .script-table {
@@ -514,3 +581,149 @@ input:checked + .slider:before {
     display: none;
   }
 }
+
+/* Bottom Navigation (Mobile Only) */
+.bottom-nav {
+    display: none; /* Hidden on desktop */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: var(--sidebar-bg);
+    border-top: 1px solid var(--border-color);
+    z-index: 50;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 16px;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav .nav-item {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    font-size: 0.75rem;
+    width: auto;
+    border-radius: 8px;
+    justify-content: center;
+}
+
+.bottom-nav .nav-item span {
+    display: block; /* Ensure visible in bottom nav */
+}
+
+/* Mobile Media Query Overrides for Navigation */
+@media (max-width: 900px) {
+    .sidebar {
+        display: none; /* Completely hide sidebar on mobile */
+    }
+
+    .bottom-nav {
+        display: flex;
+    }
+
+    .app-container {
+        flex-direction: column;
+    }
+
+    .main-content {
+        padding-bottom: 70px; /* Space for bottom nav */
+    }
+
+    .content-scroll {
+        padding: 16px !important; /* Symetric and smaller padding on mobile */
+    }
+
+    .page-header {
+        padding: 0 !important;
+        margin-bottom: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .page-header > div {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .header-actions button {
+        flex: 1;
+        justify-content: center;
+        min-width: 120px; /* Ensure buttons don't get too squashed before wrapping */
+    }
+
+    /* Hide script name/namespace in header on mobile as it's moved to sidebar info */
+    .script-info-header {
+        display: none !important;
+    }
+
+    /* Remove bottom padding/margin that might be causing space */
+    .monaco-wrapper {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Fix Sidebar Info Grid for Mobile */
+    .script-editor-sidebar .content-scroll div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important; /* Stack vertically */
+        gap: 4px !important;
+    }
+}
+
+/* Compact sticky actions column */
+.col-actions {
+    padding: 0 8px !important; /* Reduce padding */
+    width: auto !important;
+    box-shadow: -4px 0 8px -4px rgba(0,0,0,0.2); /* Add shadow to left edge */
+}
+
+/* Ensure mobile buttons fit */
+@media (max-width: 900px) {
+    .header-actions button {
+        flex: 1 1 auto; /* Allow shrinking if needed, but grow */
+        min-width: unset !important; /* Remove fixed min-width to prevent overflow */
+        padding: 8px 12px; /* Slightly smaller padding */
+    }
+    
+    .header-actions {
+        width: 100%;
+        gap: 8px;
+    }
+}
+
+/* Stack Info Sidebar Labels Vertically on Desktop too for better readability */
+.script-editor-sidebar .content-scroll div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: 4px 16px !important;
+}
+.script-editor-sidebar .content-scroll div[style*="grid-template-columns"] > div:nth-child(odd) {
+    margin-bottom: 0px; 
+    margin-top: 8px;
+}
+.script-editor-sidebar .content-scroll div[style*="grid-template-columns"] > div:first-child {
+    margin-top: 0;
+}
+
+/* Remote Label Container to include Update Button */
+.remote-label-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Prevent Button Text Wrapping */
+.btn-primary,
+.btn-secondary,
+.action-btn,
+button {
+    white-space: nowrap;
+}
+

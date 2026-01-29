@@ -7,6 +7,7 @@
   "permissions": [
     "storage",
     "userScripts",
+    "scripting",
     "tabs",
     "activeTab",
     "notifications",

@@ -1,4 +1,4 @@
-import { ExternalLink, Bug, Shield, User, Key } from 'lucide-react';
+import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isUserScriptsAvailable, requestPermission, isFirefox } from '../../utils/browserPolyfill';
 import { useTranslation } from '../../context/I18nContext';
@@ -52,52 +52,58 @@ const Help = () => {
 
                     {/* Permissions Section */}
                     <div id="permission-help" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Key size={18} />
                             <span>{t('installHeaderPermissions')}</span>
                         </h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
-                            {t('appDescription')}
-                            <br />
-                            {hasPermission === false && <span style={{ color: 'var(--error-color)' }}> {t('permissionMissing')}</span>}
-                            {hasPermission === true && <span style={{ color: 'var(--success-color)' }}> {t('permissionStatusActive')}</span>}
+
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '16px',
+                            background: hasPermission ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            border: `1px solid ${hasPermission ? 'var(--accent-color)' : '#ef4444'}`,
+                            borderRadius: '8px',
+                            marginBottom: '16px'
+                        }}>
+                            {hasPermission ? (
+                                <CheckCircle size={24} color="var(--accent-color)" />
+                            ) : (
+                                <AlertCircle size={24} color="#ef4444" />
+                            )}
+                            <div>
+                                <div style={{ fontWeight: 600, color: hasPermission ? 'var(--accent-color)' : '#ef4444' }}>
+                                    {hasPermission ? t('permissionStatusActive') : t('permissionMissing')}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    {hasPermission ? t('permissionGrantedDesc') : t('permissionMissingDesc')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px', lineHeight: 1.5 }}>
+                            {t('permissionHelpDesc')}
                         </p>
 
                         {/* Button for Firefox */}
                         {isFirefoxBrowser && hasPermission === false && (
                             <button
                                 onClick={handleRequestPermission}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '6px',
-                                    border: 'none',
-                                    background: 'var(--accent-color)',
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 600
-                                }}
+                                className="btn-primary"
+                                style={{ width: '100%', justifyContent: 'center' }}
                             >
                                 {t('btnGrantPermission')}
                             </button>
                         )}
 
                         {/* Button for Chrome */}
-                        {!isFirefoxBrowser && (
+                        {!isFirefoxBrowser && !hasPermission && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <button
                                     onClick={openExtensionsPage}
-                                    style={{
-                                        padding: '8px 16px',
-                                        borderRadius: '6px',
-                                        border: '1px solid var(--border-color)',
-                                        background: 'var(--surface-bg-hover)',
-                                        color: 'var(--text-primary)',
-                                        cursor: 'pointer',
-                                        fontSize: '0.9rem',
-                                        fontWeight: 600,
-                                        width: 'fit-content'
-                                    }}
+                                    className="btn-primary"
+                                    style={{ width: '100%', justifyContent: 'center' }}
                                 >
                                     {t('btnOpenSettings')}
                                 </button>
@@ -107,61 +113,56 @@ const Help = () => {
                             </div>
                         )}
 
-                        {isFirefoxBrowser && hasPermission === true && (
-                            <button
-                                disabled
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border-color)',
-                                    background: 'transparent',
-                                    color: 'var(--text-secondary)',
-                                    cursor: 'not-allowed',
-                                    fontSize: '0.9rem'
-                                }}
-                            >
+                        {/* Status if already good (Chrome mainly, or Firefox fallback) */}
+                        {!isFirefoxBrowser && hasPermission && (
+                            <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
+                                {t('permissionStatusActive')}
+                            </button>
+                        )}
+                        {isFirefoxBrowser && hasPermission && (
+                            <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
                                 {t('permissionGranted')}
                             </button>
                         )}
                     </div>
 
                     <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
-                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>Links</h3>
+                        <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('helpHeaderLinks')}</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <li>
                                 <a href="https://github.com/shieldmonkey/shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <ExternalLink size={16} />
-                                    <span>GitHub Repository</span>
+                                    <span>{t('linkGithubRepo')}</span>
                                 </a>
-                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>View source code & documentation.</p>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkGithubRepoDesc')}</p>
                             </li>
                             <li>
                                 <a href="https://github.com/shieldmonkey/shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Bug size={16} />
-                                    <span>Report an Issue</span>
+                                    <span>{t('linkReportIssue')}</span>
                                 </a>
-                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Found a bug? Let us know!</p>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkReportIssueDesc')}</p>
                             </li>
                             <li>
                                 <a href="https://github.com/shieldmonkey/shieldmonkey/security" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Shield size={16} />
-                                    <span>Report Vulnerability</span>
+                                    <span>{t('linkReportVuln')}</span>
                                 </a>
-                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Security issues & advisories.</p>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkReportVulnDesc')}</p>
                             </li>
                         </ul>
                     </div>
                 </div>
 
                 <div style={{ marginTop: '24px', padding: '24px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600 }}>About Shieldmonkey</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600 }}>{t('helpHeaderAbout')}</h3>
                     <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '0.95rem', marginBottom: '16px' }}>
                         {t('appDescription')}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        <span>Version {chrome.runtime.getManifest().version}</span>
+                        <span>{t('helpVersionPrefix')} {chrome.runtime.getManifest().version}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>Created by:</span>
+                            <span>{t('helpCreatedBy')}</span>
                             <a href="https://github.com/toshs" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-color)', textDecoration: 'none' }}>
                                 <User size={14} />
                                 <span>toshs</span>

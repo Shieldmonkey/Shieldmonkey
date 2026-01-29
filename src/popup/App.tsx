@@ -42,6 +42,16 @@ function App() {
 
   useEffect(() => {
     const init = async () => {
+      // Get settings first to apply theme immediately
+      const data = await chrome.storage.local.get(['scripts', 'extensionEnabled', 'theme']);
+
+      // Apply theme
+      const storedTheme = (data.theme as Theme) || 'dark';
+      setTheme(storedTheme);
+      applyTheme(storedTheme);
+
+      setExtensionEnabled(data.extensionEnabled !== false);
+
       // Get current tab URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const url = tab.url;
@@ -51,15 +61,6 @@ function App() {
       }
 
       setCurrentUrl(url);
-
-      // Get settings and scripts
-      const data = await chrome.storage.local.get(['scripts', 'extensionEnabled', 'theme']);
-      setExtensionEnabled(data.extensionEnabled !== false);
-
-      // Apply theme
-      const storedTheme = (data.theme as Theme) || 'dark';
-      setTheme(storedTheme);
-      applyTheme(storedTheme);
 
       const scripts = (data.scripts || []) as Script[];
 

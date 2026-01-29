@@ -209,5 +209,20 @@
   "btnReloadExtension": { "message": "有効にしました" },
   "btnGrantPermission": { "message": "権限を付与" },
   "btnPermissionGranted": { "message": "権限付与済み" },
-  "permissionStatusActive": { "message": "権限は有効です。" }
+  "permissionStatusActive": { "message": "権限は有効です。" },
+  "permissionGrantedDesc": { "message": "Shieldmonkeyはユーザースクリプトを実行する準備ができています。" },
+  "permissionMissingDesc": { "message": "この権限がないとスクリプトを実行できません。" },
+  "helpHeaderLinks": { "message": "リンク" },
+  "linkGithubRepo": { "message": "GitHub リポジトリ" },
+  "linkGithubRepoDesc": { "message": "ソースコードとドキュメントを表示します。" },
+  "linkReportIssue": { "message": "問題を報告" },
+  "linkReportIssueDesc": { "message": "バグを見つけましたか？報告してください！" },
+  "linkReportVuln": { "message": "脆弱性を報告" },
+  "linkReportVulnDesc": { "message": "セキュリティの問題と勧告。" },
+  "helpHeaderAbout": { "message": "Shieldmonkey について" },
+  "helpVersionPrefix": { "message": "バージョン" },
+  "helpCreatedBy": { "message": "作成者:" },
+  "scriptInfo": { "message": "スクリプト情報" },
+  "editorLabelName": { "message": "名前" },
+  "editorLabelNamespace": { "message": "名前空間" }
 }

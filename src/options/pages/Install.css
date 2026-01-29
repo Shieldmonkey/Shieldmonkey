@@ -168,3 +168,130 @@
     --chip-bg: #e5e7eb;
     --chip-text: #374151;
 }
+
+/* Center section of header (View Toggle) */
+.install-header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+/* Mobile specific elements hidden by default */
+.mobile-info-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-sidebar-header {
+    display: none;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mobile-sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.install-sidebar-overlay {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .install-header {
+        padding: 16px 16px 12px 16px; /* Increased top padding */
+        gap: 8px;
+        height: auto;
+        min-height: 64px;
+        flex-wrap: wrap;
+        padding-bottom: 12px;
+    }
+    
+    .install-header-left {
+        gap: 8px;
+    }
+
+    /* Wrap the center section to a new line on mobile */
+    .install-header-center {
+        order: 3;
+        width: 100%;
+        flex: none;
+        margin-top: 4px;
+    }
+
+    /* Force actions to the right */
+    .install-header-actions {
+        margin-left: auto;
+    }
+
+    /* Show toggle button */
+    .mobile-info-toggle {
+        display: flex;
+    }
+
+    /* Hide badge in header on mobile to save space */
+    .script-title-badge {
+        display: none;
+    }
+
+    /* Sidebar becomes off-canvas */
+    .install-info-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 85%;
+        max-width: 320px;
+        z-index: 100;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.5);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .install-info-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .mobile-sidebar-header {
+        display: flex;
+    }
+
+    /* Overlay */
+    .install-sidebar-overlay {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 99;
+        backdrop-filter: blur(2px);
+        animation: fadeIn 0.2s ease;
+    }
+
+    /* Ensure view toggle is visible */
+    .view-toggle {
+        display: flex !important;
+        width: 100%;
+    }
+    .view-toggle button {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    /* Ensure actions fit */
+    .install-header-actions button {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+}

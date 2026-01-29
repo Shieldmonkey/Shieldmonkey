@@ -9,7 +9,7 @@ import { isFileSystemSupported } from '../../utils/browserPolyfill';
 
 
 const Settings = () => {
-    const { theme, setTheme } = useApp();
+    const { theme, setTheme, extensionEnabled, toggleExtension } = useApp();
     const { t, locale, setLocale } = useI18n();
     const { showModal } = useModal();
 
@@ -182,6 +182,22 @@ const Settings = () => {
         <div className="content-scroll">
             <div style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('pageTitleSettings')}</h2>
+
+                {/* Status Section for Mobile (or general access) since sidebar hidden on mobile */}
+                <div style={{ marginBottom: '32px' }}>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('extensionLabel') || 'Extension Status'}</h3>
+                    <div className="settings-card" style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontWeight: 600 }}>{extensionEnabled ? t('enabled') || 'Enabled' : t('disabled') || 'Disabled'}</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>v{chrome.runtime.getManifest().version}</span>
+                        </div>
+                        {/* Toggle Switch Component - Reusing existing class based switch or importing ToggleSwitch if available */}
+                        <label className="switch">
+                            <input type="checkbox" checked={extensionEnabled} onChange={(e) => toggleExtension(e.target.checked)} />
+                            <span className="slider"></span>
+                        </label>
+                    </div>
+                </div>
 
                 <div style={{ marginBottom: '32px' }}>
                     <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionAppearance')}</h3>
