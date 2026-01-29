@@ -37,10 +37,11 @@ test('Create new script opens options page with editor', async () => {
     // Let's assume English locale or check the element structure.
     // The button has class 'new-script-btn'.
     const btn = page.locator('.new-script-btn');
-    await btn.click();
 
-    // Expect a new tab/page to open
-    const newPage = await browserContext.waitForEvent('page');
+    // Expect a new tab/page to open, prevent race condition by setting up listener first
+    const pagePromise = browserContext.waitForEvent('page');
+    await btn.click();
+    const newPage = await pagePromise;
     await newPage.waitForLoadState();
 
     const url = newPage.url();
