@@ -108,11 +108,13 @@
 
 .permission-chip {
     background: var(--chip-bg);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
     font-size: 0.85rem;
     color: var(--chip-text);
     font-family: monospace;
+    border: 1px solid var(--chip-border);
+    font-weight: 500;
 }
 
 .match-list {
@@ -155,18 +157,21 @@
 }
 
 /* Fallback variables if not defined in global App.css, scoped to install-container */
+/* Fallback variables if not defined in global App.css, scoped to install-container */
 .install-container {
     --header-bg: #252526;
     --sidebar-bg: #252526;
-    --chip-bg: #333;
-    --chip-text: #e6e6e6;
+    --chip-bg: #3f3f46; /* Lighter than before (was #333) */
+    --chip-text: #f4f4f5; /* Whiter text */
+    --chip-border: #52525b;
 }
 
 :root[data-theme="light"] .install-container {
     --header-bg: #f3f4f6;
     --sidebar-bg: #f9fafb;
     --chip-bg: #e5e7eb;
-    --chip-text: #374151;
+    --chip-text: #1f2937; /* Darker text */
+    --chip-border: #d1d5db;
 }
 
 /* Center section of header (View Toggle) */

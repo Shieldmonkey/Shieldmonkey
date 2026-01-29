@@ -4,7 +4,6 @@ import Editor from '@monaco-editor/react';
 import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
-import PermissionModal from '../PermissionModal';
 import { parseMetadata } from '../../utils/metadataParser';
 import { type Script } from '../types';
 import { useI18n } from '../../context/I18nContext';
@@ -27,11 +26,6 @@ const ScriptEditor = () => {
 
     // New script specific state
     const [newScriptId] = useState(() => crypto.randomUUID());
-
-    // Permission Modal
-    const [permissionModalOpen, setPermissionModalOpen] = useState(false);
-    const [requestedPermissions, setRequestedPermissions] = useState<string[]>([]);
-    const [pendingSaveResolved, setPendingSaveResolved] = useState<((allowed: boolean) => void) | null>(null);
 
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
@@ -96,24 +90,9 @@ const ScriptEditor = () => {
             const requested = metadata.grant || [];
             const needed = requested.filter(p => p !== 'none');
 
-            const currentGranted = new Set(isNew ? [] : (scriptFromContext?.grantedPermissions || []));
-            const newPermissions = needed.filter(p => !currentGranted.has(p));
+            // Always sync granted permissions with metadata
+            const grantedPermissions = needed;
 
-            let grantedPermissions = isNew ? [] : scriptFromContext?.grantedPermissions;
-
-            if (newPermissions.length > 0) {
-                const allowed = await new Promise<boolean>((resolve) => {
-                    setRequestedPermissions(newPermissions);
-                    setPendingSaveResolved(() => resolve);
-                    setPermissionModalOpen(true);
-                });
-
-                if (!allowed) {
-                    setIsSaving(false);
-                    return;
-                }
-                grantedPermissions = Array.from(new Set([...(grantedPermissions || []), ...newPermissions]));
-            }
 
             const updatedScript: Script = {
                 id: isNew ? newScriptId : scriptFromContext!.id,
@@ -153,18 +132,6 @@ const ScriptEditor = () => {
             await deleteScript(scriptFromContext.id);
             navigate('/scripts');
         });
-    };
-
-    const handlePermissionConfirm = () => {
-        setPermissionModalOpen(false);
-        if (pendingSaveResolved) pendingSaveResolved(true);
-        setPendingSaveResolved(null);
-    };
-
-    const handlePermissionCancel = () => {
-        setPermissionModalOpen(false);
-        if (pendingSaveResolved) pendingSaveResolved(false);
-        setPendingSaveResolved(null);
     };
 
     // Keyboard shortcut
@@ -256,7 +223,7 @@ const ScriptEditor = () => {
                         <button
                             className="icon-btn"
                             onClick={() => navigate('/scripts')}
-                            title={t('backToScripts')}
+                            title={t('backToScriptList')}
                             style={{ padding: '8px', marginLeft: '-8px' }}
                         >
                             <ArrowLeft size={20} />
@@ -322,25 +289,25 @@ const ScriptEditor = () => {
 
                             )}
 
-                            {(metadata.updateURL || scriptFromContext?.updateUrl) && (
+                            {metadata.updateURL && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.updateURL || scriptFromContext?.updateUrl} target="_blank" rel="noopener noreferrer" title={metadata.updateURL || scriptFromContext?.updateUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.updateURL} target="_blank" rel="noopener noreferrer" title={metadata.updateURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL || scriptFromContext?.updateUrl || '')}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL)}</span>
                                         </a>
                                     </div>
                                 </>
                             )}
 
-                            {(metadata.downloadURL || scriptFromContext?.downloadUrl) && (
+                            {metadata.downloadURL && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.downloadURL || scriptFromContext?.downloadUrl} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL || scriptFromContext?.downloadUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={metadata.downloadURL} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL || scriptFromContext?.downloadUrl || '')}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL)}</span>
                                         </a>
                                     </div>
                                 </>
@@ -426,18 +393,22 @@ const ScriptEditor = () => {
                         </button>
                     </div>
 
-                    <div className="script-info-header" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <input
-                            type="text"
+                    <div className="script-info-header" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minWidth: 0, paddingLeft: '16px' }}>
+                        <div
                             className="script-name-input"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            readOnly
                             title={t('nameDefinedInMetadata')}
-                            style={{ cursor: 'default', marginLeft: 0 }}
-                        />
+                            style={{
+                                cursor: 'default',
+                                marginLeft: 0,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}
+                        >
+                            {name}
+                        </div>
                         {metadata.namespace && (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: '8px' }}>
                                 {metadata.namespace}
                             </span>
                         )}
@@ -535,14 +506,6 @@ const ScriptEditor = () => {
                     />
                 </div>
             </main>
-
-            <PermissionModal
-                isOpen={permissionModalOpen}
-                scriptName={scriptFromContext?.name || name}
-                permissions={requestedPermissions}
-                onConfirm={handlePermissionConfirm}
-                onCancel={handlePermissionCancel}
-            />
         </div >
     );
 };
