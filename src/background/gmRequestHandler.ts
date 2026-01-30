@@ -1,5 +1,6 @@
 import type { Script } from './types';
 import { parseMetadata } from '../utils/metadataParser';
+import { UserscriptMessageType } from '../types/messages';
 
 function globToRegexPattern(glob: string): string {
     // Escape all regex metacharacters, including backslash, then convert glob "*" to ".*"
@@ -9,7 +10,7 @@ function globToRegexPattern(glob: string): string {
 
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
+async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
     const origin = _sender.origin;
 
     // Verify permissions
@@ -29,7 +30,7 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
     const apiName = type;
 
     // Exceptions that don't need permission or are internal
-    if (apiName !== 'GM_xhrAbort' && !permissions.has(apiName)) {
+    if (apiName !== UserscriptMessageType.GM_xhrAbort && !permissions.has(apiName)) {
         // Also check dot notation if applicable e.g. GM.setValue
         const dotName = apiName.replace('_', '.');
         if (!permissions.has(dotName)) {
@@ -40,25 +41,25 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
 
 
     switch (type) {
-        case 'GM_setValue':
+        case UserscriptMessageType.GM_setValue:
             await chrome.storage.local.set({ [`val_${scriptId}_${origin}_${data.key}`]: data.value });
             return null;
-        case 'GM_getValue':
+        case UserscriptMessageType.GM_getValue:
             {
                 const key = `val_${scriptId}_${origin}_${data.key}`;
                 const res = await chrome.storage.local.get(key);
                 return res[key];
             }
-        case 'GM_deleteValue':
+        case UserscriptMessageType.GM_deleteValue:
             await chrome.storage.local.remove(`val_${scriptId}_${origin}_${data.key}`);
             return null;
-        case 'GM_listValues':
+        case UserscriptMessageType.GM_listValues:
             {
                 const all = await chrome.storage.local.get(null);
                 const prefix = `val_${scriptId}_${origin}_`;
                 return Object.keys(all).filter(k => k.startsWith(prefix)).map(k => k.slice(prefix.length));
             }
-        case 'GM_notification':
+        case UserscriptMessageType.GM_notification:
             if (chrome.notifications) {
                 chrome.notifications.create({
                     type: 'basic',
@@ -68,13 +69,13 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
                 });
             }
             return null;
-        case 'GM_openInTab':
+        case UserscriptMessageType.GM_openInTab:
             if (chrome.tabs) {
                 const active = data.options?.active !== undefined ? data.options.active : true;
                 await chrome.tabs.create({ url: data.url, active: active });
             }
             return null;
-        case 'GM_xmlhttpRequest':
+        case UserscriptMessageType.GM_xmlhttpRequest:
             try {
                 const DETAILS = data.details;
 
@@ -133,7 +134,7 @@ async function handleGMRequest(type: string, data: any, _sender: chrome.runtime.
             } catch (e) {
                 throw new Error((e as Error).message || "Network Error");
             }
-        case 'GM_registerMenuCommand':
+        case UserscriptMessageType.GM_registerMenuCommand:
             if (chrome.contextMenus) {
                 const menuId = `cmd_${scriptId}_${data.caption.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 chrome.contextMenus.create({

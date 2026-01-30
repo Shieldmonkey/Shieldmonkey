@@ -1,7 +1,7 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { type Script, type Theme } from '../types';
 import { AppContext } from './AppContextDefinition';
-
+import { MessageType } from '../../types/messages';
 
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -91,7 +91,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const handleToggleExtension = (enabled: boolean) => {
         setExtensionEnabled(enabled);
         chrome.storage.local.set({ extensionEnabled: enabled });
-        chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+        chrome.runtime.sendMessage({ type: MessageType.RELOAD_SCRIPTS });
     };
 
     const reloadScripts = async () => {
@@ -104,7 +104,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saveScript = async (script: Script) => {
         // Send to background to save (which handles parsing, validation, registration)
         await chrome.runtime.sendMessage({
-            type: 'SAVE_SCRIPT',
+            type: MessageType.SAVE_SCRIPT,
             script
         });
         // Optimistic update handled by onStorageChanged theoretically, but we can also update locally?
@@ -114,7 +114,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const deleteScript = async (id: string) => {
         await chrome.runtime.sendMessage({
-            type: 'DELETE_SCRIPT',
+            type: MessageType.DELETE_SCRIPT,
             scriptId: id
         });
     };
@@ -123,7 +123,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // Optimistic upate
         setScripts(prev => prev.map(s => s.id === script.id ? { ...s, enabled } : s));
         await chrome.runtime.sendMessage({
-            type: 'TOGGLE_SCRIPT',
+            type: MessageType.TOGGLE_SCRIPT,
             scriptId: script.id,
             enabled
         });

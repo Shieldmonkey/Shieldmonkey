@@ -4,6 +4,7 @@ import { parseMetadata, type Metadata } from '../../utils/metadataParser';
 import Editor, { DiffEditor } from '@monaco-editor/react';
 import { useI18n } from '../../context/I18nContext';
 import { Info, X } from 'lucide-react';
+import { MessageType } from '../../types/messages';
 
 // Theme logic
 // ... (Theme type and Script interface remain same)
@@ -98,7 +99,7 @@ const Install = () => {
     const fetchScript = useCallback(async (url: string, referrerArg?: string) => {
         try {
             // Use background fetching to bypass CSP
-            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url, referrer: referrerArg });
+            const response = await chrome.runtime.sendMessage({ type: MessageType.FETCH_SCRIPT_CONTENT, url, referrer: referrerArg });
             if (!response || !response.success) {
                 throw new Error(response.error || t('installErrorFailedToFetch'));
             }
@@ -204,7 +205,7 @@ const Install = () => {
         };
 
         try {
-            await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script });
+            await chrome.runtime.sendMessage({ type: MessageType.SAVE_SCRIPT, script });
             setStatus('success');
             setTimeout(() => {
                 window.close();
