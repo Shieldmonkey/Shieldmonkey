@@ -1,4 +1,7 @@
-import type * as Monaco from 'monaco-editor';
+import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
+
+// @ts-ignore: Types for contribution are missing but runtime exports exist
+import { javascriptDefaults, ScriptTarget } from 'monaco-editor/esm/vs/language/typescript/monaco.contribution.js';
 
 /**
  * Type definitions for Greasemonkey/Tampermonkey APIs
@@ -193,15 +196,14 @@ declare const GM: {
  */
 export const configureMonaco = (monaco: typeof Monaco) => {
     // 1. Add GM Types
+    const tsDefaults = javascriptDefaults;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tsDefaults = (monaco.languages.typescript as any).javascriptDefaults;
-    const libDisposable = tsDefaults.addExtraLib(GM_TYPES, 'ts:filename/gm.d.ts');
+    const libDisposable = (tsDefaults as any).addExtraLib(GM_TYPES, 'ts:filename/gm.d.ts');
 
     // 2. Set Compiler Options to allow JS
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ts = monaco.languages.typescript as any;
-    tsDefaults.setCompilerOptions({
-        target: ts.ScriptTarget.ESNext,
+    (tsDefaults as any).setCompilerOptions({
+        target: ScriptTarget.ESNext,
         allowNonTsExtensions: true,
         allowJs: true,
         checkJs: true

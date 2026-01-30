@@ -1,7 +1,12 @@
 import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
+
+// Import only the languages we need
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution.js';
+import 'monaco-editor/esm/vs/language/typescript/monaco.contribution.js';
+
 
 import { AppProvider } from './context/AppContext';
 import { ModalProvider } from './context/ModalContext';
