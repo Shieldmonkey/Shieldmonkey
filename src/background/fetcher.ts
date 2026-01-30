@@ -52,7 +52,7 @@ async function fetchViaBridge(url: string, targetUrl: string): Promise<string> {
 const pendingFetches = new Map<string, Promise<string>>();
 
 // Helper to fetch script content directly from background (used by Install page and others via Message)
-export async function fetchScriptContent(url: string): Promise<string> {
+export async function fetchScriptContent(url: string, referrer?: string): Promise<string> {
     // Check for pending requests to avoid multiple tabs
     if (pendingFetches.has(url)) {
         return pendingFetches.get(url)!;
@@ -77,7 +77,18 @@ export async function fetchScriptContent(url: string): Promise<string> {
         try {
             return await fetchViaBridge(bridgeUrl, url);
         } catch (e) {
-            console.error("Bridge fetch failed", e);
+            console.error("Default bridge fetch failed:", e);
+
+            // Retry with referrer if available
+            if (referrer) {
+                console.log(`Retrying fetch via referrer bridge: ${referrer}`);
+                try {
+                    return await fetchViaBridge(referrer, url);
+                } catch (retryErr) {
+                    console.error("Referrer bridge fetch also failed:", retryErr);
+                }
+            }
+
             throw new Error(`Failed to fetch script: ${(e as Error).message}`);
         }
     })();

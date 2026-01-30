@@ -29,8 +29,8 @@ export function setupMessageListener() {
         }
 
         if (message.type === 'FETCH_SCRIPT_CONTENT') {
-            const { url } = message;
-            fetchScriptContent(url)
+            const { url, referrer } = message;
+            fetchScriptContent(url, referrer)
                 .then(text => sendResponse({ success: true, text }))
                 .catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
             return true; // Keep channel open
@@ -44,8 +44,11 @@ export function setupMessageListener() {
         }
 
         if (message.type === 'START_INSTALL_FLOW') {
-            const { url } = message;
-            const installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(url)}`;
+            const { url, referrer } = message;
+            let installUrl = chrome.runtime.getURL('src/options/index.html') + `#/install?url=${encodeURIComponent(url)}`;
+            if (referrer) {
+                installUrl += `&referrer=${encodeURIComponent(referrer)}`;
+            }
             chrome.tabs.create({ url: installUrl });
             return true;
         }

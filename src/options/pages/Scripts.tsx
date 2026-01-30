@@ -103,7 +103,7 @@ const Scripts = () => {
     const handleCheckUpdate = (script: Script) => {
         const url = getUpdateUrl(script);
         if (url) {
-            chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
+            chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url, referrer: script.referrerUrl });
         }
     };
 

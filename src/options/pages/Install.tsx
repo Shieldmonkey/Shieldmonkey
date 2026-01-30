@@ -95,10 +95,10 @@ const Install = () => {
         }
     }, []);
 
-    const fetchScript = useCallback(async (url: string) => {
+    const fetchScript = useCallback(async (url: string, referrerArg?: string) => {
         try {
             // Use background fetching to bypass CSP
-            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url });
+            const response = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url, referrer: referrerArg });
             if (!response || !response.success) {
                 throw new Error(response.error || t('installErrorFailedToFetch'));
             }
@@ -134,6 +134,10 @@ const Install = () => {
         const installId = searchParams.get('installId') || hashSearchParams.get('installId');
         const url = searchParams.get('url') || hashSearchParams.get('url');
 
+        const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer') || undefined;
+        if (referrer) setReferrerUrl(referrer);
+
+        // Check for installId (Passed via storage from Content Script)
         if (installId) {
             const key = `pending_install_${installId}`;
             chrome.storage.local.get(key, (data) => {
@@ -149,8 +153,9 @@ const Install = () => {
                     if (url) {
                         console.warn('Install session expired or missing, falling back to direct fetch via bridge/background');
                         setScriptUrl(url);
-                        if (referrer) setReferrerUrl(referrer);
-                        fetchScript(url);
+                        // Usage of referrer from outer scope or pend logic if we want to be strict,
+                        // but outer 'referrer' comes from URL param which is what we want for fallback/direct.
+                        fetchScript(url, referrer);
                     } else {
                         setStatus('error');
                         setError(t('installErrorExpired'));
@@ -171,11 +176,8 @@ const Install = () => {
             return;
         }
 
-        const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer');
-        if (referrer) setReferrerUrl(referrer);
-
         setScriptUrl(url);
-        fetchScript(url);
+        fetchScript(url, referrer);
     }, [fetchScript, loadScriptContent, t]);
 
     const handleInstall = async () => {
@@ -228,7 +230,7 @@ const Install = () => {
                 <p style={{ color: '#ff6b6b' }}>{error}</p>
                 <div className="actions">
                     <button className="btn-secondary" onClick={handleCancel}>{t('installBtnClose')}</button>
-                    {scriptUrl && <button className="btn-primary" onClick={() => fetchScript(scriptUrl)}>{t('installBtnRetry')}</button>}
+                    {scriptUrl && <button className="btn-primary" onClick={() => fetchScript(scriptUrl, referrerUrl || undefined)}>{t('installBtnRetry')}</button>}
                 </div>
             </div>
         );
