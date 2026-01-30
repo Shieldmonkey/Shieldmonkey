@@ -1,6 +1,6 @@
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 
-// @ts-ignore: Types for contribution are missing but runtime exports exist
+// @ts-expect-error: Types for contribution are missing but runtime exports exist
 import { javascriptDefaults, ScriptTarget } from 'monaco-editor/esm/vs/language/typescript/monaco.contribution.js';
 
 /**
