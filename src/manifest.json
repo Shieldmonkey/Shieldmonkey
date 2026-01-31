@@ -13,6 +13,7 @@
     "notifications",
     "webNavigation",
     "contextMenus",
+    "downloads",
     "declarativeNetRequest",
     "alarms"
   ],

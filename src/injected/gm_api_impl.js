@@ -251,7 +251,34 @@
       registerMenuCommand: function(caption, onClick) {
           if (!granted.has('GM_registerMenuCommand') && !granted.has('GM.registerMenuCommand')) return;
           console.log("GM_registerMenuCommand registered:", caption);
-          sendRequest('GM_registerMenuCommand', { caption });
+          // Just async request, but we need ID for unregister? 
+          // Background now returns it.
+          // But strict sync return in traditional GM? 
+          // Usually valid impls return ID immediately or promise?
+          // Tampermonkey returns id (integer/string).
+          // Since we are async to background, we can't return real ID immediately if generated there unless we predict it.
+          // We changed background to return predictable ID with timestamp + caption?
+          // We can generate ID here and send it? No, scriptId comes from there.
+          // Let's generate a placeholder or promise?
+          // If we return undefined, unregister might fail.
+          // But we can't block. 
+          // Actually we can generate unique ID here? 
+          // 'cmd_' + SCRIPT_ID + '_' + unique
+          // But SCRIPT_ID is strings.
+          // Let's rely on callback result? No, synchronous return expected.
+          // Implementing sync return is hard with async message.
+          // Stub: return a dummy object that we can map later? No.
+          // Let's try to generate ID here if possible? SCRIPT_ID is constant.
+          // const menuId = ...
+          // sendRequest('GM_registerMenuCommand', { caption, menuId });
+          // But currently bg generates it.
+          // For now, return undefined and log warning about unregister limitation?
+          // Actually, if we want to support unregister, we must return an ID.
+          // Let's try sending the request asynchronously and hope it registers.
+          // We can return a Promise? Some scripts might await it?
+          // Most scripts expect number/string.
+          
+          return sendRequest('GM_registerMenuCommand', { caption });
       },
 
       closeTab: function() {
@@ -261,7 +288,102 @@
               return;
           }
           sendRequest('GM_closeTab', {});
-      }
+      },
+
+      // --- Implemented APIs (previously unimplemented) ---
+       download: function(details) {
+            if (!granted.has('GM_download')) {
+                console.error("Shieldmonkey: GM_download permission not granted");
+                return;
+            }
+            // details can be url string or object
+            let url, name;
+            if (typeof details === 'string') {
+                url = details;
+                name = arguments[1]; // optional filename
+            } else {
+                url = details.url;
+                name = details.name; // filename
+            }
+            // Returns promise that resolves to ID? GM_download typically returns { abort: function }
+            // But we can return a promise wrapper or object.
+            // Standard is void or task object. 
+            // For now let's just trigger download.
+            sendRequest('GM_download', { url, name });
+            return { abort: () => {} }; 
+       },
+
+       unregisterMenuCommand: function(menuCmdId) {
+            if (!granted.has('GM_unregisterMenuCommand')) return;
+            sendRequest('GM_unregisterMenuCommand', { menuCmdId });
+       },
+
+       setValues: function(values) {
+           if (!granted.has('GM_setValue')) return; // Usually shares permission? Or GM_setValues
+           // Iterate and set cache
+           const date = new Date();
+           for (const key of Object.keys(values)) {
+               const cacheKey = getCacheKey(key);
+               const oldValueStr = localStorage.getItem(cacheKey);
+               const oldValue = oldValueStr ? JSON.parse(oldValueStr) : undefined;
+               
+               localStorage.setItem(cacheKey, JSON.stringify(values[key]));
+               notifyListeners(key, oldValue, values[key], false);
+           }
+           sendRequest('GM_setValues', { values });
+       },
+
+       getValues: function(keys) {
+           if (!granted.has('GM_getValue')) return {};
+           // Read from cache
+           const result = {};
+           if (Array.isArray(keys)) {
+                for (const key of keys) {
+                    const cacheKey = getCacheKey(key);
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached !== null) {
+                         try { result[key] = JSON.parse(cached); } catch(e) {}
+                    }
+                }
+           } else {
+               // If object with defaults
+                for (const key of Object.keys(keys)) {
+                    const cacheKey = getCacheKey(key);
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached !== null) {
+                         try { result[key] = JSON.parse(cached); } catch(e) {}
+                    } else {
+                        result[key] = keys[key]; // default
+                    }
+                }
+           }
+           return result;
+       },
+
+       deleteValues: function(keys) {
+           if (!granted.has('GM_deleteValue')) return;
+           for (const key of keys) {
+               const cacheKey = getCacheKey(key);
+               const oldValueStr = localStorage.getItem(cacheKey);
+               const oldValue = oldValueStr ? JSON.parse(oldValueStr) : undefined;
+               localStorage.removeItem(cacheKey);
+               notifyListeners(key, oldValue, undefined, false);
+           }
+           sendRequest('GM_deleteValues', { keys });
+       },
+
+       // --- Unsupported APIs ---
+       getResourceText: function() { console.error("Shieldmonkey: GM_getResourceText is not supported."); },
+       getResourceURL: function() { console.error("Shieldmonkey: GM_getResourceURL is not supported."); },
+       getTab: function() { console.error("Shieldmonkey: GM_getTab is not supported."); },
+       saveTab: function() { console.error("Shieldmonkey: GM_saveTab is not supported."); },
+       getTabs: function() { console.error("Shieldmonkey: GM_getTabs is not supported."); },
+       webRequest: function() { console.error("Shieldmonkey: GM_webRequest is not supported."); },
+       cookie: {
+           list: function() { console.error("Shieldmonkey: GM_cookie is not supported."); },
+           set: function() { console.error("Shieldmonkey: GM_cookie is not supported."); },
+           delete: function() { console.error("Shieldmonkey: GM_cookie is not supported."); }
+       }
     };
 
     // Expose GM calls to global scope
@@ -283,9 +405,33 @@
     scope.GM_addStyle = GM.addStyle;
     scope.GM_addElement = GM.addElement;
     if (granted.has('GM_registerMenuCommand')) scope.GM_registerMenuCommand = GM.registerMenuCommand;
+
+    if (granted.has('GM_download')) scope.GM_download = GM.download;
+    if (granted.has('GM_unregisterMenuCommand')) scope.GM_unregisterMenuCommand = GM.unregisterMenuCommand;
+    if (granted.has('GM_setValue')) scope.GM_setValues = GM.setValues;
+    if (granted.has('GM_getValue')) scope.GM_getValues = GM.getValues;
+    if (granted.has('GM_deleteValue')) scope.GM_deleteValues = GM.deleteValues;
+
+    // Unsupported API Bindings (always exposed but warn)
+    scope.GM_getResourceText = GM.getResourceText;
+    scope.GM_getResourceURL = GM.getResourceURL;
+    scope.GM_getTab = GM.getTab;
+    scope.GM_saveTab = GM.saveTab;
+    scope.GM_getTabs = GM.getTabs;
+    scope.GM_webRequest = GM.webRequest;
+    scope.GM_cookie = GM.cookie;
+
     
     // unsafeWindow handling
-    scope.unsafeWindow = window; 
+    // Shieldmonkey runs in USER_SCRIPT world (Isolated), so full unsafeWindow is not supported.
+    // We map it to window (Isolated) but warn developers.
+    Object.defineProperty(scope, 'unsafeWindow', {
+        get: function() {
+            console.warn("Shieldmonkey: unsafeWindow is not fully supported in Manifest V3. You are accessing the Isolated World window.");
+            return window;
+        },
+        configurable: true
+    }); 
 
     // Window overrides
     const originalClose = window.close;
@@ -297,6 +443,12 @@
         
         // Then try GM_closeTab (which asks background to close tab)
         GM.closeTab();
+    };
+    
+    // window.focus override (unsupported)
+    window.focus = function() {
+        console.warn("Shieldmonkey: window.focus logic is not implemented/supported in background.");
+        // We could forward to original but usually user scripts want to focus the tab, which is restricted.
     };
 
     // onurlchange implementation

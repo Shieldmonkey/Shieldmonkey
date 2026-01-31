@@ -41,6 +41,16 @@ test('GM API Compatibility: block restricted APIs and support window features', 
     // Wait for logs to appear using poll
     await expect.poll(() => logs.find(l => l.includes('Storage') && l.includes('PASS'))).toBeDefined();
 
+    // 5. Bulk Storage
+    await expect.poll(() => logs.find(l => l.includes('Bulk Storage PASS'))).toBeDefined();
+
+    // 6. Menu & Download
+    await expect.poll(() => logs.find(l => l.includes('Menu Unregister PASS'))).toBeDefined();
+    await expect.poll(() => logs.find(l => l.includes('GM_download exists'))).toBeDefined();
+
+    // Check for stubs
+    await expect.poll(() => logs.find(l => l.includes('GM_getResourceText is not supported'))).toBeDefined();
+
     // 3. window.onurlchange
     // Trigger URL change
     await testPage.evaluate(() => {

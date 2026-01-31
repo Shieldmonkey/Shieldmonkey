@@ -12,6 +12,7 @@
     "scripting",
     "webNavigation",
     "contextMenus",
+    "downloads",
     "declarativeNetRequest",
     "webRequest",
     "alarms"

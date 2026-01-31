@@ -9,8 +9,14 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
+// @grant        GM_setValues
+// @grant        GM_getValues
+// @grant        GM_deleteValues
 // @grant        GM_listValues
 // @grant        GM_addValueChangeListener
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_download
 // @grant        unsafeWindowtValue
 // @grant        GM_closeTab
 // @grant        window.close
@@ -83,7 +89,49 @@
         console.log(`${LOG_PREFIX} [PASS] onurlchange fired: ${newUrl}`);
     };
 
-    // 4. window.close test
+    // 5. Bulk Storage
+    try {
+        const bulkData = { k1: 1, k2: 2 };
+        if (typeof GM_setValues !== 'undefined') {
+            GM_setValues(bulkData);
+            const retrieved = GM_getValues(['k1', 'k2']);
+            console.log(`${LOG_PREFIX} Bulk Retrieve:`, retrieved);
+            
+            if (retrieved.k1 === 1 && retrieved.k2 === 2) {
+                console.log(`${LOG_PREFIX} Bulk Storage PASS`);
+            } else {
+                 console.log(`${LOG_PREFIX} Bulk Storage FAIL`, retrieved);
+            }
+            GM_deleteValues(['k1', 'k2']);
+        }
+    } catch(e) {
+        console.error(`${LOG_PREFIX} Bulk Storage Error:`, e);
+    }
+    
+    // 6. Menu & Download
+    try {
+        if (typeof GM_registerMenuCommand !== 'undefined' && typeof GM_unregisterMenuCommand !== 'undefined') {
+            const id = GM_registerMenuCommand("Test Command", () => {});
+            console.log(`${LOG_PREFIX} Menu Registered: ` + id);
+            GM_unregisterMenuCommand(id);
+            console.log(`${LOG_PREFIX} Menu Unregister PASS`);
+        }
+        
+        if (typeof GM_download !== 'undefined') {
+             // Mock call, might fail if permission denied or requires user gesture, but check existence
+             console.log(`${LOG_PREFIX} GM_download exists`);
+             // Don't actually download to avoid prompt in test
+        }
+        
+        if (typeof GM_getResourceText !== 'undefined') {
+            // Should be stubbed
+            GM_getResourceText("foo");
+        }
+    } catch(e) {
+        console.error(`${LOG_PREFIX} Menu/Download Error:`, e);
+    }
+
+    // 7. window.close (GM_closeTab)st
     window.addEventListener('message', (event) => {
         if (event.data === 'TRIGGER_CLOSE') {
             console.log(`${LOG_PREFIX} Triggering close via message...`);

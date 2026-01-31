@@ -126,7 +126,7 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
             return null;
         case UserscriptMessageType.GM_registerMenuCommand:
             if (chrome.contextMenus) {
-                const menuId = `cmd_${scriptId}_${data.caption.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const menuId = `cmd_${scriptId}_${data.caption.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
                 chrome.contextMenus.create({
                     id: menuId,
                     title: data.caption,
@@ -137,8 +137,97 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
                         // Suppress error if duplicate
                     }
                 });
+                return menuId;
             }
             return null;
+        case UserscriptMessageType.GM_unregisterMenuCommand:
+            if (chrome.contextMenus) {
+                // Note: We use data.menuCmdId directly as it should match what was returned by register
+                chrome.contextMenus.remove(data.menuCmdId, () => {
+                    if (chrome.runtime.lastError) { /* ignore */ }
+                });
+            }
+            return null;
+        case UserscriptMessageType.GM_download:
+            if (chrome.downloads) {
+                const id = await chrome.downloads.download({
+                    url: data.url,
+                    filename: data.name, // optional
+                    saveAs: false,
+                    conflictAction: 'uniquify'
+                });
+                return id;
+            } else {
+                throw new Error("Agnt: GM_download permission not granted (internal)");
+            }
+        case UserscriptMessageType.GM_setValues:
+            {
+                // Bulk set
+                const items: Record<string, unknown> = {};
+                for (const key of Object.keys(data.values)) {
+                    const storageKey = `val_${scriptId}_${origin}_${key}`;
+                    items[storageKey] = data.values[key];
+                }
+                await chrome.storage.local.set(items);
+
+                // Broadcast all changes
+                chrome.tabs.query({}, (tabs) => {
+                    for (const tab of tabs) {
+                        if (tab.id && tab.id !== tabId) {
+                            for (const key of Object.keys(data.values)) {
+                                chrome.tabs.sendMessage(tab.id, {
+                                    type: 'GM_STORAGE_CHANGE',
+                                    scriptId: scriptId,
+                                    key: key,
+                                    value: data.values[key],
+                                    remote: true
+                                }).catch(() => { });
+                            }
+                        }
+                    }
+                });
+                return null;
+            }
+        case UserscriptMessageType.GM_getValues:
+            {
+                const keys = data.keys as string[];
+                const storageKeys = keys.map(k => `val_${scriptId}_${origin}_${k}`);
+                const res = await chrome.storage.local.get(storageKeys);
+                const values: Record<string, unknown> = {};
+
+                // Map back to original keys
+                for (const k of keys) {
+                    const storageKey = `val_${scriptId}_${origin}_${k}`;
+                    if (res[storageKey] !== undefined) {
+                        values[k] = res[storageKey];
+                    }
+                }
+                return values;
+            }
+        case UserscriptMessageType.GM_deleteValues:
+            {
+                const keys = data.keys as string[];
+                const storageKeys = keys.map(k => `val_${scriptId}_${origin}_${k}`);
+                await chrome.storage.local.remove(storageKeys);
+
+                // Broadcast changes
+                chrome.tabs.query({}, (tabs) => {
+                    for (const tab of tabs) {
+                        if (tab.id && tab.id !== tabId) {
+                            for (const k of keys) {
+                                chrome.tabs.sendMessage(tab.id, {
+                                    type: 'GM_STORAGE_CHANGE',
+                                    scriptId: scriptId,
+                                    key: k,
+                                    value: undefined,
+                                    remote: true
+                                }).catch(() => { });
+                            }
+                        }
+                    }
+                });
+                return null;
+            }
     }
     return null;
 }
