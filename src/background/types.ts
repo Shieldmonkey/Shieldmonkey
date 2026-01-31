@@ -6,8 +6,7 @@ export interface Script {
     grantedPermissions?: string[];
     sourceUrl?: string;
     referrerUrl?: string;
-    updateUrl?: string;
-    downloadUrl?: string;
+
     installDate?: number;
     updateDate?: number;
     [key: string]: unknown;

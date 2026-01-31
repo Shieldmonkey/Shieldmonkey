@@ -213,14 +213,14 @@ const Scripts = () => {
                                                     <span style={{
                                                         padding: '2px 8px',
                                                         borderRadius: '12px',
-                                                        backgroundColor: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                                                        color: (script.sourceUrl || script.updateUrl || script.downloadUrl) ? '#60a5fa' : '#9ca3af',
-                                                        border: `1px solid ${(script.sourceUrl || script.updateUrl || script.downloadUrl) ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)'}`,
+                                                        backgroundColor: (script.sourceUrl) ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                                                        color: (script.sourceUrl) ? '#60a5fa' : '#9ca3af',
+                                                        border: `1px solid ${(script.sourceUrl) ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)'}`,
                                                         fontWeight: 600,
                                                         fontSize: '0.75rem',
                                                         whiteSpace: 'nowrap'
                                                     }}>
-                                                        {(script.sourceUrl || script.updateUrl || script.downloadUrl) ? t('remoteLabel') : t('localLabel')}
+                                                        {(script.sourceUrl) ? t('remoteLabel') : t('localLabel')}
                                                     </span>
                                                     {getUpdateUrl(script) && (
                                                         <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleCheckUpdate(script); }} title={t('checkForUpdatesTooltip')} style={{ padding: '4px', marginLeft: 0 }}>

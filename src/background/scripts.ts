@@ -106,8 +106,7 @@ export async function handleSaveScript(script: Script) {
         }
 
         if (!script.sourceUrl && existing.sourceUrl) script.sourceUrl = existing.sourceUrl;
-        if (!script.updateUrl && existing.updateUrl) script.updateUrl = existing.updateUrl;
-        if (!script.downloadUrl && existing.downloadUrl) script.downloadUrl = existing.downloadUrl;
+
         if (!script.referrerUrl && existing.referrerUrl) script.referrerUrl = existing.referrerUrl;
 
         scripts[index] = script;

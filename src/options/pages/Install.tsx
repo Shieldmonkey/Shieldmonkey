@@ -186,8 +186,7 @@ const Install = () => {
         setStatus('installing');
 
         const id = existingScript ? existingScript.id : crypto.randomUUID();
-        const updateURL = metadata.updateURL || metadata.downloadURL || scriptUrl;
-        const downloadURL = metadata.downloadURL || updateURL || scriptUrl;
+
 
         const script = {
             id,
@@ -198,8 +197,6 @@ const Install = () => {
             grantedPermissions: (metadata.grant || []).filter(p => p !== 'none'),
             sourceUrl: scriptUrl,
             referrerUrl: referrerUrl,
-            updateUrl: updateURL,
-            downloadUrl: downloadURL,
             installDate: !existingScript ? Date.now() : undefined,
             updateDate: Date.now()
         };
