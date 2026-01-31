@@ -46,4 +46,14 @@ export function setupNavigationListener() {
             });
         }
     });
+
+    // Detect History API changes (pushState/replaceState) and notify scripts
+    chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+        chrome.tabs.sendMessage(details.tabId, {
+            type: 'GM_URL_CHANGE',
+            url: details.url
+        }, { frameId: details.frameId }).catch(() => {
+            // Ignore errors (e.g. no content script listening)
+        });
+    });
 }

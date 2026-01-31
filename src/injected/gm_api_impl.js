@@ -19,7 +19,58 @@
       version: '0.1.0'
     };
 
-    // Helper to send messages to background
+    // --- Storage Sync Implementation ---
+    // We use localStorage as a synchronous read-through cache for the USER_SCRIPT world.
+    // Key prefix: sm_cache_<SCRIPT_ID>_
+    const CACHE_PREFIX = `sm_cache_${SCRIPT_ID}_`;
+
+    function getCacheKey(key) {
+        return CACHE_PREFIX + key;
+    }
+
+    // Storage Change Listeners
+    const changeListeners = new Map();
+    let listenerCounter = 0;
+
+    function notifyListeners(key, oldValue, newValue, remote) {
+        for (const [id, listener] of changeListeners) {
+            try {
+                // Filter by key if listener was registered for specific key (though GM usually registers globally per script? No, GM_addValueChangeListener is for specific key)
+                // Wait, GM_addValueChangeListener(name, callback)
+                if (listener.key === key) {
+                    listener.callback(key, oldValue, newValue, remote);
+                }
+            } catch (e) {
+                console.error("Error in storage listener:", e);
+            }
+        }
+    }
+
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((message) => {
+            if (message.type === 'GM_STORAGE_CHANGE' && message.scriptId === SCRIPT_ID) {
+                const key = message.key;
+                const newValue = message.value;
+                const cacheKey = getCacheKey(key);
+                const oldValue = localStorage.getItem(cacheKey); // might be stringified or raw? 
+                
+                // Update cache
+                if (newValue === undefined) {
+                     localStorage.removeItem(cacheKey);
+                } else {
+                     // We store stringified value in localStorage to match what we might expect? 
+                     // Actually GM_setValue stores JSON-able types. 
+                     // localStorage stores strings.
+                     // Let's store JSON stringified in localStorage to be safe.
+                     localStorage.setItem(cacheKey, JSON.stringify(newValue));
+                }
+
+                notifyListeners(key, oldValue ? JSON.parse(oldValue) : undefined, newValue, message.remote);
+            } else if (message.type === 'GM_URL_CHANGE') {
+                checkUrlChange();
+            }
+        });
+    }
     function sendRequest(type, data) {
       return new Promise((resolve, reject) => {
           try {
@@ -48,50 +99,88 @@
             console.warn("Shieldmonkey: GM_setValue permission not granted");
             return;
         }
+        
+        // Update local cache synchronously
+        const cacheKey = getCacheKey(key);
+        const oldValueStr = localStorage.getItem(cacheKey);
+        const oldValue = oldValueStr ? JSON.parse(oldValueStr) : undefined;
+        
+        localStorage.setItem(cacheKey, JSON.stringify(value));
+        
+        // Notify local listeners immediately (remote=false)
+        notifyListeners(key, oldValue, value, false);
+
         return sendRequest('GM_setValue', { key, value });
       },
       
-      getValue: async function(key, defaultValue) {
+      getValue: function(key, defaultValue) {
         if (!granted.has('GM_getValue') && !granted.has('GM.getValue')) {
-           // Some scripts might expect this to work without explicit grant in some managers, but strict is better.
-           // fallback to default
            return defaultValue;
         }
-        const result = await sendRequest('GM_getValue', { key });
-        return result !== undefined ? result : defaultValue;
+        
+        // Sync Read from Cache
+        const cacheKey = getCacheKey(key);
+        const cached = localStorage.getItem(cacheKey);
+        
+        if (cached !== null) {
+            try {
+                return JSON.parse(cached);
+            } catch(e) {
+                return defaultValue;
+            }
+        }
+        
+        // Cache miss: return default. 
+        // We could try to fetch async in background to populate cache for next time, but for now strict sync return.
+        // Ideally we should have pre-loaded storage on script injection, but that's complex.
+        // For consistent behavior, if we miss, we assume it doesn't exist or not loaded.
+        return defaultValue;
       },
       
       deleteValue: async function(key) {
         if (!granted.has('GM_deleteValue')) return;
+        
+        const cacheKey = getCacheKey(key);
+        const oldValueStr = localStorage.getItem(cacheKey);
+        const oldValue = oldValueStr ? JSON.parse(oldValueStr) : undefined;
+        
+        localStorage.removeItem(cacheKey);
+        
+        notifyListeners(key, oldValue, undefined, false);
+
         return sendRequest('GM_deleteValue', { key });
       },
       
-      listValues: async function() {
+      listValues: function() {
         if (!granted.has('GM_listValues')) return [];
-        return sendRequest('GM_listValues', {});
+        // List from local cache
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(CACHE_PREFIX)) {
+                keys.push(k.slice(CACHE_PREFIX.length));
+            }
+        }
+        return keys;
+      },
+      
+      addValueChangeListener: function(name, callback) {
+          if (!granted.has('GM_addValueChangeListener')) return;
+          const id = ++listenerCounter;
+          changeListeners.set(id, { key: name, callback });
+          return id;
+      },
+      
+      removeValueChangeListener: function(listenerId) {
+          if (!granted.has('GM_removeValueChangeListener') && !granted.has('GM_addValueChangeListener')) return;
+          changeListeners.delete(listenerId);
       },
 
       xmlhttpRequest: function(details) {
-         if (!granted.has('GM_xmlhttpRequest') && !granted.has('GM.xmlhttpRequest')) {
-            console.error("Shieldmonkey: GM_xmlhttpRequest permission not granted");
-            if(details.onerror) details.onerror({ error: "Permission denied" });
-            return { abort: () => {} };
-         }
-         
-         // unique ID for this request
-         const id = Math.random().toString(36).substr(2, 9);
-         
-         const onAbort = () => sendRequest('GM_xhrAbort', { id });
-         
-         sendRequest('GM_xmlhttpRequest', { id, details }).then(response => {
-             if (response && details.onload) {
-                 details.onload(response);
-             }
-         }).catch(err => {
-             if (details.onerror) details.onerror({ error: err });
-         });
-
-         return { abort: onAbort };
+         // EXPLICITLY NOT SUPPORTED
+         console.error("Shieldmonkey: GM_xmlhttpRequest is not supported.");
+         if(details.onerror) details.onerror({ error: "Not supported" });
+         return { abort: () => {} };
       },
       
       openInTab: function(url, options) {
@@ -163,6 +252,15 @@
           if (!granted.has('GM_registerMenuCommand') && !granted.has('GM.registerMenuCommand')) return;
           console.log("GM_registerMenuCommand registered:", caption);
           sendRequest('GM_registerMenuCommand', { caption });
+      },
+
+      closeTab: function() {
+          // Check for 'window.close' permission too (common practice)
+          if (!granted.has('GM_closeTab') && !granted.has('window.close') && !granted.has('close')) {
+              console.warn("Shieldmonkey: GM_closeTab (or window.close) permission not granted");
+              return;
+          }
+          sendRequest('GM_closeTab', {});
       }
     };
 
@@ -174,6 +272,9 @@
     if (granted.has('GM_getValue')) scope.GM_getValue = GM.getValue;
     if (granted.has('GM_deleteValue')) scope.GM_deleteValue = GM.deleteValue;
     if (granted.has('GM_listValues')) scope.GM_listValues = GM.listValues;
+    if (granted.has('GM_addValueChangeListener')) scope.GM_addValueChangeListener = GM.addValueChangeListener;
+    if (granted.has('GM_removeValueChangeListener') || granted.has('GM_addValueChangeListener')) scope.GM_removeValueChangeListener = GM.removeValueChangeListener;
+
     if (granted.has('GM_xmlhttpRequest')) scope.GM_xmlhttpRequest = GM.xmlhttpRequest;
     if (granted.has('GM_openInTab')) scope.GM_openInTab = GM.openInTab;
     if (granted.has('GM_setClipboard')) scope.GM_setClipboard = GM.setClipboard;
@@ -185,6 +286,49 @@
     
     // unsafeWindow handling
     scope.unsafeWindow = window; 
+
+    // Window overrides
+    const originalClose = window.close;
+    window.close = function() {
+        // Try native close first (might fail if not opened by script)
+        try {
+            originalClose.call(window);
+        } catch(e) {}
+        
+        // Then try GM_closeTab (which asks background to close tab)
+        GM.closeTab();
+    };
+
+    // onurlchange implementation
+    // We can't easily detect pushState/replaceState without patching them
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    function checkUrlChange() {
+        if (typeof window.onurlchange === 'function') {
+            window.onurlchange(window.location.href);
+        }
+    }
+
+    // Listen for background notifications (reliable for history.pushState from main world)
+    // Handled above in GM_STORAGE_CHANGE listener block to avoid duplicate listeners
+
+
+    history.pushState = function(...args) {
+        const res = originalPushState.apply(history, args);
+        checkUrlChange();
+        return res;
+    };
+    
+    history.replaceState = function(...args) {
+        const res = originalReplaceState.apply(history, args);
+        checkUrlChange();
+        return res;
+    };
+    
+    window.addEventListener('popstate', checkUrlChange);
+    window.addEventListener('hashchange', checkUrlChange);
+ 
 
 
   } catch (e) {

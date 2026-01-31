@@ -150,26 +150,42 @@ export async function clearAllScripts(page: Page): Promise<void> {
 }
 
 export function createMockFileSystemHandle(initialData?: { name: string; content: string }[]) {
-    // We need to serialize the data to pass it to the browser context
-    const initialDataJson = JSON.stringify(initialData || []);
+    // Process scripts with permissions
+    const scripts = initialData ? initialData.map((d, i) => {
+        const grants: string[] = [];
+        // Extract @grant
+        const lines = d.content.split('\n');
+        for (const line of lines) {
+            const match = line.match(/^\s*\/\/\s*@grant\s+(\S+)/);
+            if (match) {
+                grants.push(match[1]);
+            }
+        }
+        return {
+            id: 'restored-script-' + i,
+            name: d.name,
+            code: d.content,
+            enabled: true,
+            grantedPermissions: grants
+        };
+    }) : [{
+        id: 'restored-script',
+        name: 'Restored Script',
+        code: '// restored',
+        enabled: true,
+        grantedPermissions: []
+    }];
+
+    const mockBackupData = {
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+        scripts: scripts
+    };
+
+    const mockBackupDataJson = JSON.stringify(mockBackupData);
 
     return `
-        const initialData = ${initialDataJson};
-        const mockBackupData = {
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-            scripts: initialData.length > 0 ? initialData.map((d, i) => ({
-                id: 'restored-script-' + i,
-                name: d.name,
-                code: d.content,
-                enabled: true
-            })) : [{
-                id: 'restored-script',
-                name: 'Restored Script',
-                code: '// restored',
-                enabled: true
-            }]
-        };
+        const mockBackupData = ${mockBackupDataJson};
 
         const mockHandle = {
             kind: 'directory',

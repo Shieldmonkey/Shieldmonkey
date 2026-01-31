@@ -7,7 +7,8 @@ export const UserscriptMessageType = {
     GM_openInTab: 'GM_openInTab',
     GM_xmlhttpRequest: 'GM_xmlhttpRequest',
     GM_registerMenuCommand: 'GM_registerMenuCommand',
-    GM_xhrAbort: 'GM_xhrAbort'
+    GM_xhrAbort: 'GM_xhrAbort',
+    GM_closeTab: 'GM_closeTab'
 } as const;
 
 export type UserscriptMessageType = typeof UserscriptMessageType[keyof typeof UserscriptMessageType];

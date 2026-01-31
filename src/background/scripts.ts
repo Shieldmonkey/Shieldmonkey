@@ -204,23 +204,31 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
             const excludes = metadata.exclude;
             const granted = script.grantedPermissions || [];
 
-            await unregisterUserScripts({ ids: [script.id] });
-            await registerUserScripts([{
-                id: script.id,
-                matches: matches.length > 0 ? matches : ["<all_urls>"],
-                excludeMatches: excludes,
-                js: [{
-                    code: getGMAPIScript({
-                        id: script.id,
-                        name: script.name,
-                        version: metadata.version || '1.0',
-                        permissions: granted,
-                        namespace: metadata.namespace,
-                        description: metadata.description
-                    }) + "\n" + script.code
-                }],
-                world: 'USER_SCRIPT'
-            }]);
+            try {
+                // Ensure clean state
+                await unregisterUserScripts({ ids: [script.id] });
+            } catch { /* ignore if not present */ }
+
+            try {
+                await registerUserScripts([{
+                    id: script.id,
+                    matches: matches.length > 0 ? matches : ["<all_urls>"],
+                    excludeMatches: excludes,
+                    js: [{
+                        code: getGMAPIScript({
+                            id: script.id,
+                            name: script.name,
+                            version: metadata.version || '1.0',
+                            permissions: granted,
+                            namespace: metadata.namespace,
+                            description: metadata.description
+                        }) + "\n" + script.code
+                    }],
+                    world: 'USER_SCRIPT'
+                }]);
+            } catch (e) {
+                console.error(`Failed to re-register script ${script.id}:`, e);
+            }
         } else {
             await unregisterUserScripts({ ids: [scriptId] });
         }

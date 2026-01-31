@@ -1,17 +1,12 @@
 import type { Script } from './types';
-import { parseMetadata } from '../utils/metadataParser';
 import { UserscriptMessageType } from '../types/messages';
 
-function globToRegexPattern(glob: string): string {
-    // Escape all regex metacharacters, including backslash, then convert glob "*" to ".*"
-    const escaped = glob.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return escaped.replace(/\\\*/g, '.*');
-}
 
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
     const origin = _sender.origin;
+    const tabId = _sender.tab?.id;
 
     // Verify permissions
     if (!scriptId) {
@@ -30,20 +25,48 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
     const apiName = type;
 
     // Exceptions that don't need permission or are internal
-    if (apiName !== UserscriptMessageType.GM_xhrAbort && !permissions.has(apiName)) {
+    if (apiName !== UserscriptMessageType.GM_xhrAbort && apiName !== UserscriptMessageType.GM_closeTab && !permissions.has(apiName)) {
         // Also check dot notation if applicable e.g. GM.setValue
         const dotName = apiName.replace('_', '.');
         if (!permissions.has(dotName)) {
             console.warn(`Script ${script.name} attempted to use ${apiName} without permission.`);
-            throw new Error(`Permission denied: ${apiName}`);
+            // For GM_closeTab, we might want to allow it implicitly if window.close() is called? 
+            // But usually @grant window.close is good practice or @grant GM_closeTab.
+            // Let's enforce permission for consistency if possible, or allow if standard.
+            // But window.close mapped to GM_closeTab suggests we might want to allow it if @grant window.close is present?
+            // The parser might not extract 'GM_closeTab' from '@grant window.close'.
+
+            if (apiName === 'GM_closeTab' && (permissions.has('window.close') || permissions.has('close'))) {
+                // Allowed
+            } else {
+                throw new Error(`Permission denied: ${apiName}`);
+            }
         }
     }
 
 
     switch (type) {
         case UserscriptMessageType.GM_setValue:
-            await chrome.storage.local.set({ [`val_${scriptId}_${origin}_${data.key}`]: data.value });
-            return null;
+            {
+                const key = `val_${scriptId}_${origin}_${data.key}`;
+                await chrome.storage.local.set({ [key]: data.value });
+
+                // Broadcast change (exclude sender)
+                chrome.tabs.query({}, (tabs) => {
+                    for (const tab of tabs) {
+                        if (tab.id && tab.id !== tabId) {
+                            chrome.tabs.sendMessage(tab.id, {
+                                type: 'GM_STORAGE_CHANGE',
+                                scriptId: scriptId,
+                                key: data.key,
+                                value: data.value,
+                                remote: true
+                            }).catch(() => { });
+                        }
+                    }
+                });
+                return null;
+            }
         case UserscriptMessageType.GM_getValue:
             {
                 const key = `val_${scriptId}_${origin}_${data.key}`;
@@ -51,8 +74,26 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
                 return res[key];
             }
         case UserscriptMessageType.GM_deleteValue:
-            await chrome.storage.local.remove(`val_${scriptId}_${origin}_${data.key}`);
-            return null;
+            {
+                const key = `val_${scriptId}_${origin}_${data.key}`;
+                await chrome.storage.local.remove(key);
+
+                // Broadcast change (exclude sender)
+                chrome.tabs.query({}, (tabs) => {
+                    for (const tab of tabs) {
+                        if (tab.id && tab.id !== tabId) {
+                            chrome.tabs.sendMessage(tab.id, {
+                                type: 'GM_STORAGE_CHANGE',
+                                scriptId: scriptId,
+                                key: data.key,
+                                value: undefined, // deleted
+                                remote: true
+                            }).catch(() => { });
+                        }
+                    }
+                });
+                return null;
+            }
         case UserscriptMessageType.GM_listValues:
             {
                 const all = await chrome.storage.local.get(null);
@@ -76,64 +117,13 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
             }
             return null;
         case UserscriptMessageType.GM_xmlhttpRequest:
-            try {
-                const DETAILS = data.details;
-
-                // Check @connect permissions
-                const metadata = parseMetadata(script.code);
-                const connectRules = metadata.connect || [];
-
-                const targetUrl = new URL(DETAILS.url);
-                const targetDomain = targetUrl.hostname;
-
-                // 1. Allow if matched by any @connect rule
-                const isAllowed = connectRules.some(rule => {
-                    if (rule === '*') return true;
-                    if (rule === 'self') return targetUrl.origin === origin;
-                    if (rule === 'localhost') return targetDomain === 'localhost' || targetDomain === '127.0.0.1';
-
-                    // Normalize rule
-                    if (rule.includes('*')) {
-                        // simple glob conversion
-                        const pattern = globToRegexPattern(rule);
-                        const regex = new RegExp('^' + pattern + '$');
-                        return regex.test(targetDomain);
-                    }
-
-                    return targetDomain === rule || targetDomain.endsWith('.' + rule);
-                });
-
-                if (!isAllowed && connectRules.length > 0) {
-                    throw new Error(`Permission denied: ${DETAILS.url} is not allowed by @connect.`);
-                }
-
-                if (connectRules.length === 0) {
-                    // Fallback: Allow if same origin as the page
-                    if (targetUrl.origin !== origin) {
-                        throw new Error("Permission denied: No @connect rules specified.");
-                    }
-                }
-
-                const response = await fetch(DETAILS.url, {
-                    method: DETAILS.method || 'GET',
-                    headers: DETAILS.headers,
-                    body: DETAILS.data
-                });
-                const text = await response.text();
-                // Convert headers to string (simplification)
-                const responseHeaders = Array.from(response.headers.entries()).map(([k, v]) => `${k}: ${v}`).join('\r\n');
-
-                return {
-                    response: text, // for responseType text
-                    responseText: text,
-                    status: response.status,
-                    statusText: response.statusText,
-                    responseHeaders: responseHeaders,
-                    finalUrl: response.url
-                };
-            } catch (e) {
-                throw new Error((e as Error).message || "Network Error");
+            // Explicitly not supported
+            throw new Error("Shieldmonkey: GM_xmlhttpRequest is explicitly not supported.");
+        case UserscriptMessageType.GM_closeTab:
+            if (tabId) {
+                chrome.tabs.remove(tabId);
             }
+            return null;
         case UserscriptMessageType.GM_registerMenuCommand:
             if (chrome.contextMenus) {
                 const menuId = `cmd_${scriptId}_${data.caption.replace(/[^a-zA-Z0-9]/g, '_')}`;
