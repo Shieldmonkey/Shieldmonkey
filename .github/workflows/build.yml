@@ -35,21 +35,38 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        build_type: [dev, standard, minified]
         include:
-          - build_type: dev
-            artifact_name: Shieldmonkey.dev
-            env: 
-              NODE_OPTIONS: "--max_old_space_size=4096"
-          - build_type: standard
+          # Chrome Builds
+          - name: Chrome Default (Minified + Sourcemap)
+            target: chrome
+            command: build
             artifact_name: Shieldmonkey
+            dist_dir: dist
+            env: {}
+          
+          - name: Chrome Minified No Sourcemap
+            target: chrome
+            command: build
+            artifact_name: Shieldmonkey.min.no-sourcemap
+            dist_dir: dist
             env:
               DISABLE_SOURCEMAP: "true"
-          - build_type: minified
-            artifact_name: Shieldmonkey.min
+
+          # Firefox Builds
+          - name: Firefox Default (Minified + Sourcemap)
+            target: firefox
+            command: build:firefox
+            artifact_name: Shieldmonkey.firefox
+            dist_dir: dist-firefox
+            env: {}
+
+          - name: Firefox Minified No Sourcemap
+            target: firefox
+            command: build:firefox
+            artifact_name: Shieldmonkey.firefox.min.no-sourcemap
+            dist_dir: dist-firefox
             env:
               DISABLE_SOURCEMAP: "true"
-              ENABLE_MINIFY: "true"
 
     steps:
       - name: Checkout
@@ -70,15 +87,21 @@ jobs:
         run: pnpm install
 
       - name: Lint
-        if: matrix.build_type == 'standard'
+        if: matrix.name == 'Chrome Default (Minified + Sourcemap)'
         run: pnpm run lint
 
       - name: Build Extension
-        run: pnpm run build
+        run: pnpm run ${{ matrix.command }}
         env: ${{ matrix.env }}
+
+      - name: Zip Extension
+        run: |
+          cd ${{ matrix.dist_dir }}
+          zip -r ../${{ matrix.artifact_name }}.zip .
+          cd ..
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/
+          path: ${{ matrix.artifact_name }}.zip
