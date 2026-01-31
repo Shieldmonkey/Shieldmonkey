@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor, Edit } from 'lucide-react';
 import './App.css';
 import { parseMetadata } from '../utils/metadataParser';
-import { matchPattern } from '../utils/urlMatcher';
+import { isScriptMatchingUrl } from '../utils/scriptMatcher';
 import { useI18n } from '../context/I18nContext';
 
 interface Script {
@@ -66,10 +66,7 @@ function App() {
 
       // Filter scripts that match current URL (regardless of enabled state, so we can toggle them)
       const matched = scripts.filter(script => {
-        const metadata = parseMetadata(script.code);
-        const patterns = [...metadata.match, ...metadata.include];
-        const effectivePatterns = patterns.length > 0 ? patterns : ["<all_urls>"];
-        return effectivePatterns.some(pattern => matchPattern(pattern, url));
+        return isScriptMatchingUrl(script.code, url);
       });
 
       setActiveScripts(matched);

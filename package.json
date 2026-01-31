@@ -11,7 +11,8 @@
     "build:firefox": "tsc -b && TARGET_BROWSER=firefox NODE_OPTIONS=\"--max-old-space-size=4096\" vite build",
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.e2e.ts",
-    "test:e2e": "vitest run --config vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "test:unit": "vitest run --config vitest.config.unit.ts"
   },
   "engines": {
     "node": ">=20.0.0",

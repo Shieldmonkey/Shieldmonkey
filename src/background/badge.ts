@@ -1,5 +1,4 @@
-import { parseMetadata } from '../utils/metadataParser';
-import { matchPattern } from '../utils/urlMatcher';
+import { isScriptMatchingUrl } from '../utils/scriptMatcher';
 import type { Script } from './types';
 
 // Calculate and update badge for a tab
@@ -16,10 +15,7 @@ export async function updateBadge(tabId: number, url: string) {
 
         const count = scripts.filter(script => {
             if (!script.enabled) return false;
-            const metadata = parseMetadata(script.code);
-            const patterns = [...metadata.match, ...metadata.include];
-            const effectivePatterns = patterns.length > 0 ? patterns : ["<all_urls>"];
-            return effectivePatterns.some((pattern: string) => matchPattern(pattern, url));
+            return isScriptMatchingUrl(script.code, url);
         }).length;
 
         if (count > 0) {
