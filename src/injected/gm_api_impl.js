@@ -242,7 +242,6 @@
           if (attrs) {
               for (const key of Object.keys(attrs)) {
                   if (key === 'textContent') el.textContent = attrs[key];
-                  else if (key === 'innerHTML') el.innerHTML = attrs[key];
                   else el.setAttribute(key, attrs[key]);
               }
           }
