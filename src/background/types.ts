@@ -9,5 +9,6 @@ export interface Script {
 
     installDate?: number;
     updateDate?: number;
+    token?: string;
     [key: string]: unknown;
 }

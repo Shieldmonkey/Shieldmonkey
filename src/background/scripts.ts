@@ -59,7 +59,8 @@ export async function reloadAllScripts() {
                                     version: metadata.version || '1.0',
                                     permissions: granted,
                                     namespace: metadata.namespace,
-                                    description: metadata.description
+                                    description: metadata.description,
+                                    token: script.token || ''
                                 }) + "\n" + script.code
                             }],
                             runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
@@ -94,6 +95,9 @@ export async function handleSaveScript(script: Script) {
     const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
     const index = scripts.findIndex((s) => s.id === script.id);
     const now = Date.now();
+
+    // Generate new token on save/update to invalidate old instances
+    script.token = crypto.randomUUID();
 
     if (index !== -1) {
         const existing = scripts[index];
@@ -177,7 +181,8 @@ export async function handleSaveScript(script: Script) {
                     version: metadata.version || '1.0',
                     permissions: script.grantedPermissions || [],
                     namespace: metadata.namespace,
-                    description: metadata.description
+                    description: metadata.description,
+                    token: script.token
                 }) + "\n" + script.code
             }],
             runAt: runAt as 'document_start' | 'document_end' | 'document_idle',
@@ -206,6 +211,12 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
             const excludes = metadata.exclude;
             const granted = script.grantedPermissions || [];
 
+            // Ensure token exists on enable (migration case)
+            if (!script.token) {
+                script.token = crypto.randomUUID();
+                await chrome.storage.local.set({ scripts });
+            }
+
             try {
                 // Ensure clean state
                 await unregisterUserScripts({ ids: [script.id] });
@@ -223,7 +234,8 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
                             version: metadata.version || '1.0',
                             permissions: granted,
                             namespace: metadata.namespace,
-                            description: metadata.description
+                            description: metadata.description,
+                            token: script.token
                         }) + "\n" + script.code
                     }],
                     world: 'USER_SCRIPT'

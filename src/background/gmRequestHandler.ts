@@ -4,7 +4,7 @@ import { UserscriptMessageType } from '../types/messages';
 
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string) {
+async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string, token?: string) {
     const origin = _sender.origin;
     const tabId = _sender.tab?.id;
 
@@ -19,6 +19,11 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
 
     if (!script) {
         throw new Error("Script not found");
+    }
+
+    // Verify token
+    if (script.token && script.token !== token) {
+        throw new Error("Access denied: Invalid script token");
     }
 
     const permissions = new Set(script.grantedPermissions || []);
@@ -240,7 +245,7 @@ export function setupGMListener() {
 
         // Handle GM API requests from Injected Scripts
         if (message.type && message.type.startsWith('GM_')) {
-            handleGMRequest(message.type, message.data, _sender, message.scriptId)
+            handleGMRequest(message.type, message.data, _sender, message.scriptId, message.token)
                 .then(result => {
                     sendResponse({ result });
                 })

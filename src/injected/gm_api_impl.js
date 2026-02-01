@@ -1,6 +1,7 @@
 (function(scope) {
   const SCRIPT_NAME = "__SCRIPT_NAME__";
   const SCRIPT_ID = "__SCRIPT_ID__";
+  const SCRIPT_TOKEN = "__SCRIPT_TOKEN__";
   // These placeholders will be replaced with JSON strings by the generator
   const PERMISSIONS_JSON = '__GRANTED_PERMISSIONS__'; 
   const SCRIPT_INFO_JSON = '__SCRIPT_OBJ__';
@@ -75,7 +76,8 @@
       return new Promise((resolve, reject) => {
           try {
               const scriptId = SCRIPT_ID;
-              chrome.runtime.sendMessage({ type, data, scriptId }, (response) => {
+              const token = SCRIPT_TOKEN;
+              chrome.runtime.sendMessage({ type, data, scriptId, token }, (response) => {
                   if (chrome.runtime.lastError) {
                       reject(chrome.runtime.lastError);
                   } else if (response && response.error) {

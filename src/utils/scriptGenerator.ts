@@ -7,6 +7,7 @@ export interface GM_ScriptConfig {
     permissions: string[];
     namespace?: string;
     description?: string;
+    token: string;
 }
 
 export function getGMAPIScript(config: GM_ScriptConfig): string {
@@ -21,9 +22,10 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
     return gmApiImplCode
         .replace('__SCRIPT_NAME__', config.name)
         .replace('__SCRIPT_ID__', config.id)
+        .replace('__SCRIPT_TOKEN__', config.token)
         .replace("'__GRANTED_PERMISSIONS__'", JSON.stringify(perms))
         .replace("'__SCRIPT_OBJ__'", JSON.stringify(scriptObj));
 }
 
 // Deprecated: for backward comp only if needed, but we should remove it
-export const GM_API_SCRIPT = getGMAPIScript({ id: '', name: '', version: '', permissions: [] });
+export const GM_API_SCRIPT = getGMAPIScript({ id: '', name: '', version: '', permissions: [], token: '' });
