@@ -14,7 +14,6 @@
     "contextMenus",
     "downloads",
     "declarativeNetRequest",
-    "webRequest",
     "alarms"
   ],
   "host_permissions": [
@@ -37,13 +36,15 @@
     "open_in_tab": true
   },
   "background": {
-    "scripts": ["src/background/index.ts"],
+    "scripts": [
+      "src/background/index.ts"
+    ],
     "type": "module"
   },
   "icons": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; connect-src 'self'; object-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; default-src 'none'"
