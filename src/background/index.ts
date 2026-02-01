@@ -3,12 +3,12 @@ import { setupGMListener } from './gmRequestHandler';
 import { setupNavigationListener } from './navigation';
 import { checkUserScriptsPermission } from './permissions';
 import { reloadAllScripts } from './scripts';
-import { setupBackupAlarm, setupBackupListeners } from './backup';
+
 import { setupMessageListener } from './messageHandler';
 
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
-  setupBackupAlarm();
+
   await reloadAllScripts();
   await checkUserScriptsPermission();
 });
@@ -22,7 +22,7 @@ setupBadgeListeners();
 setupGMListener();
 setupNavigationListener();
 setupMessageListener();
-setupBackupListeners();
+
 
 // Generic notification click handler
 chrome.notifications.onClicked.addListener((notificationId) => {

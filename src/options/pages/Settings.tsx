@@ -22,7 +22,6 @@ const Settings = () => {
     const [restoreStatus, setRestoreStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [restoreMessage, setRestoreMessage] = useState<string>('');
     const [autoBackup, setAutoBackup] = useState(false);
-    const [backupFrequency, setBackupFrequency] = useState('daily');
     const [fsSupported, setFsSupported] = useState(true);
     const restoreInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,10 +37,9 @@ const Settings = () => {
             });
         }
 
-        chrome.storage.local.get(['lastBackupTime', 'autoBackup', 'backupFrequency'], (res) => {
+        chrome.storage.local.get(['lastBackupTime', 'autoBackup'], (res) => {
             if (res.lastBackupTime) setLastBackupTime(res.lastBackupTime as string);
             if (res.autoBackup !== undefined) setAutoBackup(!!res.autoBackup);
-            if (res.backupFrequency) setBackupFrequency(res.backupFrequency as string);
         });
     }, []);
 
@@ -181,11 +179,6 @@ const Settings = () => {
     const toggleAutoBackup = (checked: boolean) => {
         setAutoBackup(checked);
         chrome.storage.local.set({ autoBackup: checked });
-    };
-
-    const handleFrequencyChange = (val: string) => {
-        setBackupFrequency(val);
-        chrome.storage.local.set({ backupFrequency: val });
     };
 
     return (
@@ -334,24 +327,6 @@ const Settings = () => {
                                                 <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={!backupDirName} />
                                                 <span className="slider"></span>
                                             </label>
-                                            <select
-                                                value={backupFrequency}
-                                                onChange={(e) => handleFrequencyChange(e.target.value)}
-                                                disabled={!autoBackup || !backupDirName}
-                                                style={{
-                                                    background: 'var(--bg-color)',
-                                                    color: 'var(--text-primary)',
-                                                    border: '1px solid var(--border-color)',
-                                                    borderRadius: '6px',
-                                                    padding: '4px 8px',
-                                                    fontSize: '0.85rem',
-                                                    opacity: (!autoBackup) ? 0.5 : 1
-                                                }}
-                                            >
-                                                <option value="hourly">{t('freqHourly')}</option>
-                                                <option value="daily">{t('freqDaily')}</option>
-                                                <option value="weekly">{t('freqWeekly')}</option>
-                                            </select>
                                         </div>
                                     </div>
 

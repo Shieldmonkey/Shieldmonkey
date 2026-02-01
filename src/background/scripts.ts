@@ -2,6 +2,7 @@ import { parseMetadata } from '../utils/metadataParser';
 import { getGMAPIScript } from '../utils/scriptGenerator';
 import type { Script } from './types';
 import { updateActiveTabBadge } from './badge';
+import { triggerBackup } from './backup';
 import {
     isUserScriptsAvailable,
     configureUserScriptsWorld,
@@ -185,6 +186,7 @@ export async function handleSaveScript(script: Script) {
     }
 
     await updateActiveTabBadge();
+    triggerBackup();
 }
 
 export async function handleToggleScript(scriptId: string, enabled: boolean) {
@@ -233,6 +235,7 @@ export async function handleToggleScript(scriptId: string, enabled: boolean) {
             await unregisterUserScripts({ ids: [scriptId] });
         }
         await updateActiveTabBadge();
+        triggerBackup();
     }
 }
 
@@ -246,4 +249,5 @@ export async function handleDeleteScript(scriptId: string) {
 
     await unregisterUserScripts({ ids: [scriptId] });
     await updateActiveTabBadge();
+    triggerBackup();
 }
