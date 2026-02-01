@@ -1,7 +1,7 @@
 {
   "name": "shieldmonkey",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.28.2",
   "scripts": {
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
-    "test:unit": "vitest run --config vitest.config.unit.ts"
+    "test:unit": "vitest run --config vitest.config.unit.ts",
+    "bump-version": "node scripts/bump-version.js"
   },
   "engines": {
     "node": ">=20.0.0",
