@@ -87,7 +87,7 @@ function App() {
 
   const openDashboard = (create: boolean = false) => {
     if (create) {
-      let url = 'src/options/index.html';
+      let url = '/src/options/index.html';
       if (currentUrl) {
         url += `?match=${encodeURIComponent(currentUrl)}`;
       }
@@ -142,7 +142,7 @@ function App() {
   const editScript = (id: string) => {
     // Open directly using the hash routing supported by Options App
     // Format: src/options/index.html#scripts/<id>
-    const url = chrome.runtime.getURL(`src/options/index.html#/scripts/${id}`);
+    const url = chrome.runtime.getURL(`/src/options/index.html#/scripts/${id}`);
     chrome.tabs.create({ url: url });
   };
 

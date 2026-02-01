@@ -5,9 +5,7 @@ export async function checkUserScriptsPermission() {
     const available = await isUserScriptsAvailable();
     if (!available) {
         console.warn("userScripts API is not available (or permission missing). Prompting user.");
-        chrome.runtime.openOptionsPage();
-
-        const optionsUrl = chrome.runtime.getURL('src/options/index.html');
+        const optionsUrl = chrome.runtime.getURL('/src/options/index.html');
         const helpUrl = optionsUrl + '#permission-help';
 
         const tabs = await chrome.tabs.query({ url: optionsUrl + '*' });
