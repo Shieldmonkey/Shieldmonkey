@@ -77,6 +77,6 @@ try {
 console.log('✅ Version bump complete.');
 console.log('Next steps:');
 console.log('  1. git add .');
-console.log(`  2. git commit -m "chore: release v${newVersion}"`);
-console.log(`  3. git tag v${newVersion}`);
+console.log(`  2. git commit -m "chore: release v${nextVersion}"`);
+console.log(`  3. git tag v${nextVersion}`);
 console.log('  4. git push && git push --tags');
