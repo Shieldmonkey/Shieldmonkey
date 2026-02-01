@@ -35,12 +35,6 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
         const dotName = apiName.replace('_', '.');
         if (!permissions.has(dotName)) {
             console.warn(`Script ${script.name} attempted to use ${apiName} without permission.`);
-            // For GM_closeTab, we might want to allow it implicitly if window.close() is called? 
-            // But usually @grant window.close is good practice or @grant GM_closeTab.
-            // Let's enforce permission for consistency if possible, or allow if standard.
-            // But window.close mapped to GM_closeTab suggests we might want to allow it if @grant window.close is present?
-            // The parser might not extract 'GM_closeTab' from '@grant window.close'.
-
             if (apiName === 'GM_closeTab' && (permissions.has('window.close') || permissions.has('close'))) {
                 // Allowed
             } else {

@@ -66,34 +66,11 @@ test('Origin Isolation: Script running on Origin A should not affect Origin B', 
 
     // 1. Visit Origin A (shieldmonkey.github.io)
     await pageA.goto('https://shieldmonkey.github.io/Shieldmonkey/');
-    // Helper check (Evaluate in page context, not isolated world if possible, 
-    // but userscripts run in their own world or usually effectively isolated. 
-    // However, A.user.js sets window.SHIELD_TEST_A. If it runs in main world or if we check properly...
-    // The script A uses @grant GM_log, so it likely runs in isolated world in Shieldmonkey implementation 
-    // (unless @grant none).
-    // Let's check from the content script side if possible, or assume it ran.
-    // The previous test verified A ran.
 
-    // 2. Visit Origin B (example.org or iana.org)
-    await pageB.goto('https://www.iana.org/domains/reserved');
+    // 2. Visit Origin B (example.com)
+    await pageB.goto('https://example.com');
 
     // 3. Check if variable leaked to B (it shouldn't)
-    // We check via page.evaluate, effectively checking the main world (or page context).
-    // Note: Script A sets "window.SHIELD_TEST_A". 
-    // If it runs in isolated world, page.evaluate (main world) might NOT see it anyway unless we access the isolated world.
-    // Testing Origin Isolation usually means data storage or persistent changes. 
-    // Window variables are per-process/per-navigation anyway.
-
-    // Let's try to verify that GM_setValue is isolated per script (and maybe origin?)
-    // But we don't have a test script for that ready in the plan for Origin Isolation specifically other than "Window".
-    // The user requirement was "Origin isolation".
-
-    // If the requirement means "GM_setValue is shared across origins for the SAME script" (usual behavior),
-    // or "GM_setValue is scoped by Origin" (unusual but possible).
-    // Most userscript managers share storage for the script across all origins.
-
-    // Let's stick to the "Window" isolation check between tabs as a baseline sanity check.
-    // And actually, checking that 'window.SHIELD_TEST_A' is NOT present on Page B in the context where the script ran.
 
     const valB = await pageB.evaluate(() => (window as unknown as { SHIELD_TEST_A: unknown }).SHIELD_TEST_A);
     expect(valB).toBeUndefined();
