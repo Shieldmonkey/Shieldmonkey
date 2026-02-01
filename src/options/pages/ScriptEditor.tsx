@@ -43,7 +43,7 @@ const ScriptEditor = () => {
 
                 const template = `// ==UserScript==
 // @name        New Script
-// @namespace   Violentmonkey Scripts
+// @namespace   ShieldMonkey Scripts
 // @match       ${matchUrl}
 // @grant       none
 // @version     1.0
