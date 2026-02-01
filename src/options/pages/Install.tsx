@@ -3,6 +3,7 @@ import './Install.css';
 import { parseMetadata, type Metadata } from '../../utils/metadataParser';
 import Editor, { DiffEditor } from '@monaco-editor/react';
 import { useI18n } from '../../context/I18nContext';
+import { sanitizeToHttpUrl } from '../../utils/urlValidator';
 import { Info, X } from 'lucide-react';
 import { MessageType } from '../../types/messages';
 
@@ -31,21 +32,6 @@ const Install = () => {
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
-    // ... (sanitizeUrl and theme logic remain same)
-    const sanitizeUrl = (url: string | null): string => {
-        if (!url) {
-            return 'about:blank';
-        }
-        try {
-            const parsed = new URL(url, window.location.origin);
-            if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-                return parsed.toString();
-            }
-        } catch {
-            // fall through to safe default
-        }
-        return 'about:blank';
-    };
     const [theme, setTheme] = useState<Theme>('dark');
     const { t } = useI18n();
 
@@ -336,7 +322,7 @@ const Install = () => {
 
                             <div className="meta-label">{t('installMetaSource')}</div>
                             <div style={{ wordBreak: 'break-all', fontSize: '0.85em' }}>
-                                <a href={sanitizeUrl(scriptUrl)} target="_blank" rel="noreferrer">{scriptUrl}</a>
+                                <a href={sanitizeToHttpUrl(scriptUrl)} target="_blank" rel="noreferrer">{scriptUrl}</a>
                             </div>
                         </div>
                     </div>

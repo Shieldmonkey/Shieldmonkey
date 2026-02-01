@@ -4,6 +4,7 @@ import './App.css';
 import { parseMetadata } from '../utils/metadataParser';
 import { isScriptMatchingUrl } from '../utils/scriptMatcher';
 import { useI18n } from '../context/I18nContext';
+import { isValidHttpUrl } from '../utils/urlValidator';
 
 interface Script {
   id: string;
@@ -56,7 +57,7 @@ function App() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const url = tab.url;
       // Only allow supported schemes (whitelist)
-      if (!url || !(url.startsWith('http:') || url.startsWith('https:') || url.startsWith('file:'))) {
+      if (!url || !isValidHttpUrl(url)) {
         return;
       }
 

@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X } fro
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { parseMetadata } from '../../utils/metadataParser';
+import { isValidHttpUrl } from '../../utils/urlValidator';
 import { type Script } from '../types';
 import { useI18n } from '../../context/I18nContext';
 
@@ -204,15 +205,6 @@ const ScriptEditor = () => {
         }
     };
 
-    const isValidLink = (urlStr: string | undefined): boolean => {
-        if (!urlStr) return false;
-        try {
-            const url = new URL(urlStr);
-            return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch {
-            return false;
-        }
-    };
 
     return (
         <div className="app-container">
@@ -280,7 +272,7 @@ const ScriptEditor = () => {
                             <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelInstalled')}</div>
                             <div>{scriptFromContext?.installDate ? new Date(scriptFromContext.installDate).toLocaleDateString() : '-'}</div>
 
-                            {isValidLink(referrerUrl) && (
+                            {isValidHttpUrl(referrerUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelPage')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
@@ -292,7 +284,7 @@ const ScriptEditor = () => {
                                 </>
                             )}
 
-                            {isValidLink(sourceUrl) && (
+                            {isValidHttpUrl(sourceUrl) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelSource')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
@@ -305,7 +297,7 @@ const ScriptEditor = () => {
 
                             )}
 
-                            {isValidLink(metadata.updateURL) && (
+                            {isValidHttpUrl(metadata.updateURL) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
@@ -317,7 +309,7 @@ const ScriptEditor = () => {
                                 </>
                             )}
 
-                            {isValidLink(metadata.downloadURL) && (
+                            {isValidHttpUrl(metadata.downloadURL) && (
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
