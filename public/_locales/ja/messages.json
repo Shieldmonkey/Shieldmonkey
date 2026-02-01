@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "appDescription": {
-    "message": "モダンウェブのためのユーザースクリプトマネージャー。",
+    "message": "Security-firstのユーザースクリプトマネージャー。",
     "description": "The description of the extension"
   },
   "scriptsOnThisPage": {
@@ -219,6 +219,8 @@
   "linkReportIssueDesc": { "message": "バグを見つけましたか？報告してください！" },
   "linkReportVuln": { "message": "脆弱性を報告" },
   "linkReportVulnDesc": { "message": "セキュリティの問題と勧告。" },
+  "linkWebsite": { "message": "ウェブサイト" },
+  "linkWebsiteDesc": { "message": "公式サイトにアクセスします。" },
   "helpHeaderAbout": { "message": "Shieldmonkey について" },
   "helpVersionPrefix": { "message": "バージョン" },
   "helpCreatedBy": { "message": "作成者:" },

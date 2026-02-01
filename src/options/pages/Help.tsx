@@ -1,4 +1,4 @@
-import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle } from 'lucide-react';
+import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isUserScriptsAvailable, requestPermission, isFirefox } from '../../utils/browserPolyfill';
 import { useTranslation } from '../../context/I18nContext';
@@ -129,6 +129,13 @@ const Help = () => {
                     <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '20px', border: '1px solid var(--border-color)' }}>
                         <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('helpHeaderLinks')}</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <li>
+                                <a href="https://shieldmonkey.github.io/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                    <Globe size={16} />
+                                    <span>{t('linkWebsite')}</span>
+                                </a>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkWebsiteDesc')}</p>
+                            </li>
                             <li>
                                 <a href="https://github.com/shieldmonkey/shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <ExternalLink size={16} />

@@ -4,7 +4,7 @@
     "description": "The name of the extension"
   },
   "appDescription": {
-    "message": "A Userscript manager for the modern web.",
+    "message": "A Security-first Userscript manager.",
     "description": "The description of the extension"
   },
   "scriptsOnThisPage": {
@@ -219,6 +219,8 @@
   "linkReportIssueDesc": { "message": "Found a bug? Let us know!" },
   "linkReportVuln": { "message": "Report Vulnerability" },
   "linkReportVulnDesc": { "message": "Security issues & advisories." },
+  "linkWebsite": { "message": "Website" },
+  "linkWebsiteDesc": { "message": "Visit the official website." },
   "helpHeaderAbout": { "message": "About Shieldmonkey" },
   "helpVersionPrefix": { "message": "Version" },
   "helpCreatedBy": { "message": "Created by:" },
