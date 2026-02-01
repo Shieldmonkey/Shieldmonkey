@@ -38,35 +38,41 @@ jobs:
       matrix:
         include:
           # Chrome Builds
-          - name: Chrome Default (Minified + Sourcemap)
+          - name: Chrome Default (Non-Minified + Sourcemap)
             target: chrome
             command: build
             artifact_name: Shieldmonkey
             dist_dir: dist
-            env: {}
+            env: 
+              DISABLE_MINIFY: "true"
+              DISABLE_SOURCEMAP: "false"
           
           - name: Chrome Minified No Sourcemap
             target: chrome
             command: build
-            artifact_name: Shieldmonkey.min.no-sourcemap
+            artifact_name: Shieldmonkey.no-sourcemap.min
             dist_dir: dist
             env:
+              DISABLE_MINIFY: "false"
               DISABLE_SOURCEMAP: "true"
 
           # Firefox Builds
           - name: Firefox Default (Minified + Sourcemap)
             target: firefox
             command: build:firefox
-            artifact_name: Shieldmonkey.firefox
+            artifact_name: Shieldmonkey.firefox.min
             dist_dir: dist-firefox
-            env: {}
+            env: 
+              DISABLE_MINIFY: "false"
+              DISABLE_SOURCEMAP: "false"
 
           - name: Firefox Minified No Sourcemap
             target: firefox
             command: build:firefox
-            artifact_name: Shieldmonkey.firefox.min.no-sourcemap
+            artifact_name: Shieldmonkey.firefox.no-sourcemap.min
             dist_dir: dist-firefox
             env:
+              DISABLE_MINIFY: "false"
               DISABLE_SOURCEMAP: "true"
 
     steps:

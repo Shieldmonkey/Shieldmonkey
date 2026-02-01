@@ -23,7 +23,7 @@
     "@monaco-editor/react": "4.7.0",
     "idb": "8.0.3",
     "lucide-react": "0.562.0",
-    "monaco-editor": "0.55.1",
+    "monaco-editor": "0.48.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-router-dom": "7.13.0"
