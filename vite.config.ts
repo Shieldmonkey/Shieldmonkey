@@ -22,10 +22,6 @@ export default defineConfig(({ mode }) => {
       outDir: process.env.TARGET_BROWSER === 'firefox' ? 'dist-firefox' : 'dist',
       minify: process.env.DISABLE_MINIFY === 'false' ? true : false,
       sourcemap: process.env.DISABLE_SOURCEMAP === 'true' ? false : true,
-      rollupOptions: {
-        input: {
-        }
-      }
     }
   };
 })
