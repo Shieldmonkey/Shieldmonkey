@@ -86,16 +86,15 @@ function App() {
   };
 
   const openDashboard = (create: boolean = false) => {
+    let url = '/src/options/index.html';
     if (create) {
-      let url = '/src/options/index.html';
       if (currentUrl) {
         url += `?match=${encodeURIComponent(currentUrl)}`;
       }
       url += '#/new';
-      chrome.tabs.create({ url: chrome.runtime.getURL(url) });
-    } else {
-      chrome.runtime.openOptionsPage();
     }
+    chrome.tabs.create({ url: chrome.runtime.getURL(url) });
+    window.close();
   };
 
   const toggleGlobal = async (checked: boolean) => {
@@ -134,6 +133,7 @@ function App() {
       // Use START_INSTALL_FLOW to safely fetch script content via loader page,
       // preventing browser download prompts.
       chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
+      window.close();
     } else {
       alert(t('noUpdateUrlAlert'));
     }
@@ -144,6 +144,7 @@ function App() {
     // Format: src/options/index.html#scripts/<id>
     const url = chrome.runtime.getURL(`/src/options/index.html#/scripts/${id}`);
     chrome.tabs.create({ url: url });
+    window.close();
   };
 
   return (
@@ -152,9 +153,9 @@ function App() {
         <div className="logo-area">
           <img src="/icons/icon48.png" alt="Logo" className="logo-img" />
           <h1>{t('appName')}</h1>
-        </div>
-        <div className="global-switch-container">
-          <ToggleSwitch checked={extensionEnabled} onChange={toggleGlobal} />
+          <div className="global-switch-container">
+            <ToggleSwitch checked={extensionEnabled} onChange={toggleGlobal} />
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button onClick={cycleTheme} className="icon-btn" title={t('themeTooltip', [theme])}>
@@ -180,16 +181,16 @@ function App() {
                   <span className="script-name" style={{ marginLeft: '12px' }} title={script.name}>{script.name}</span>
                 </div>
                 <div className="script-actions">
-                  <button className="icon-btn" title={t('editTooltip')} onClick={() => editScript(script.id)} style={{ padding: '4px' }}>
-                    <Edit size={14} />
+                  <button className="icon-btn" title={t('editTooltip')} onClick={() => editScript(script.id)} style={{ padding: '8px' }}>
+                    <Edit size={18} />
                   </button>
                   {getUpdateUrl(script) && (
-                    <button className="icon-btn" title={t('checkForUpdatesTooltip')} onClick={() => checkForUpdate(script)} style={{ padding: '4px' }}>
-                      <RefreshCw size={14} />
+                    <button className="icon-btn" title={t('checkForUpdatesTooltip')} onClick={() => checkForUpdate(script)} style={{ padding: '8px' }}>
+                      <RefreshCw size={18} />
                     </button>
                   )}
-                  <button className="icon-btn" title={t('deleteTooltip')} onClick={() => deleteScript(script.id, script.name)} style={{ padding: '4px', color: '#ef4444' }}>
-                    <Trash2 size={14} />
+                  <button className="icon-btn" title={t('deleteTooltip')} onClick={() => deleteScript(script.id, script.name)} style={{ padding: '8px', color: '#ef4444' }}>
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
