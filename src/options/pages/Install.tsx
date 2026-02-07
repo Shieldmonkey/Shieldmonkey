@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import './Install.css';
 import { parseMetadata, type Metadata } from '../../utils/metadataParser';
-import Editor, { DiffEditor } from '@monaco-editor/react';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { useI18n } from '../../context/I18nContext';
 import { sanitizeToHttpUrl } from '../../utils/urlValidator';
 import { Info, X } from 'lucide-react';
@@ -27,7 +29,7 @@ const Install = () => {
     const [metadata, setMetadata] = useState<Metadata | null>(null);
     const [existingScript, setExistingScript] = useState<Script | null>(null);
     const [error, setError] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'code' | 'diff'>('code');
+
 
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
@@ -49,7 +51,7 @@ const Install = () => {
         });
     }, []);
 
-    const effectiveEditorTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'vs-dark';
+    const cmTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? vscodeLight : vscodeDark;
 
     // ... (loadScriptContent, fetchScript, useEffect, handleInstall, handleCancel remain same)
     const loadScriptContent = useCallback(async (text: string) => {
@@ -69,10 +71,6 @@ const Install = () => {
 
             if (existing) {
                 setExistingScript(existing);
-                // Default to Diff view for updates
-                setViewMode('diff');
-            } else {
-                setViewMode('code');
             }
 
             setStatus('confirm');
@@ -267,24 +265,7 @@ const Install = () => {
                 </div>
 
                 <div className="install-header-center">
-                    {existingScript && (
-                        <div className="view-toggle" style={{ display: 'flex', background: 'var(--chip-bg)', borderRadius: '6px', padding: '2px' }}>
-                            <button
-                                className={viewMode === 'code' ? 'btn-primary' : ''}
-                                style={{ background: viewMode === 'code' ? undefined : 'transparent', border: 'none', padding: '4px 12px', fontSize: '0.85rem', color: viewMode === 'code' ? undefined : 'var(--text-primary)' }}
-                                onClick={() => setViewMode('code')}
-                            >
-                                {t('installBtnSource')}
-                            </button>
-                            <button
-                                className={viewMode === 'diff' ? 'btn-primary' : ''}
-                                style={{ background: viewMode === 'diff' ? undefined : 'transparent', border: 'none', padding: '4px 12px', fontSize: '0.85rem', color: viewMode === 'diff' ? undefined : 'var(--text-primary)' }}
-                                onClick={() => setViewMode('diff')}
-                            >
-                                {t('installBtnDiff')}
-                            </button>
-                        </div>
-                    )}
+                    {/* View Toggle Removed for now as Diff view is not yet implemented in CodeMirror migration */}
                 </div>
 
                 <div className="install-header-actions">
@@ -356,43 +337,24 @@ const Install = () => {
                 </aside>
 
                 <main className="install-editor-main">
-                    {viewMode === 'diff' && existingScript ? (
-                        <DiffEditor
-                            height="100%"
-                            language="javascript"
-                            original={existingScript.code}
-                            modified={code}
-                            theme={effectiveEditorTheme}
-                            options={{
-                                readOnly: true,
-                                originalEditable: false,
-                                minimap: { enabled: true },
-                                scrollBeyondLastLine: false,
-                                fontSize: 13,
-                                scrollbar: {
-                                    alwaysConsumeMouseWheel: false,
-                                },
-                            }}
-                        />
-                    ) : (
-                        <Editor
-                            height="100%"
-                            defaultLanguage="javascript"
-                            value={code}
-                            theme={effectiveEditorTheme}
-                            options={{
-                                readOnly: true,
-                                minimap: { enabled: true },
-                                scrollBeyondLastLine: false,
-                                fontSize: 13,
-                                scrollbar: {
-                                    alwaysConsumeMouseWheel: false,
-                                },
-                                quickSuggestions: { other: true, comments: true, strings: true },
-                                tabCompletion: 'on'
-                            }}
-                        />
-                    )}
+                    <CodeMirror
+                        value={code}
+                        height="100%"
+                        theme={cmTheme}
+                        extensions={[javascript({ jsx: true })]}
+                        readOnly={true}
+                        basicSetup={{
+                            lineNumbers: true,
+                            foldGutter: true,
+                            highlightActiveLine: false, // Read only, maybe don't highlight
+                            tabSize: 2,
+                        }}
+                        style={{
+                            fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                            height: '100%',
+                            fontSize: '13px'
+                        }}
+                    />
                 </main>
             </div>
         </div>

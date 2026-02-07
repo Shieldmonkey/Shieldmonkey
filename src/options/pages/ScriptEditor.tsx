@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Editor from '@monaco-editor/react';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, FileText, Code, Loader, Check } from 'lucide-react';
+import CodeMirror from '@uiw/react-codemirror';
+
+import { javascript, scopeCompletionSource } from '@codemirror/lang-javascript';
+import { userScriptMetadataCompletion } from '../codemirrorConfig';
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson } from 'lucide-react';
+import * as prettier from "prettier/standalone";
+import * as parserBabel from "prettier/plugins/babel";
+import * as parserEstree from "prettier/plugins/estree";
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { parseMetadata } from '../../utils/metadataParser';
@@ -32,38 +39,10 @@ const ScriptEditor = () => {
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
-    // Media Query Hook for Layout (Sidebar etc.)
-    const useMediaQuery = (query: string) => {
-        const [matches, setMatches] = useState(false);
-        useEffect(() => {
-            const media = window.matchMedia(query);
-            if (media.matches !== matches) {
-                setMatches(media.matches);
-            }
-            const listener = () => setMatches(media.matches);
-            media.addEventListener('change', listener);
-            return () => media.removeEventListener('change', listener);
-        }, [matches, query]);
-        return matches;
-    };
-    const isMobileLayout = useMediaQuery('(max-width: 900px)');
 
-    // Touch Device Detection (for Editor Mode default)
-    const isTouchDevice = useMemo(() => {
-        return (navigator.maxTouchPoints || 0) > 0;
-    }, []);
-
-    // Editor Mode State (starts with isTouchDevice, but can be toggled)
-    const [useSimpleEditor, setUseSimpleEditor] = useState(isTouchDevice);
 
     // Track if we have initialized
     const initializedRef = useRef(false);
-    const editorRef = useRef<any>(null);
-
-    // Toggle Editor Mode
-    const toggleEditorMode = useCallback(() => {
-        setUseSimpleEditor(prev => !prev);
-    }, []);
 
     useEffect(() => {
         if (!initializedRef.current) {
@@ -171,6 +150,23 @@ const ScriptEditor = () => {
         });
     };
 
+    const handleFormat = useCallback(async () => {
+        try {
+            const formatted = await prettier.format(code, {
+                parser: "babel",
+                plugins: [parserBabel, parserEstree],
+                semi: true,
+                singleQuote: true,
+                tabWidth: 2,
+                trailingComma: 'none'
+            });
+            setCode(formatted);
+        } catch (e) {
+            console.error("Format failed", e);
+            // Optionally show toast/error
+        }
+    }, [code]);
+
     // Keyboard shortcut
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -178,10 +174,15 @@ const ScriptEditor = () => {
                 e.preventDefault();
                 handleSave();
             }
+            // Format shortcut (Shift+Alt+F or Cmd+Shift+P -> Format... but let's just do Shift+Alt+F)
+            if (e.shiftKey && e.altKey && (e.key === 'f' || e.key === 'F')) {
+                e.preventDefault();
+                handleFormat();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleSave]);
+    }, [handleSave, handleFormat]);
 
     // Warn on unsaved changes
     useEffect(() => {
@@ -208,9 +209,9 @@ const ScriptEditor = () => {
         }
     };
 
-    // Theme handling for Monaco
+    // Theme handling for CodeMirror
     const { theme } = useApp();
-    const editorTheme = theme === 'light' ? 'vs' : 'vs-dark';
+    const cmTheme = theme === 'light' ? vscodeLight : vscodeDark;
 
     if (!isNew && !scriptFromContext) {
         if (scripts.length === 0) return <div>{t('editorLoading')}</div>;
@@ -466,39 +467,16 @@ const ScriptEditor = () => {
 
 
                     <div className="editor-actions">
-                        {/* Manual Editor Toggle (Switch) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
-                            <span
-                                style={{
-                                    fontSize: '0.8rem',
-                                    color: useSimpleEditor ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontWeight: useSimpleEditor ? 500 : 400
-                                }}
-                                onClick={() => !useSimpleEditor && toggleEditorMode()}
-                            >
-                                Plain
-                            </span>
-                            <label className="switch">
-                                <input
-                                    type="checkbox"
-                                    checked={!useSimpleEditor}
-                                    onChange={toggleEditorMode}
-                                />
-                                <span className="slider"></span>
-                            </label>
-                            <span
-                                style={{
-                                    fontSize: '0.8rem',
-                                    color: !useSimpleEditor ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontWeight: !useSimpleEditor ? 500 : 400
-                                }}
-                                onClick={() => useSimpleEditor && toggleEditorMode()}
-                            >
-                                Editor
-                            </span>
-                        </div>
+                        {/* Manual Editor Toggle Removed - CodeMirror handles mobile natively */}
+
+                        <button
+                            className="btn-secondary"
+                            onClick={handleFormat}
+                            title="Format Code (Shift+Alt+F)"
+                            style={{ marginRight: '8px', padding: '8px' }}
+                        >
+                            <FileJson size={16} />
+                        </button>
 
                         <button
                             className="btn-primary"
@@ -519,118 +497,42 @@ const ScriptEditor = () => {
 
                 <div className="monaco-wrapper" style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
 
-                    {/* Monaco Editor - Always Mounted */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            // Hide using visibility to keep layout but hide painting
-                            visibility: useSimpleEditor ? 'hidden' : 'visible',
-                            zIndex: 0
-                        }}
-                    >
-                        <Editor
-                            height="100%"
-                            defaultLanguage="javascript"
-                            path={`script-${id}.js`}
-                            theme={editorTheme}
+                    {/* CodeMirror Editor */}
+                    <div style={{ height: '100%', overflow: 'hidden', fontSize: '14px' }}>
+                        <CodeMirror
                             value={code}
-                            onMount={(editor, monaco) => {
-                                editorRef.current = editor;
-
-                                // ... existing keybindings logic ...
-                                // Detect if on Mac
-                                const isMac = navigator.userAgent.includes('Mac');
-                                if (isMac) {
-                                    // Add Emacs-style bindings for Mac
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyP, () => editor.trigger('keyboard', 'cursorUp', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyN, () => editor.trigger('keyboard', 'cursorDown', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyF, () => editor.trigger('keyboard', 'cursorRight', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyB, () => editor.trigger('keyboard', 'cursorLeft', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyA, () => editor.trigger('keyboard', 'cursorHome', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyE, () => editor.trigger('keyboard', 'cursorEnd', null));
-                                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => editor.trigger('keyboard', 'actions.find', null));
-                                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => editor.trigger('keyboard', 'undo', null));
-                                }
-                            }}
+                            height="100%"
+                            theme={cmTheme}
+                            extensions={[
+                                javascript({ jsx: true }),
+                                javascript().language.data.of({
+                                    autocomplete: userScriptMetadataCompletion
+                                }),
+                                javascript().language.data.of({
+                                    autocomplete: scopeCompletionSource(globalThis)
+                                })
+                            ]}
                             onChange={(value) => {
-                                if (!useSimpleEditor) {
-                                    setCode(value || '');
-                                    if (value) {
-                                        const metadata = parseMetadata(value);
-                                        if (metadata.name && metadata.name !== name) {
-                                            setName(metadata.name);
-                                        }
-                                    }
+                                setCode(value);
+                                const metadata = parseMetadata(value);
+                                if (metadata.name && metadata.name !== name) {
+                                    setName(metadata.name);
                                 }
                             }}
-                            options={{
-                                minimap: { enabled: false },
-                                lineNumbers: 'on',
-                                lineNumbersMinChars: isMobileLayout ? 3 : 5,
-                                glyphMargin: isMobileLayout ? false : true,
-                                folding: isMobileLayout ? false : true,
-                                renderLineHighlight: 'all',
-                                fontSize: 14,
-                                lineHeight: 21,
-                                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                                fontLigatures: true,
-                                wordWrap: 'on',
-                                automaticLayout: true,
-                                scrollBeyondLastLine: false,
-                                padding: { top: 16, bottom: 16 },
+                            className="codemirror-wrapper"
+                            basicSetup={{
+                                lineNumbers: true,
+                                foldGutter: true,
+                                highlightActiveLine: true,
                                 tabSize: 2,
-                                insertSpaces: true,
-                                detectIndentation: false,
-                                contextmenu: isMobileLayout ? false : true,
-                                mouseWheelZoom: false,
-                                quickSuggestions: true,
+                            }}
+                            // indentWithTab={false} // Removed to restore default indentation behavior
+                            style={{
+                                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                                height: '100%'
                             }}
                         />
                     </div>
-
-                    {/* Textarea Overlay - conditionally rendered but positioned absolute */}
-                    {/* Textarea Overlay - always mounted for scroll persistence */}
-                    <textarea
-                        className="mobile-editor-textarea"
-                        value={code}
-                        onChange={(e) => {
-                            const newValue = e.target.value;
-                            setCode(newValue);
-                            const metadata = parseMetadata(newValue);
-                            if (metadata.name && metadata.name !== name) {
-                                setName(metadata.name);
-                            }
-                        }}
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        autoComplete="off"
-                        autoCorrect="off"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            zIndex: 10,
-                            visibility: useSimpleEditor ? 'visible' : 'hidden',
-                            fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                            fontSize: '14px',
-                            lineHeight: '21px',
-                            padding: `15px 16px 16px ${isMobileLayout ? '35px' : '49px'}`,
-                            resize: 'none',
-                            outline: 'none',
-                            border: 'none',
-                            background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-all',
-                            overflowWrap: 'anywhere',
-                        }}
-                    />
                 </div>
             </main>
         </div >

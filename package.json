@@ -20,10 +20,15 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "@monaco-editor/react": "4.7.0",
+    "@codemirror/autocomplete": "6.20.0",
+    "@codemirror/lang-javascript": "6.2.4",
+    "@codemirror/language": "6.12.1",
+    "@codemirror/view": "6.39.12",
+    "@uiw/codemirror-theme-vscode": "4.25.4",
+    "@uiw/react-codemirror": "4.25.4",
     "idb": "8.0.3",
     "lucide-react": "0.562.0",
-    "monaco-editor": "0.48.0",
+    "prettier": "3.8.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-router-dom": "7.13.0"
