@@ -119,9 +119,20 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+      pull-requests: read # Needed for PR info if available
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          configuration: ".github/release-changelog-config.json"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v6
@@ -134,4 +145,4 @@ jobs:
           files: artifacts/**/*.zip
           draft: true
           prerelease: false
-          generate_release_notes: true
+          body: ${{ steps.build_changelog.outputs.changelog }}

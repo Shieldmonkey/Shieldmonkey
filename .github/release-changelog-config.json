@@ -1,0 +1,28 @@
+{
+  "categories": [
+    {
+      "title": "🚀 Features",
+      "labels": ["feat", "feature"],
+      "commit_prefixes": ["feat:", "feature:"]
+    },
+    {
+      "title": "🐛 Bug Fixes",
+      "labels": ["fix", "bug"],
+      "commit_prefixes": ["fix:", "bug:"]
+    },
+    {
+      "title": "🧰 Maintenance",
+      "labels": ["chore", "refactor", "build", "ci"],
+      "commit_prefixes": ["chore:", "refactor:", "build:", "ci:"]
+    },
+    {
+      "title": "📝 Documentation",
+      "labels": ["docs", "documentation"],
+      "commit_prefixes": ["docs:", "documentation:"]
+    }
+  ],
+  "template": "# Changes\n\n${CHANGES}\n",
+  "empty_template": "# Changes\n\nNo significant changes in this release.\n",
+  "ignore_labels": ["ignore"],
+  "unmapped_category_title": "🔍 Other Changes"
+}
