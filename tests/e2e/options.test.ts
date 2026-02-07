@@ -31,7 +31,7 @@ test('Options page - Install, Save, and Delete User Script', async () => {
     await page.waitForURL(/.*#\/scripts\/.+/);
     expect(page.url()).toMatch(/.*#\/scripts\/.+/);
 
-    const editor = page.locator('.monaco-editor').first();
+    const editor = page.locator('.cm-content').first();
     await editor.click();
 
     await page.keyboard.press('End');

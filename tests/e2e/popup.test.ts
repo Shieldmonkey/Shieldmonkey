@@ -50,7 +50,7 @@ test('Create new script opens options page with editor', async () => {
     // So initially it should be at #/new.
 
     // Check if editor is loaded
-    await newPage.waitForSelector('.monaco-editor');
+    await newPage.waitForSelector('.cm-editor');
 
     // Check if "New Script" is in the name input
     const nameInput = newPage.locator('.script-name-input');

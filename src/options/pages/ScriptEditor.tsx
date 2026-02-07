@@ -427,9 +427,10 @@ const ScriptEditor = () => {
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         {/* Mobile Back Button */}
                         <button
-                            className="icon-btn mobile-toggle-btn"
+                            className="icon-btn"
                             style={{ marginRight: '8px', padding: '6px' }}
                             onClick={handleBack}
+                            title="Back to Script List"
                         >
                             <ArrowLeft size={18} />
                         </button>
