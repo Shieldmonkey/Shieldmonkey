@@ -5,7 +5,10 @@ import CodeMirror from '@uiw/react-codemirror';
 import { javascript, scopeCompletionSource } from '@codemirror/lang-javascript';
 import { userScriptMetadataCompletion } from '../codemirrorConfig';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson, AlertCircle, Wrench, Undo2, Redo2 } from 'lucide-react';
+import { MessageType } from '../../types/messages';
+import { undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
+import { EditorView } from '@codemirror/view';
 import * as prettier from "prettier/standalone";
 import * as parserBabel from "prettier/plugins/babel";
 import * as parserEstree from "prettier/plugins/estree";
@@ -35,6 +38,29 @@ const ScriptEditor = () => {
 
     // New script specific state
     const [newScriptId] = useState(() => crypto.randomUUID());
+    const [showTools, setShowTools] = useState(false);
+    const viewRef = useRef<EditorView | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+    const toolbarRef = useRef<HTMLDivElement>(null);
+
+    // Close tools when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showTools && toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
+                setShowTools(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showTools]);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 900);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
@@ -148,6 +174,31 @@ const ScriptEditor = () => {
             await deleteScript(scriptFromContext.id);
             navigate('/scripts');
         });
+    };
+
+    const handleClearErrors = async () => {
+        if (!scriptFromContext) return;
+        chrome.runtime.sendMessage({
+            type: MessageType.CLEAR_RUNTIME_ERRORS,
+            scriptId: scriptFromContext.id
+        });
+        // Optimistic update
+        // We need a way to update the context or force reload. 
+        // AppContext listens to storage changes, so if background updates storage, it should reflect here automatically.
+    };
+
+    const handleUndo = () => {
+        if (viewRef.current) {
+            undo(viewRef.current);
+            viewRef.current.focus();
+        }
+    };
+
+    const handleRedo = () => {
+        if (viewRef.current) {
+            redo(viewRef.current);
+            viewRef.current.focus();
+        }
     };
 
     const handleFormat = useCallback(async () => {
@@ -371,6 +422,60 @@ const ScriptEditor = () => {
                         </button>
                     </div>
 
+
+                    {/* Runtime Errors Section */}
+                    {
+                        (scriptFromContext?.runtimeErrors || []).length > 0 && (
+                            <div style={{ marginBottom: '32px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                                        <AlertCircle size={16} />
+                                        <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Errors</h3>
+                                    </div>
+                                    <button
+                                        onClick={handleClearErrors}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '0.75rem',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        Clear All
+                                    </button>
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    maxHeight: '300px',
+                                    overflowY: 'auto'
+                                }}>
+                                    {[...(scriptFromContext?.runtimeErrors || [])].reverse().map((err, i) => (
+                                        <div key={i} style={{
+                                            padding: '8px',
+                                            borderRadius: '4px',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            fontSize: '0.8rem'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                                                <span>{new Date(err.timestamp).toLocaleTimeString()}</span>
+                                                {err.lineno && <span>L{err.lineno}</span>}
+                                            </div>
+                                            <div style={{ wordBreak: 'break-word', color: '#fca5a5', fontFamily: 'monospace' }}>
+                                                {err.message}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
                     {/* Matches Section */}
                     {
                         (metadata.match || []).length > 0 && (
@@ -470,29 +575,124 @@ const ScriptEditor = () => {
                     <div className="editor-actions">
                         {/* Manual Editor Toggle Removed - CodeMirror handles mobile natively */}
 
-                        <button
-                            className="btn-secondary"
-                            onClick={handleFormat}
-                            title="Format Code (Shift+Alt+F)"
-                            style={{ marginRight: '8px', padding: '8px' }}
-                        >
-                            <FileJson size={16} />
-                        </button>
+                        <div ref={toolbarRef} style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+                            {!isMobile ? (
+                                <>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={handleUndo}
+                                        title="Undo (Cmd+Z)"
+                                        disabled={!canUndo}
+                                        style={{ opacity: !canUndo ? 0.5 : 1, cursor: !canUndo ? 'not-allowed' : 'pointer' }}
+                                    >
+                                        <Undo2 size={16} />
+                                        <span>Undo</span>
+                                    </button>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={handleRedo}
+                                        title="Redo (Cmd+Shift+Z)"
+                                        disabled={!canRedo}
+                                        style={{ opacity: !canRedo ? 0.5 : 1, cursor: !canRedo ? 'not-allowed' : 'pointer' }}
+                                    >
+                                        <Redo2 size={16} />
+                                        <span>Redo</span>
+                                    </button>
+                                    <button className="btn-secondary" onClick={handleFormat} title="Format (Shift+Alt+F)">
+                                        <FileJson size={16} />
+                                        <span>Format</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    {showTools && (
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            background: 'var(--surface-bg)',
+                                            padding: '8px',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            position: 'absolute',
+                                            top: '100%',
+                                            right: 0,
+                                            zIndex: 50,
+                                            marginTop: '8px',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                            minWidth: '140px'
+                                        }}>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={() => { handleUndo(); /* Don't close */ }}
+                                                style={{
+                                                    justifyContent: 'flex-start',
+                                                    border: 'none',
+                                                    width: '100%',
+                                                    opacity: !canUndo ? 0.5 : 1,
+                                                    cursor: !canUndo ? 'not-allowed' : 'pointer'
+                                                }}
+                                                title="Undo"
+                                                disabled={!canUndo}
+                                            >
+                                                <Undo2 size={16} />
+                                                <span>Undo</span>
+                                            </button>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={() => { handleRedo(); /* Don't close */ }}
+                                                style={{
+                                                    justifyContent: 'flex-start',
+                                                    border: 'none',
+                                                    width: '100%',
+                                                    opacity: !canRedo ? 0.5 : 1,
+                                                    cursor: !canRedo ? 'not-allowed' : 'pointer'
+                                                }}
+                                                title="Redo"
+                                                disabled={!canRedo}
+                                            >
+                                                <Redo2 size={16} />
+                                                <span>Redo</span>
+                                            </button>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={() => { handleFormat(); setShowTools(false); }}
+                                                style={{ justifyContent: 'flex-start', border: 'none', width: '100%' }}
+                                                title="Format"
+                                            >
+                                                <FileJson size={16} />
+                                                <span>Format</span>
+                                            </button>
+                                        </div>
+                                    )}
 
-                        <button
-                            className="btn-primary"
-                            onClick={handleSave}
-                            disabled={isSaving || (!isDirty && !isSaved)}
-                            style={{
-                                minWidth: '90px',
-                                justifyContent: 'center',
-                                backgroundColor: isSaved ? 'var(--success-color, #10b981)' : undefined,
-                                borderColor: isSaved ? 'var(--success-color, #10b981)' : undefined
-                            }}
-                        >
-                            {isSaved ? <Check size={16} /> : isSaving ? <Loader size={16} className="icon-spin" /> : <Save size={16} />}
-                            <span>{t('editorBtnSave')}</span>
-                        </button>
+                                    <button
+                                        className={`btn-secondary ${showTools ? 'active' : ''}`}
+                                        onClick={() => setShowTools(!showTools)}
+                                        title="Tools"
+                                        style={{ background: showTools ? 'var(--bg-secondary)' : undefined }}
+                                    >
+                                        <Wrench size={16} />
+                                        <span>Tools</span>
+                                    </button>
+                                </>
+                            )}
+
+                            <button
+                                className="btn-primary"
+                                onClick={handleSave}
+                                disabled={isSaving || (!isDirty && !isSaved)}
+                                style={{
+                                    minWidth: '90px',
+                                    justifyContent: 'center',
+                                    backgroundColor: isSaved ? 'var(--success-color, #10b981)' : undefined,
+                                    borderColor: isSaved ? 'var(--success-color, #10b981)' : undefined
+                                }}
+                            >
+                                {isSaved ? <Check size={16} /> : isSaving ? <Loader size={16} className="icon-spin" /> : <Save size={16} />}
+                                <span>{t('editorBtnSave')}</span>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
@@ -501,6 +701,9 @@ const ScriptEditor = () => {
                     {/* CodeMirror Editor */}
                     <div style={{ height: '100%', overflow: 'hidden', fontSize: '14px' }}>
                         <CodeMirror
+                            onCreateEditor={(view) => {
+                                viewRef.current = view;
+                            }}
                             value={code}
                             height="100%"
                             theme={cmTheme}
@@ -511,6 +714,12 @@ const ScriptEditor = () => {
                                 }),
                                 javascript().language.data.of({
                                     autocomplete: scopeCompletionSource(globalThis)
+                                }),
+                                EditorView.updateListener.of((update) => {
+                                    if (update.docChanged || update.selectionSet) {
+                                        setCanUndo(undoDepth(update.state) > 0);
+                                        setCanRedo(redoDepth(update.state) > 0);
+                                    }
                                 })
                             ]}
                             onChange={(value) => {
@@ -520,6 +729,7 @@ const ScriptEditor = () => {
                                     setName(metadata.name);
                                 }
                             }}
+
                             className="codemirror-wrapper"
                             basicSetup={{
                                 lineNumbers: true,

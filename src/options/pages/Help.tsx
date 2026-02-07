@@ -57,30 +57,32 @@ const Help = () => {
                             <span>{t('installHeaderPermissions')}</span>
                         </h3>
 
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '16px',
-                            background: hasPermission ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                            border: `1px solid ${hasPermission ? 'var(--accent-color)' : '#ef4444'}`,
-                            borderRadius: '8px',
-                            marginBottom: '16px'
-                        }}>
-                            {hasPermission ? (
-                                <CheckCircle size={24} color="var(--accent-color)" />
-                            ) : (
-                                <AlertCircle size={24} color="#ef4444" />
-                            )}
-                            <div>
-                                <div style={{ fontWeight: 600, color: hasPermission ? 'var(--accent-color)' : '#ef4444' }}>
-                                    {hasPermission ? t('permissionStatusActive') : t('permissionMissing')}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                    {hasPermission ? t('permissionGrantedDesc') : t('permissionMissingDesc')}
+                        {hasPermission !== null && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '16px',
+                                background: hasPermission ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                border: `1px solid ${hasPermission ? 'var(--accent-color)' : '#ef4444'}`,
+                                borderRadius: '8px',
+                                marginBottom: '16px'
+                            }}>
+                                {hasPermission ? (
+                                    <CheckCircle size={24} color="var(--accent-color)" />
+                                ) : (
+                                    <AlertCircle size={24} color="#ef4444" />
+                                )}
+                                <div>
+                                    <div style={{ fontWeight: 600, color: hasPermission ? 'var(--accent-color)' : '#ef4444' }}>
+                                        {hasPermission ? t('permissionStatusActive') : t('permissionMissing')}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {hasPermission ? t('permissionGrantedDesc') : t('permissionMissingDesc')}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px', lineHeight: 1.5 }}>
                             {t('permissionHelpDesc')}

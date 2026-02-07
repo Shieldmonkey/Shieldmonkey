@@ -221,7 +221,7 @@ const Settings = () => {
                                 </span>
                             </div>
                             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                {extensionEnabled ? (t('globalStatusDescActive') || 'User scripts are running normally.') : (t('globalStatusDescPaused') || 'Execution of all user scripts is suspended.')}
+                                {extensionEnabled ? (t('globalStatusDescActive') || 'Enable or disable all user scripts globally.') : (t('globalStatusDescPaused') || 'Enable or disable all user scripts globally.')}
                             </p>
                         </div>
 
