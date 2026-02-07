@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, FileText, Code, Loader, Check } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, FileText, Code } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { parseMetadata } from '../../utils/metadataParser';
@@ -24,7 +24,6 @@ const ScriptEditor = () => {
     const [code, setCode] = useState<string>('');
     const [name, setName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [isSaved, setIsSaved] = useState(false); // Success state
 
     // New script specific state
     const [newScriptId] = useState(() => crypto.randomUUID());
@@ -32,7 +31,7 @@ const ScriptEditor = () => {
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
-    // Media Query Hook for Layout (Sidebar etc.)
+    // Media Query Hook
     const useMediaQuery = (query: string) => {
         const [matches, setMatches] = useState(false);
         useEffect(() => {
@@ -46,24 +45,20 @@ const ScriptEditor = () => {
         }, [matches, query]);
         return matches;
     };
-    const isMobileLayout = useMediaQuery('(max-width: 900px)');
+    const isMobile = useMediaQuery('(max-width: 900px)');
 
-    // Touch Device Detection (for Editor Mode default)
-    const isTouchDevice = useMemo(() => {
-        return (navigator.maxTouchPoints || 0) > 0;
-    }, []);
+    // Editor Mode State (starts with isMobile, but can be toggled)
+    const [useSimpleEditor, setUseSimpleEditor] = useState(isMobile);
 
-    // Editor Mode State (starts with isTouchDevice, but can be toggled)
-    const [useSimpleEditor, setUseSimpleEditor] = useState(isTouchDevice);
+    // Sync default mode when screen size changes, but only if user hasn't manually toggled? 
+    // Or just strictly follow mobile? Let's default to isMobile when it changes.
+    useEffect(() => {
+        setUseSimpleEditor(isMobile);
+    }, [isMobile]);
 
     // Track if we have initialized
     const initializedRef = useRef(false);
     const editorRef = useRef<any>(null);
-
-    // Toggle Editor Mode
-    const toggleEditorMode = useCallback(() => {
-        setUseSimpleEditor(prev => !prev);
-    }, []);
 
     useEffect(() => {
         if (!initializedRef.current) {
@@ -139,11 +134,6 @@ const ScriptEditor = () => {
 
             await saveScript(updatedScript);
             setName(updatedScript.name);
-
-            setIsSaved(true);
-            setTimeout(() => {
-                setIsSaved(false);
-            }, 2000);
 
             if (isNew) {
                 // Navigate to the edit URL for the new script so we are no longer in "new" mode
@@ -267,6 +257,14 @@ const ScriptEditor = () => {
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            className="icon-btn"
+                            onClick={() => navigate('/scripts')}
+                            title={t('backToScriptList')}
+                            style={{ padding: '8px', marginLeft: '-8px' }}
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
                         <Info size={16} />
                         <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: 0 }}>{t('scriptInfo')}</h2>
                     </div>
@@ -348,28 +346,8 @@ const ScriptEditor = () => {
                                     </div>
                                 </>
                             )}
-
                         </div>
                     </div>
-
-                    {/* Delete Script Button */}
-                    <div style={{ marginBottom: '32px' }}>
-                        <button
-                            className="btn-secondary"
-                            onClick={handleDelete}
-                            style={{
-                                color: '#ef4444',
-                                borderColor: 'var(--border-color)',
-                                width: '100%',
-                                justifyContent: 'center',
-                                padding: '10px'
-                            }}
-                        >
-                            <Trash2 size={16} />
-                            <span>{t('editorBtnDelete') || "Delete Script"}</span>
-                        </button>
-                    </div>
-
                     {/* Matches Section */}
                     {
                         (metadata.match || []).length > 0 && (
@@ -427,19 +405,19 @@ const ScriptEditor = () => {
                         {/* Mobile Back Button */}
                         <button
                             className="icon-btn mobile-toggle-btn"
-                            style={{ marginRight: '8px', padding: '6px' }}
+                            style={{ marginRight: '8px' }}
                             onClick={handleBack}
                         >
-                            <ArrowLeft size={18} />
+                            <ArrowLeft size={20} />
                         </button>
 
                         {/* Mobile Info Toggle */}
                         <button
                             className="icon-btn mobile-toggle-btn"
-                            style={{ marginRight: '12px', padding: '6px' }}
+                            style={{ marginRight: '12px' }}
                             onClick={() => setIsMobileInfoOpen(true)}
                         >
-                            <Info size={18} />
+                            <Info size={20} />
                         </button>
                     </div>
 
@@ -466,169 +444,170 @@ const ScriptEditor = () => {
 
 
                     <div className="editor-actions">
-                        {/* Manual Editor Toggle (Switch) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
-                            <span
-                                style={{
-                                    fontSize: '0.8rem',
-                                    color: useSimpleEditor ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontWeight: useSimpleEditor ? 500 : 400
-                                }}
-                                onClick={() => !useSimpleEditor && toggleEditorMode()}
-                            >
-                                Plain
-                            </span>
-                            <label className="switch">
-                                <input
-                                    type="checkbox"
-                                    checked={!useSimpleEditor}
-                                    onChange={toggleEditorMode}
-                                />
-                                <span className="slider"></span>
-                            </label>
-                            <span
-                                style={{
-                                    fontSize: '0.8rem',
-                                    color: !useSimpleEditor ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    fontWeight: !useSimpleEditor ? 500 : 400
-                                }}
-                                onClick={() => useSimpleEditor && toggleEditorMode()}
-                            >
-                                Editor
-                            </span>
-                        </div>
+                        {/* Manual Editor Toggle */}
+                        <button
+                            className="btn-secondary"
+                            onClick={() => setUseSimpleEditor(!useSimpleEditor)}
+                            title={useSimpleEditor ? t('editorSwitchToMonaco') || "Switch to Code Editor" : t('editorSwitchToSimple') || "Switch to Simple Editor"}
+                            style={{ padding: '8px' }}
+                        >
+                            {useSimpleEditor ? <Code size={16} /> : <FileText size={16} />}
+                        </button>
 
                         <button
                             className="btn-primary"
                             onClick={handleSave}
-                            disabled={isSaving || (!isDirty && !isSaved)}
-                            style={{
-                                minWidth: '90px',
-                                justifyContent: 'center',
-                                backgroundColor: isSaved ? 'var(--success-color, #10b981)' : undefined,
-                                borderColor: isSaved ? 'var(--success-color, #10b981)' : undefined
-                            }}
+                            disabled={!isDirty || isSaving}
                         >
-                            {isSaved ? <Check size={16} /> : isSaving ? <Loader size={16} className="icon-spin" /> : <Save size={16} />}
-                            <span>{t('editorBtnSave')}</span>
+                            <Save size={16} />
+                            <span>{isSaving ? t('editorBtnSaving') : t('editorBtnSave')}</span>
+                        </button>
+                        <button
+                            className="btn-secondary"
+                            onClick={handleDelete}
+                            style={{ color: '#ef4444', borderColor: '#fee2e2' }}
+                        >
+                            <Trash2 size={16} />
                         </button>
                     </div>
                 </header>
 
-                <div className="monaco-wrapper" style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
-
-                    {/* Monaco Editor - Always Mounted */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            // Hide using visibility to keep layout but hide painting
-                            visibility: useSimpleEditor ? 'hidden' : 'visible',
-                            zIndex: 0
-                        }}
-                    >
-                        <Editor
-                            height="100%"
-                            defaultLanguage="javascript"
-                            path={`script-${id}.js`}
-                            theme={editorTheme}
+                <div className="monaco-wrapper" style={{ position: 'relative' }}>
+                    {useSimpleEditor && (
+                        <textarea
+                            className="mobile-editor-textarea"
                             value={code}
-                            onMount={(editor, monaco) => {
-                                editorRef.current = editor;
-
-                                // ... existing keybindings logic ...
-                                // Detect if on Mac
-                                const isMac = navigator.userAgent.includes('Mac');
-                                if (isMac) {
-                                    // Add Emacs-style bindings for Mac
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyP, () => editor.trigger('keyboard', 'cursorUp', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyN, () => editor.trigger('keyboard', 'cursorDown', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyF, () => editor.trigger('keyboard', 'cursorRight', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyB, () => editor.trigger('keyboard', 'cursorLeft', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyA, () => editor.trigger('keyboard', 'cursorHome', null));
-                                    editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyE, () => editor.trigger('keyboard', 'cursorEnd', null));
-                                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => editor.trigger('keyboard', 'actions.find', null));
-                                    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => editor.trigger('keyboard', 'undo', null));
+                            onChange={(e) => {
+                                const newValue = e.target.value;
+                                setCode(newValue);
+                                const metadata = parseMetadata(newValue);
+                                if (metadata.name && metadata.name !== name) {
+                                    setName(metadata.name);
                                 }
                             }}
-                            onChange={(value) => {
-                                if (!useSimpleEditor) {
-                                    setCode(value || '');
-                                    if (value) {
-                                        const metadata = parseMetadata(value);
-                                        if (metadata.name && metadata.name !== name) {
-                                            setName(metadata.name);
-                                        }
-                                    }
+                            onScroll={(e) => {
+                                // Sync Monaco scroll if available
+                                const editor = editorRef.current;
+                                if (editor) {
+                                    editor.setScrollTop(e.currentTarget.scrollTop);
+                                    editor.setScrollLeft(e.currentTarget.scrollLeft);
                                 }
                             }}
-                            options={{
-                                minimap: { enabled: false },
-                                lineNumbers: 'on',
-                                lineNumbersMinChars: isMobileLayout ? 3 : 5,
-                                glyphMargin: isMobileLayout ? false : true,
-                                folding: isMobileLayout ? false : true,
-                                renderLineHighlight: 'all',
-                                fontSize: 14,
-                                lineHeight: 21,
+                            spellCheck={false}
+                            autoCapitalize="off"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                zIndex: 10,
+                                background: 'transparent',
+                                color: 'transparent',
+                                caretColor: 'var(--text-primary)',
+                                // Match Monaco font settings exactly
                                 fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                                fontLigatures: true,
-                                wordWrap: 'on',
-                                automaticLayout: true,
-                                scrollBeyondLastLine: false,
-                                padding: { top: 16, bottom: 16 },
-                                tabSize: 2,
-                                insertSpaces: true,
-                                detectIndentation: false,
-                                contextmenu: isMobileLayout ? false : true,
-                                mouseWheelZoom: false,
-                                quickSuggestions: true,
+                                fontSize: '14px',
+                                lineHeight: '1.5',
+                                padding: '16px', // Monaco usually has some padding, need to verify
+                                resize: 'none',
+                                outline: 'none',
+                                border: 'none',
+                                width: '100%',
+                                height: '100%',
+                                overflow: 'auto',
+                                whiteSpace: 'pre', // Force no-wrap to match default Monaco for now
                             }}
                         />
-                    </div>
+                    )}
 
-                    {/* Textarea Overlay - conditionally rendered but positioned absolute */}
-                    {/* Textarea Overlay - always mounted for scroll persistence */}
-                    <textarea
-                        className="mobile-editor-textarea"
+                    <Editor
+                        height="100%"
+                        defaultLanguage="javascript"
+                        path={`script-${id}.js`}
+                        theme={editorTheme}
                         value={code}
-                        onChange={(e) => {
-                            const newValue = e.target.value;
-                            setCode(newValue);
-                            const metadata = parseMetadata(newValue);
-                            if (metadata.name && metadata.name !== name) {
-                                setName(metadata.name);
+                        // Keep onMount to save ref for scrolling, even if hidden/overlayed
+                        onMount={(editor, monaco) => {
+                            editorRef.current = editor;
+
+                            // ... existing keybindings logic ...
+                            // Detect if on Mac
+                            const isMac = navigator.userAgent.includes('Mac');
+                            if (isMac) {
+                                // Add Emacs-style bindings for Mac
+                                // Ctrl+P: Cursor Up
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyP, () => {
+                                    editor.trigger('keyboard', 'cursorUp', null);
+                                });
+                                // Ctrl+N: Cursor Down
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyN, () => {
+                                    editor.trigger('keyboard', 'cursorDown', null);
+                                });
+                                // Ctrl+F: Cursor Right (Default usually might be find, but we want cursor right for Emacs)
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyF, () => {
+                                    editor.trigger('keyboard', 'cursorRight', null);
+                                });
+                                // Ctrl+B: Cursor Left
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyB, () => {
+                                    editor.trigger('keyboard', 'cursorLeft', null);
+                                });
+                                // Ctrl+A: Cursor Home
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyA, () => {
+                                    editor.trigger('keyboard', 'cursorHome', null);
+                                });
+                                // Ctrl+E: Cursor End
+                                editor.addCommand(monaco.KeyMod.WinCtrl | monaco.KeyCode.KeyE, () => {
+                                    editor.trigger('keyboard', 'cursorEnd', null);
+                                });
+
+                                // Ensure Cmd+F triggers Find (Monaco defaults usually handle this if OS detected, but we force it)
+                                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
+                                    editor.trigger('keyboard', 'actions.find', null);
+                                });
+                                // Ensure Cmd+Z triggers Undo
+                                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () => {
+                                    editor.trigger('keyboard', 'undo', null);
+                                });
                             }
                         }}
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        autoComplete="off"
-                        autoCorrect="off"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            zIndex: 10,
-                            visibility: useSimpleEditor ? 'visible' : 'hidden',
+                        // Update onChange to only fire if NOT in simple mode (loop prevention? usually one-way sync is fine)
+                        onChange={(value) => {
+                            if (!useSimpleEditor) {
+                                setCode(value || '');
+                                if (value) {
+                                    const metadata = parseMetadata(value);
+                                    if (metadata.name && metadata.name !== name) {
+                                        setName(metadata.name);
+                                    }
+                                }
+                            }
+                        }}
+                        options={{
+                            minimap: { enabled: false }, // Hide minimap to match textarea width
+                            lineNumbers: useSimpleEditor ? 'off' : 'on', // Hide line numbers in simple mode to align with textarea
+                            folding: !useSimpleEditor, // Hide folding
+                            renderLineHighlight: useSimpleEditor ? 'none' : 'all', // Hide line highlight
+                            fontSize: 14,
                             fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-                            fontSize: '14px',
-                            lineHeight: '21px',
-                            padding: `15px 16px 16px ${isMobileLayout ? '35px' : '49px'}`,
-                            resize: 'none',
-                            outline: 'none',
-                            border: 'none',
-                            background: 'var(--bg-primary)',
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-all',
-                            overflowWrap: 'anywhere',
+                            fontLigatures: true,
+                            wordWrap: 'off', // Force no-wrap for alignment
+                            automaticLayout: true,
+                            scrollBeyondLastLine: false,
+                            padding: { top: 16, bottom: 16 },
+                            tabSize: 2,
+                            insertSpaces: true,
+                            detectIndentation: false,
+                            readOnly: useSimpleEditor, // Make Monaco read-only when in simple/overlay mode
+                            domReadOnly: useSimpleEditor, // Disable DOM interaction
+                            contextmenu: !useSimpleEditor && (isMobile ? false : true),
+                            mouseWheelZoom: false,
+                            quickSuggestions: !useSimpleEditor,
+                            scrollbar: {
+                                vertical: useSimpleEditor ? 'hidden' : 'auto', // Hide scrollbars since textarea handles scrolling
+                                horizontal: useSimpleEditor ? 'hidden' : 'auto',
+                                handleMouseWheel: !useSimpleEditor, // Let textarea handle wheel
+                            }
                         }}
                     />
                 </div>
@@ -638,3 +617,4 @@ const ScriptEditor = () => {
 };
 
 export default ScriptEditor;
+```
