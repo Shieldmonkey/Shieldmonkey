@@ -5,8 +5,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { javascript, scopeCompletionSource } from '@codemirror/lang-javascript';
 import { userScriptMetadataCompletion } from '../codemirrorConfig';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson, AlertCircle, Wrench, Undo2, Redo2 } from 'lucide-react';
-import { MessageType } from '../../types/messages';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson, Wrench, Undo2, Redo2 } from 'lucide-react';
 import { undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
 import * as prettier from "prettier/standalone";
@@ -176,16 +175,7 @@ const ScriptEditor = () => {
         });
     };
 
-    const handleClearErrors = async () => {
-        if (!scriptFromContext) return;
-        chrome.runtime.sendMessage({
-            type: MessageType.CLEAR_RUNTIME_ERRORS,
-            scriptId: scriptFromContext.id
-        });
-        // Optimistic update
-        // We need a way to update the context or force reload. 
-        // AppContext listens to storage changes, so if background updates storage, it should reflect here automatically.
-    };
+
 
     const handleUndo = () => {
         if (viewRef.current) {
@@ -423,58 +413,6 @@ const ScriptEditor = () => {
                     </div>
 
 
-                    {/* Runtime Errors Section */}
-                    {
-                        (scriptFromContext?.runtimeErrors || []).length > 0 && (
-                            <div style={{ marginBottom: '32px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
-                                        <AlertCircle size={16} />
-                                        <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Errors</h3>
-                                    </div>
-                                    <button
-                                        onClick={handleClearErrors}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: 'var(--text-secondary)',
-                                            fontSize: '0.75rem',
-                                            cursor: 'pointer',
-                                            padding: '4px',
-                                            textDecoration: 'underline'
-                                        }}
-                                    >
-                                        Clear All
-                                    </button>
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '8px',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    {[...(scriptFromContext?.runtimeErrors || [])].reverse().map((err, i) => (
-                                        <div key={i} style={{
-                                            padding: '8px',
-                                            borderRadius: '4px',
-                                            background: 'rgba(239, 68, 68, 0.1)',
-                                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            fontSize: '0.8rem'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                                                <span>{new Date(err.timestamp).toLocaleTimeString()}</span>
-                                                {err.lineno && <span>L{err.lineno}</span>}
-                                            </div>
-                                            <div style={{ wordBreak: 'break-word', color: '#fca5a5', fontFamily: 'monospace' }}>
-                                                {err.message}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    }
 
                     {/* Matches Section */}
                     {
