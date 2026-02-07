@@ -19,11 +19,14 @@ export const isFirefox = (): boolean => {
     return !!globalScope.browser && !!globalScope.browser.runtime;
 };
 
+export const isMobile = (): boolean => {
+    return /Android|iPhone|iPad/i.test(navigator.userAgent);
+};
+
 export const isFileSystemSupported = (): boolean => {
     // Force legacy mode on mobile devices even if the API exists (e.g. Edge Android)
     // because the behavior is often different or buggy compared to desktop.
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (isMobile) return false;
+    if (isMobile()) return false;
 
     return 'showDirectoryPicker' in window;
 };

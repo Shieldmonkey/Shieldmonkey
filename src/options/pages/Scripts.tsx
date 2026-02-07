@@ -57,7 +57,6 @@ const Scripts = () => {
                 }
                 setScripts((prev: Script[]) => prev.filter((s: Script) => !selectedScriptIds.has(s.id)));
                 setSelectedScriptIds(new Set());
-                showModal('success', 'Deleted', t('deletedMultiple', [String(selectedScriptIds.size)]));
             } catch (e) {
                 console.error("Failed to delete", e);
                 showModal('error', t('deleteFailed'), (e as Error).message);
@@ -128,7 +127,6 @@ const Scripts = () => {
         showModal('confirm', t('deleteScriptTitle'), t('deleteScriptConfirm', [script.name]), async () => {
             try {
                 await deleteScript(script.id);
-                showModal('success', 'Deleted', t('deleteSuccess', [script.name]));
             } catch (e) {
                 console.error("Failed to delete", e);
                 showModal('error', t('deleteFailed'), (e as Error).message);

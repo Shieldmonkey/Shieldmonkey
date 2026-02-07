@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from '../../context/I18nContext';
-import { isFirefox, requestPermission } from '../../utils/browserPolyfill';
+import { isFirefox, isMobile, requestPermission } from '../../utils/browserPolyfill';
 
 const PermissionHelp = () => {
     const { t } = useTranslation();
@@ -9,6 +9,7 @@ const PermissionHelp = () => {
 
     // Firefox flow
     const isFirefoxBrowser = isFirefox();
+    const isMobileDevice = isMobile();
 
     // Chrome specific logic
     const chromeVersion = (() => {
@@ -18,10 +19,25 @@ const PermissionHelp = () => {
     const isNewWay = chromeVersion >= 138;
 
     const openExtensionsPage = () => {
-        if (chrome.tabs) {
-            chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+        // Firefox doesn't support opening extensions page via tabs.create
+        if (isFirefoxBrowser) {
+            console.warn('Firefox does not support opening about:addons via tabs.create');
+            return;
+        }
+
+        let url: string;
+        if (isMobileDevice) {
+            // Mobile Chromium browsers need extensions list page
+            url = 'chrome://extensions/';
         } else {
-            window.open(`chrome://extensions/?id=${chrome.runtime.id}`, '_blank');
+            // Desktop Chrome/Edge - open specific extension page
+            url = `chrome://extensions/?id=${chrome.runtime.id}`;
+        }
+
+        if (chrome.tabs) {
+            chrome.tabs.create({ url });
+        } else {
+            window.open(url, '_blank');
         }
     };
 

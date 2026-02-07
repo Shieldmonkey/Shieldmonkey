@@ -238,5 +238,7 @@
   "exportDesc": { "message": "Save all your scripts to a single JSON file." },
   "importDesc": { "message": "Restore scripts from a previously exported JSON file." },
   "btnExport": { "message": "Export Scripts" },
-  "btnImport": { "message": "Import Scripts" }
+  "btnImport": { "message": "Import Scripts" },
+  "sectionClassicExportImport": { "message": "Export / Import (Classic)" },
+  "classicExportImportDesc": { "message": "Single-file backup compatible with all browsers." }
 }

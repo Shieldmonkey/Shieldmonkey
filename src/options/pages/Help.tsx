@@ -1,12 +1,13 @@
 import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { isUserScriptsAvailable, requestPermission, isFirefox } from '../../utils/browserPolyfill';
+import { isUserScriptsAvailable, requestPermission, isFirefox, isMobile } from '../../utils/browserPolyfill';
 import { useTranslation } from '../../context/I18nContext';
 
 const Help = () => {
     const { t } = useTranslation();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const isFirefoxBrowser = isFirefox();
+    const isMobileDevice = isMobile();
 
     useEffect(() => {
         let mounted = true;
@@ -35,7 +36,20 @@ const Help = () => {
     };
 
     const openExtensionsPage = () => {
-        const url = `chrome://extensions/?id=${chrome.runtime.id}`;
+        let url: string;
+
+        if (isFirefoxBrowser) {
+            // Firefox doesn't support opening extensions page via tabs.create
+            console.warn('Firefox does not support opening about:addons via tabs.create');
+            return;
+        } else if (isMobileDevice) {
+            // Mobile Chromium browsers need extensions list page
+            url = 'chrome://extensions/';
+        } else {
+            // Desktop Chrome/Edge - open specific extension page
+            url = `chrome://extensions/?id=${chrome.runtime.id}`;
+        }
+
         if (chrome.tabs) {
             chrome.tabs.create({ url });
         } else {
@@ -117,14 +131,17 @@ const Help = () => {
 
                         {/* Status if already good (Chrome mainly, or Firefox fallback) */}
                         {!isFirefoxBrowser && hasPermission && (
-                            <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
-                                {t('permissionStatusActive')}
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button onClick={openExtensionsPage} className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                                    {t('btnOpenSettings')}
+                                </button>
+                            </div>
                         )}
                         {isFirefoxBrowser && hasPermission && (
-                            <button disabled className="btn-secondary" style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
-                                {t('permissionGranted')}
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px' }}>
+                                <CheckCircle size={20} color="var(--accent-color)" />
+                                <span style={{ color: 'var(--accent-color)', fontWeight: 500 }}>{t('permissionStatusActive')}</span>
+                            </div>
                         )}
                     </div>
 

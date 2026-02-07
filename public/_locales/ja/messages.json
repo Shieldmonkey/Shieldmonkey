@@ -238,5 +238,7 @@
   "exportDesc": { "message": "すべてのスクリプトを単一のJSONファイルとして保存します。" },
   "importDesc": { "message": "以前にエクスポートしたJSONファイルからスクリプトを復元します。" },
   "btnExport": { "message": "スクリプトをエクスポート" },
-  "btnImport": { "message": "スクリプトをインポート" }
+  "btnImport": { "message": "スクリプトをインポート" },
+  "sectionClassicExportImport": { "message": "エクスポート / インポート（クラシック）" },
+  "classicExportImportDesc": { "message": "すべてのブラウザに対応した単一ファイルバックアップ。" }
 }

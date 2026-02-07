@@ -391,11 +391,103 @@ const Settings = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Classic Export/Import Section for Chromium */}
+                            <div style={{ marginTop: '32px' }}>
+                                <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionClassicExportImport') || 'Classic Export / Import'}</h3>
+                                <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '0', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                                    <p style={{ padding: '16px 24px 0', margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {t('classicExportImportDesc') || 'Single-file backup compatible with all browsers.'}
+                                    </p>
+
+                                    {/* EXPORT */}
+                                    <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Download size={20} className="text-secondary" />
+                                            {t('btnExport') || 'Export'}
+                                        </h4>
+                                        <p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                            {t('exportDesc') || 'Save all your scripts to a single JSON file.'}
+                                        </p>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={async () => {
+                                                    try {
+                                                        setBackupStatus('idle');
+                                                        setBackupMessage('');
+                                                        setIsBackupLoading(true);
+                                                        const count = await performBackupLegacy();
+                                                        setBackupStatus('success');
+                                                        setBackupMessage(t('savedScriptsMsg', [String(count)]));
+                                                    } catch (e) {
+                                                        console.error("Classic export failed", e);
+                                                        setBackupStatus('error');
+                                                        setBackupMessage((e as Error).message);
+                                                    } finally {
+                                                        setIsBackupLoading(false);
+                                                    }
+                                                }}
+                                                disabled={isBackupLoading}
+                                            >
+                                                <Download size={18} />
+                                                <span>{isBackupLoading ? t('btnWorking') : (t('btnExport') || 'Export')}</span>
+                                            </button>
+
+                                            {backupStatus === 'success' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                    <Check size={18} />
+                                                    <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                            {backupStatus === 'error' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                    <AlertCircle size={18} />
+                                                    <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* IMPORT */}
+                                    <div style={{ padding: '24px' }}>
+                                        <h4 style={{ fontSize: '1rem', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Upload size={20} className="text-secondary" />
+                                            {t('btnImport') || 'Import'}
+                                        </h4>
+                                        <p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                            {t('importDesc') || 'Restore scripts from a previously exported JSON file.'}
+                                        </p>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={() => restoreInputRef.current?.click()}
+                                                disabled={isBackupLoading}
+                                            >
+                                                <Upload size={18} />
+                                                <span>{t('btnImport') || 'Import'}</span>
+                                            </button>
+                                            {restoreStatus === 'success' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
+                                                    <Check size={18} />
+                                                    <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                            {restoreStatus === 'error' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
+                                                    <AlertCircle size={18} />
+                                                    <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </>
                     ) : (
                         /* FIREFOX / LEGACY FALLBACK UI */
                         <>
-                            <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionExportImport') || 'Export / Import'}</h3>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '16px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('sectionClassicExportImport') || 'Classic Export / Import'}</h3>
                             <div style={{ background: 'var(--surface-bg)', borderRadius: '12px', padding: '0', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
 
                                 {/* EXPORT */}
