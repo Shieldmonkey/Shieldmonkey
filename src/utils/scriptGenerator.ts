@@ -20,9 +20,9 @@ export function getGMAPIScript(config: GM_ScriptConfig): string {
     });
 
     return gmApiImplCode
-        .replace('__SCRIPT_NAME__', config.name)
-        .replace('__SCRIPT_ID__', config.id)
-        .replace('__SCRIPT_TOKEN__', config.token)
+        .replace('"__SCRIPT_NAME__"', JSON.stringify(config.name))
+        .replace('"__SCRIPT_ID__"', JSON.stringify(config.id))
+        .replace('"__SCRIPT_TOKEN__"', JSON.stringify(config.token))
         .replace("'__GRANTED_PERMISSIONS__'", JSON.stringify(perms))
         .replace("'__SCRIPT_OBJ__'", JSON.stringify(scriptObj));
 }
