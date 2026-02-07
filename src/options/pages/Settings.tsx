@@ -21,6 +21,10 @@ const Settings = () => {
     const [backupMessage, setBackupMessage] = useState<string>('');
     const [restoreStatus, setRestoreStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [restoreMessage, setRestoreMessage] = useState<string>('');
+    const [classicBackupStatus, setClassicBackupStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [classicBackupMessage, setClassicBackupMessage] = useState<string>('');
+    const [classicRestoreStatus, setClassicRestoreStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [classicRestoreMessage, setClassicRestoreMessage] = useState<string>('');
     const [autoBackup, setAutoBackup] = useState(false);
     const [fsSupported, setFsSupported] = useState(true);
     const restoreInputRef = useRef<HTMLInputElement>(null);
@@ -65,25 +69,38 @@ const Settings = () => {
 
     const handleManualBackup = async () => {
         try {
-            setBackupStatus('idle');
-            setBackupMessage('');
+            if (fsSupported) {
+                setBackupStatus('idle');
+                setBackupMessage('');
+            } else {
+                setClassicBackupStatus('idle');
+                setClassicBackupMessage('');
+            }
             setIsBackupLoading(true);
             let count;
             if (fsSupported) {
                 count = await performBackup();
+                setBackupStatus('success');
+                setBackupMessage(t('savedScriptsMsg', [String(count)]));
             } else {
                 count = await performBackupLegacy();
+                setClassicBackupStatus('success');
+                setClassicBackupMessage(t('savedScriptsMsg', [String(count)]));
             }
             const time = new Date().toISOString();
             setLastBackupTime(time);
             chrome.storage.local.set({ lastBackupTime: time });
-            setBackupStatus('success');
-            setBackupMessage(t('savedScriptsMsg', [String(count)]));
         } catch (e) {
             console.error("Backup failed", e);
-            setBackupStatus('error');
-            setBackupMessage((e as Error).message);
+            if (fsSupported) {
+                setBackupStatus('error');
+                setBackupMessage((e as Error).message);
+            } else {
+                setClassicBackupStatus('error');
+                setClassicBackupMessage((e as Error).message);
+            }
         } finally {
+            setIsBackupLoading(true);
             setIsBackupLoading(false);
         }
     };
@@ -99,8 +116,8 @@ const Settings = () => {
             async () => {
                 let count = 0;
                 try {
-                    setRestoreStatus('idle');
-                    setRestoreMessage('');
+                    setClassicRestoreStatus('idle');
+                    setClassicRestoreMessage('');
                     setIsBackupLoading(true);
 
                     count = await performRestoreLegacy(file);
@@ -110,13 +127,13 @@ const Settings = () => {
                         console.warn("Failed to notify background script of restore:", msgError);
                     }
 
-                    setRestoreStatus('success');
-                    setRestoreMessage(t('restoreSuccessMsg', [String(count)]));
+                    setClassicRestoreStatus('success');
+                    setClassicRestoreMessage(t('restoreSuccessMsg', [String(count)]));
                     showModal('success', t('restoreCompleteTitle'), t('restoreCompleteMsg', [String(count)]));
                 } catch (err) {
                     console.error("Restore failed", err);
-                    setRestoreStatus('error');
-                    setRestoreMessage((err as Error).message);
+                    setClassicRestoreStatus('error');
+                    setClassicRestoreMessage((err as Error).message);
                     showModal('error', t('restoreFailedTitle'), (err as Error).message);
                 } finally {
                     setIsBackupLoading(false);
@@ -414,16 +431,16 @@ const Settings = () => {
                                                 className="btn-secondary"
                                                 onClick={async () => {
                                                     try {
-                                                        setBackupStatus('idle');
-                                                        setBackupMessage('');
+                                                        setClassicBackupStatus('idle');
+                                                        setClassicBackupMessage('');
                                                         setIsBackupLoading(true);
                                                         const count = await performBackupLegacy();
-                                                        setBackupStatus('success');
-                                                        setBackupMessage(t('savedScriptsMsg', [String(count)]));
+                                                        setClassicBackupStatus('success');
+                                                        setClassicBackupMessage(t('savedScriptsMsg', [String(count)]));
                                                     } catch (e) {
                                                         console.error("Classic export failed", e);
-                                                        setBackupStatus('error');
-                                                        setBackupMessage((e as Error).message);
+                                                        setClassicBackupStatus('error');
+                                                        setClassicBackupMessage((e as Error).message);
                                                     } finally {
                                                         setIsBackupLoading(false);
                                                     }
@@ -434,16 +451,16 @@ const Settings = () => {
                                                 <span>{isBackupLoading ? t('btnWorking') : (t('btnExport') || 'Export')}</span>
                                             </button>
 
-                                            {backupStatus === 'success' && (
+                                            {classicBackupStatus === 'success' && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                                     <Check size={18} />
-                                                    <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                    <span>{t('backupDone')}{classicBackupMessage ? `: ${classicBackupMessage}` : ''}</span>
                                                 </div>
                                             )}
-                                            {backupStatus === 'error' && (
+                                            {classicBackupStatus === 'error' && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                                     <AlertCircle size={18} />
-                                                    <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                    <span>{t('backupError')}{classicBackupMessage ? `: ${classicBackupMessage}` : ''}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -467,16 +484,16 @@ const Settings = () => {
                                                 <Upload size={18} />
                                                 <span>{t('btnImport') || 'Import'}</span>
                                             </button>
-                                            {restoreStatus === 'success' && (
+                                            {classicRestoreStatus === 'success' && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                                     <Check size={18} />
-                                                    <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                    <span>{t('backupDone')}{classicRestoreMessage ? `: ${classicRestoreMessage}` : ''}</span>
                                                 </div>
                                             )}
-                                            {restoreStatus === 'error' && (
+                                            {classicRestoreStatus === 'error' && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                                     <AlertCircle size={18} />
-                                                    <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                    <span>{t('backupError')}{classicRestoreMessage ? `: ${classicRestoreMessage}` : ''}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -509,16 +526,16 @@ const Settings = () => {
                                             <span>{isBackupLoading ? t('btnWorking') : (t('btnExport') || 'Export')}</span>
                                         </button>
 
-                                        {backupStatus === 'success' && (
+                                        {classicBackupStatus === 'success' && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                                 <Check size={18} />
-                                                <span>{t('backupDone')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                <span>{t('backupDone')}{classicBackupMessage ? `: ${classicBackupMessage}` : ''}</span>
                                             </div>
                                         )}
-                                        {backupStatus === 'error' && (
+                                        {classicBackupStatus === 'error' && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                                 <AlertCircle size={18} />
-                                                <span>{t('backupError')}{backupMessage ? `: ${backupMessage}` : ''}</span>
+                                                <span>{t('backupError')}{classicBackupMessage ? `: ${classicBackupMessage}` : ''}</span>
                                             </div>
                                         )}
                                     </div>
@@ -549,16 +566,16 @@ const Settings = () => {
                                             <Upload size={18} />
                                             <span>{t('btnImport') || 'Import'}</span>
                                         </button>
-                                        {restoreStatus === 'success' && (
+                                        {classicRestoreStatus === 'success' && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.9rem' }}>
                                                 <Check size={18} />
-                                                <span>{t('backupDone')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                <span>{t('backupDone')}{classicRestoreMessage ? `: ${classicRestoreMessage}` : ''}</span>
                                             </div>
                                         )}
-                                        {restoreStatus === 'error' && (
+                                        {classicRestoreStatus === 'error' && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.9rem' }}>
                                                 <AlertCircle size={18} />
-                                                <span>{t('backupError')}{restoreMessage ? `: ${restoreMessage}` : ''}</span>
+                                                <span>{t('backupError')}{classicRestoreMessage ? `: ${classicRestoreMessage}` : ''}</span>
                                             </div>
                                         )}
                                     </div>
