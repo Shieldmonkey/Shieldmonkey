@@ -1,10 +1,6 @@
 packages:
   - "."
 
-onlyBuiltDependencies:
-  - esbuild
-  - "@parcel/watcher"
-
 blockExoticSubdeps: true
 minimumReleaseAge: 10080
 trustPolicy: no-downgrade
