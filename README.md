@@ -8,7 +8,7 @@
 
 # Shieldmonkey
 
-Shieldmonkey is a Manifest V3 compliant userscript manager designed with security and auditability as the top priorities.
+Shieldmonkey is an open-source, Manifest V3 compliant userscript manager designed with security and auditability as the top priorities.
 
 ## Design and Features
 

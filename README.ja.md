@@ -8,7 +8,7 @@
 
 # Shieldmonkey
 
-Shieldmonkeyは、セキュリティと監査可能性を最優先に設計されたManifest V3準拠のユーザースクリプトマネージャーです。
+Shieldmonkeyは、セキュリティと監査可能性を最優先に設計された、オープンソースでManifest V3準拠のユーザースクリプトマネージャーです。
 
 ## 設計と特徴
 
