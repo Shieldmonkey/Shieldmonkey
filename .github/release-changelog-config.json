@@ -3,26 +3,26 @@
     {
       "title": "🚀 Features",
       "labels": ["feat", "feature"],
-      "commit_prefixes": ["feat:", "feature:"]
+      "commit_prefixes": ["feat:", "feature:", "feat(", "feature("]
     },
     {
       "title": "🐛 Bug Fixes",
       "labels": ["fix", "bug"],
-      "commit_prefixes": ["fix:", "bug:"]
+      "commit_prefixes": ["fix:", "bug:", "fix(", "bug("]
     },
     {
       "title": "🧰 Maintenance",
       "labels": ["chore", "refactor", "build", "ci"],
-      "commit_prefixes": ["chore:", "refactor:", "build:", "ci:"]
+      "commit_prefixes": ["chore:", "refactor:", "build:", "ci:", "chore(", "refactor(", "build(", "ci("]
     },
     {
       "title": "📝 Documentation",
       "labels": ["docs", "documentation"],
-      "commit_prefixes": ["docs:", "documentation:"]
+      "commit_prefixes": ["docs:", "documentation:", "docs(", "documentation("]
     }
   ],
-  "template": "# Changes\n\n${CHANGES}\n",
-  "empty_template": "# Changes\n\nNo significant changes in this release.\n",
+  "template": "# Changes\n\n${CHANGES}\n\n${UNCATEGORIZED}\n",
+  "empty_template": "# Changes\n\nNo significant changes in this release. This might be because the previous tag was created very recently.\n",
   "ignore_labels": ["ignore"],
   "unmapped_category_title": "🔍 Other Changes"
 }
