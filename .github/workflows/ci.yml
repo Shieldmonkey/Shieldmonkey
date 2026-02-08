@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: Chrome Default (Non-Minified + Sourcemap)
+            target: chrome
+            command: build
+            artifact_name: Shieldmonkey
+            dist_dir: dist
+            env: 
+              DISABLE_MINIFY: "true"
+              DISABLE_SOURCEMAP: "false"
+          
+          - name: Chrome Minified No Sourcemap
+            target: chrome
+            command: build
+            artifact_name: Shieldmonkey.no-sourcemap.min
+            dist_dir: dist
+            env:
+              DISABLE_MINIFY: "false"
+              DISABLE_SOURCEMAP: "true"
+
+          - name: Firefox Default (Non-Minified + Sourcemap)
+            target: firefox
+            command: build:firefox
+            artifact_name: Shieldmonkey.firefox
+            dist_dir: dist-firefox
+            env: 
+              DISABLE_MINIFY: "true"
+              DISABLE_SOURCEMAP: "false"
+
+          - name: Firefox Non-Minified No Sourcemap
+            target: firefox
+            command: build:firefox
+            artifact_name: Shieldmonkey.firefox.no-sourcemap
+            dist_dir: dist-firefox
+            env:
+              DISABLE_MINIFY: "true"
+              DISABLE_SOURCEMAP: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Lint
+        if: matrix.name == 'Chrome Default (Non-Minified + Sourcemap)'
+        run: pnpm run lint
+
+      - name: Build Extension
+        run: pnpm run ${{ matrix.command }}
+        env: ${{ matrix.env }}
+
+      - name: Zip Extension
+        run: |
+          cd ${{ matrix.dist_dir }}
+          zip -r ../${{ matrix.artifact_name }}.zip .
+          cd ..
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.zip
+
+  release-draft:
+    name: Update Release Draft
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+
+      - name: Update Release Draft
+        uses: release-drafter/release-drafter@v6
+        id: drafter
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Draft Assets
+        run: |
+          gh release upload ${{ steps.drafter.outputs.tag_name }} artifacts/**/*.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

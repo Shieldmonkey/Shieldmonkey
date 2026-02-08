@@ -1,35 +1,12 @@
-name: Build Extension
+name: Publish Release
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
-    paths:
-      - '.github/workflows/build.yml'
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.ts'
-      - 'tsconfig*.json'
-  pull_request:
-    branches: [ main, master ]
-    paths:
-      - '.github/workflows/build.yml'
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.ts'
-      - 'tsconfig*.json'
-  workflow_dispatch:
+    tags:
+      - 'v*'
 
 permissions:
-  contents: write
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  contents: read
 
 jobs:
   build:
@@ -37,7 +14,6 @@ jobs:
     strategy:
       matrix:
         include:
-          # Chrome Builds
           - name: Chrome Default (Non-Minified + Sourcemap)
             target: chrome
             command: build
@@ -56,7 +32,6 @@ jobs:
               DISABLE_MINIFY: "false"
               DISABLE_SOURCEMAP: "true"
 
-          # Firefox Builds
           - name: Firefox Default (Non-Minified + Sourcemap)
             target: firefox
             command: build:firefox
@@ -94,7 +69,7 @@ jobs:
         run: pnpm install
 
       - name: Lint
-        if: matrix.name == 'Chrome Default (Minified + Sourcemap)'
+        if: matrix.name == 'Chrome Default (Non-Minified + Sourcemap)'
         run: pnpm run lint
 
       - name: Build Extension
@@ -113,36 +88,55 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.zip
 
-  release:
+  release-stores:
+    name: Publish to Support Stores
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-      pull-requests: read # Needed for PR info if available
+    environment: release
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
-      - name: Build Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          configuration: ".github/release-changelog-config.json"
+          run_install: false
 
-      - name: Download all artifacts
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Chrome Artifact
         uses: actions/download-artifact@v6
         with:
-          path: artifacts
+          name: Shieldmonkey
+          path: artifacts/chrome
 
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
+      - name: Download Firefox Artifact
+        uses: actions/download-artifact@v6
         with:
-          files: artifacts/**/*.zip
-          draft: true
-          prerelease: false
-          body: ${{ steps.build_changelog.outputs.changelog }}
+          name: Shieldmonkey.firefox
+          path: artifacts/firefox
+
+      - name: Publish to Stores
+        run: pnpm exec publish-extension
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_ZIP: artifacts/chrome/Shieldmonkey.zip
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          FIREFOX_ZIP: artifacts/firefox/Shieldmonkey.firefox.zip
+          FIREFOX_CHANNEL: listed
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_ZIP: artifacts/chrome/Shieldmonkey.zip
