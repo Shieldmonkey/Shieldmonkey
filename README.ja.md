@@ -1,10 +1,13 @@
-[![Build Extension](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml)
+[![CI](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/ci.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/ci.yml)
 [![Test](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Shieldmonkey/Shieldmonkey?style=flat-square)](https://github.com/Shieldmonkey/Shieldmonkey/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Shieldmonkey/Shieldmonkey?style=flat-square&color=blue)](https://github.com/Shieldmonkey/Shieldmonkey/issues)
 [![License](https://img.shields.io/github/license/Shieldmonkey/Shieldmonkey?style=flat-square&color=orange)](LICENSE)
 
+
 [English README](README.md)
+
+![Shieldmonkey](assets/header.jpeg)
 
 # Shieldmonkey
 
@@ -23,13 +26,6 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 
 全ての更新はユーザーの手動操作によってのみ行われ、バックグラウンドでの意図しないコードの書き換えや実行を防ぎます。
 
-### サプライチェーンの安全性
-開発およびビルドプロセスにおいて [pnpmのサプライチェーンセキュリティ機能](https://pnpm.io/ja/supply-chain-security) を活用し、攻撃への耐性を高めています。
-
-- **`ignore-scripts=true`**: `.npmrc` でこの設定を強制しているため、`pnpm install` 実行時にパッケージの `postinstall` などのスクリプトが自動実行されることはありません。これにより、悪意あるスクリプトの実行を未然に防ぎます。
-- **厳格な依存関係管理**: pnpmはデフォルトでフラットな `node_modules` を作成せず、宣言されていない依存関係へのアクセスを防ぎます（Phantom dependenciesの防止）。
-- **`pnpm-lock.yaml`**: `pnpm install --frozen-lockfile`（CI等でのデフォルト）により、ロックファイルに基づいた厳密なバージョン管理を行い、意図しないパッケージの混入を防ぎます。
-
 ### 監査可能なビルド
 透明性を確保するため、以下のビルド方針を採用しています。
 
@@ -37,12 +33,23 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 - デバッグと検証のためにSourceMapを同梱しています。
 - 配布サイズを考慮したMinify版も提供されますが、非Minify版の利用を推奨します。
 
-利用者が自らの手でソースコードからビルドし、その中身が検証可能であることを最も重視しています。各ストアからのインストールも可能ですが、GitHub上のソースコードからビルドしたものの利用を第一に推奨します。
+監査可能性とコントロールを重視するユーザーのために、GitHubからの手動インストールを選択肢として提供しています。ブラウザストアによる審査と利便性を取るか、ソースコードからビルドされた固定バージョンの透明性を取るか、ユーザー自身が選択できます。
+
+### サプライチェーンの安全性
+pnpmの設定 (`pnpm-workspace.yaml`) と厳格なバージョン管理により、サプライチェーン攻撃への耐性を高めています。
+
+- **厳格なバージョン固定 (package.json)**: `package.json` 内のすべての依存関係は、範囲指定（`^`や`~`）を使用せず、完全な固定バージョンで記述されています。これにより、ビルドごとの差異を排除します。
+- **`pnpm-workspace.yaml` による保護**:
+  - **`blockExoticSubdeps=true`**: Git URLなど、npmレジストリ以外からの依存関係のインストールをブロックし、信頼できないソースからのコード混入を防ぎます。
+  - **`minimumReleaseAge=10080`**: 公開から7日以上経過したパッケージのみをインストールします。これにより、公開直後の悪意ある更新（Zero-day攻撃）やTyposquattingのリスクを軽減します。
+  - **`trustPolicy=no-downgrade`**: 依存パッケージが密かに古いバージョンへダウングレードされることを防ぎます。
+- **`ignore-scripts`**: `pnpm` ではデフォルトでスクリプトの自動実行が無効化されていますが、`.npmrc` にもフォールバックとして `ignore-scripts=true` を記述し、npm使用時でも悪意あるスクリプトが実行されないようにしています。
+- **不変のロックファイル**: `lockfile=true` を強制し、CIでは `pnpm install --frozen-lockfile` を使用することで、再現性のあるビルドを保証します。
 
 ## 機能
 
 - スクリプトの管理（インストール、編集、削除、無効化）
-- Monaco Editorによる編集環境（TypeScript/JavaScriptサポート）
+- CodeMirror 6による編集環境
 - `.user.js` 形式への対応
 - ローカルへのインポート・エクスポート
 
@@ -51,7 +58,7 @@ Background Scriptや各ページからの外部接続は遮断されます。こ
 - React 19
 - Vite (w/ CRXJS)
 - TypeScript
-- Monaco Editor
+- CodeMirror 6
 - IndexedDB
 - Vanilla CSS / Sass
 

@@ -1,10 +1,13 @@
-[![Build Extension](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/build.yml)
+[![CI](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/ci.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/ci.yml)
 [![Test](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml/badge.svg)](https://github.com/Shieldmonkey/Shieldmonkey/actions/workflows/test.yml)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Shieldmonkey/Shieldmonkey?style=flat-square)](https://github.com/Shieldmonkey/Shieldmonkey/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Shieldmonkey/Shieldmonkey?style=flat-square&color=blue)](https://github.com/Shieldmonkey/Shieldmonkey/issues)
 [![License](https://img.shields.io/github/license/Shieldmonkey/Shieldmonkey?style=flat-square&color=orange)](LICENSE)
 
+
 [日本語版 README (Japanese)](README.ja.md)
+
+![Shieldmonkey](assets/header.jpeg)
 
 # Shieldmonkey
 
@@ -23,13 +26,6 @@ External connections from Background Scripts and injected pages are blocked. Con
 
 All updates are performed manually by the user, preventing unintentional code replacement or execution in the background.
 
-### Supply Chain Security
-We leverage [pnpm's supply chain security features](https://pnpm.io/supply-chain-security) throughout the development and build processes to enhance resilience against attacks.
-
-- **`ignore-scripts=true`**: This setting is enforced via `.npmrc`, so running `pnpm install` will never automatically execute scripts like `postinstall` from dependencies. This proactively prevents the execution of malicious scripts.
-- **Strict Dependency Management**: By default, pnpm does not create a flat `node_modules`, preventing access to undeclared dependencies (phantom dependencies).
-- **`pnpm-lock.yaml`**: We rely on `pnpm install --frozen-lockfile` (default behavior in CI) to enforce strict version management based on the lockfile, preventing unintended package injection.
-
 ### Auditable Builds
 To ensure transparency, we follow these build policies:
 
@@ -37,12 +33,23 @@ To ensure transparency, we follow these build policies:
 - SourceMaps are included for debugging and verification.
 - A minified version is also provided for distribution size considerations, but we recommend using the non-minified version.
 
-We place the highest importance on users being able to build the extension from source and verify its content. While installation from stores is possible, building from the GitHub source code is primarily recommended.
+We provide manual installation from GitHub as an option for users who prioritize auditability and control. You can choose between the convenience and review process of the Browser Stores, or the security of using a fixed, auditable version built from source.
+
+### Supply Chain Security
+We prioritize supply chain security by leveraging `pnpm` configuration and strict versioning policies.
+
+- **Strict Version Pinning (package.json)**: All dependencies in `package.json` are pinned to exact versions (no `^` or `~`). We do not use range specifiers, ensuring that the exact same code is used across all builds.
+- **`pnpm-workspace.yaml` Configuration**:
+  - **`blockExoticSubdeps=true`**: Prevents installation of dependencies from untrusted sources (e.g., Git URLs), ensuring all packages come from the registry.
+  - **`minimumReleaseAge=10080`**: We only install packages that have been published for at least 7 days. This mitigates the risk of installing newly compromised packages (zero-day malicious updates).
+  - **`trustPolicy=no-downgrade`**: Prevents dependencies from being silently downgraded to older versions.
+- **`ignore-scripts`**: Script execution is disabled by default in `pnpm`. We also explicitly set `ignore-scripts=true` in `.npmrc` as a fallback for `npm` users, preventing malicious build scripts from running.
+- **Immutable Lockfile**: We enforce `lockfile=true` and use `pnpm install --frozen-lockfile` in CI to ensure reproducible builds.
 
 ## Features
 
 - Script management (install, edit, delete, disable)
-- Editing environment powered by Monaco Editor (TypeScript/JavaScript support)
+- Editing environment powered by CodeMirror 6
 - `.user.js` format support
 - Local import/export
 
@@ -51,7 +58,7 @@ We place the highest importance on users being able to build the extension from 
 - React 19
 - Vite (w/ CRXJS)
 - TypeScript
-- Monaco Editor
+- CodeMirror 6
 - IndexedDB
 - Vanilla CSS / Sass
 
