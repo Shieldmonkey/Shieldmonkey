@@ -1,25 +1,18 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import './Install.css';
-import { parseMetadata, type Metadata } from '../../utils/metadataParser';
+import { parseMetadata, type Metadata } from '../../../utils/metadataParser';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { useI18n } from '../../context/I18nContext';
-import { sanitizeToHttpUrl } from '../../utils/urlValidator';
+import { useApp } from '../context/useApp';
+import { bridge } from '../../bridge/client';
+import { sanitizeToHttpUrl } from '../../../utils/urlValidator';
 import { Info, X } from 'lucide-react';
-import { MessageType } from '../../types/messages';
+import { type Script } from '../types';
 
 // Theme logic
 // ... (Theme type and Script interface remain same)
-type Theme = 'light' | 'dark' | 'system';
-
-interface Script {
-    id: string;
-    name: string;
-    namespace?: string;
-    code: string;
-    [key: string]: unknown;
-}
 
 const Install = () => {
     const [status, setStatus] = useState<'loading' | 'confirm' | 'installing' | 'success' | 'error'>('loading');
@@ -30,49 +23,26 @@ const Install = () => {
     const [existingScript, setExistingScript] = useState<Script | null>(null);
     const [error, setError] = useState<string>('');
 
-
     // Mobile Sidebar State
     const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
 
-    const [theme, setTheme] = useState<Theme>('dark');
+    // Track if we have already initialized the install flow
+    const initializedRef = useRef(false);
+
+    // Use theme and scripts from context
+    const { theme, scripts, saveScript } = useApp();
     const { t } = useI18n();
 
-    // Theme logic
-    useEffect(() => {
-        chrome.storage.local.get('theme', (data) => {
-            const storedTheme = (data.theme as Theme) || 'dark';
-            setTheme(storedTheme);
-            if (storedTheme === 'system') {
-                const isLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-                document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
-            } else {
-                document.documentElement.setAttribute('data-theme', storedTheme);
-            }
-        });
-    }, []);
+    // Theme logic handled by AppContext now
 
+    // Theme logic for CodeMirror
     const cmTheme = (theme === 'light' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches)) ? vscodeLight : vscodeDark;
 
-    // ... (loadScriptContent, fetchScript, useEffect, handleInstall, handleCancel remain same)
     const loadScriptContent = useCallback(async (text: string) => {
         try {
             const meta = parseMetadata(text);
             setCode(text);
             setMetadata(meta);
-
-            const data = await chrome.storage.local.get('scripts');
-            const scripts = (data.scripts as Script[]) || [];
-
-            const existing = scripts.find((s) => {
-                const sNamespace = s.namespace || '';
-                const mNamespace = meta.namespace || '';
-                return s.name === meta.name && sNamespace === mNamespace;
-            });
-
-            if (existing) {
-                setExistingScript(existing);
-            }
-
             setStatus('confirm');
         } catch (e) {
             setStatus('error');
@@ -80,10 +50,44 @@ const Install = () => {
         }
     }, []);
 
+    // Effect to check for existing script whenever metadata or scripts list changes
+    useEffect(() => {
+        if (!metadata || !scripts) return;
+
+        console.log('Checking for existing script:', { metadata, scriptsCount: scripts.length });
+
+        const existing = scripts.find((s) => {
+            const sNamespace = s.namespace || '';
+            const mNamespace = metadata.namespace || '';
+            const matching = s.name === metadata.name && sNamespace === mNamespace;
+
+            if (s.name === metadata.name) {
+                console.log('Found script with same name:', {
+                    sName: s.name,
+                    mName: metadata.name,
+                    sNamespace,
+                    mNamespace,
+                    match: matching
+                });
+            }
+
+            // Also check for matching downloadURL or updateURL if helpful, 
+            // but standard practice is name+namespace.
+            return matching;
+        });
+
+        if (existing) {
+            console.log('Found existing script:', existing.id);
+            setExistingScript(existing);
+        } else {
+            console.log('No existing script found');
+        }
+    }, [metadata, scripts]);
+
     const fetchScript = useCallback(async (url: string, referrerArg?: string) => {
         try {
-            // Use background fetching to bypass CSP
-            const response = await chrome.runtime.sendMessage({ type: MessageType.FETCH_SCRIPT_CONTENT, url, referrer: referrerArg });
+            // Use bridge to fetch
+            const response = await bridge.call<{ success: boolean; text: string; error?: string }>('FETCH_SCRIPT', { url, referrer: referrerArg });
             if (!response || !response.success) {
                 throw new Error(response.error || t('installErrorFailedToFetch'));
             }
@@ -95,12 +99,18 @@ const Install = () => {
         }
     }, [loadScriptContent, t]);
 
+    // Track if we have already initialized the install flow
+    // initializedRef is declared at top of component
+
     useEffect(() => {
+        if (initializedRef.current) return;
+
         // Check for content passed via data:text/html redirection (see background script)
         try {
             if (window.name) {
                 const data = JSON.parse(window.name);
                 if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
+                    initializedRef.current = true;
                     setScriptUrl(data.url);
                     if (data.referrer) setReferrerUrl(data.referrer);
                     loadScriptContent(data.source);
@@ -122,55 +132,61 @@ const Install = () => {
         const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer') || undefined;
         if (referrer) setReferrerUrl(referrer);
 
-        // Check for installId (Passed via storage from Content Script)
-        if (installId) {
-            const key = `pending_install_${installId}`;
-            chrome.storage.local.get(key, (data) => {
-                const pend = data[key] as { url: string; content: string; referrer?: string } | undefined;
-                if (pend && pend.content) {
-                    setScriptUrl(pend.url);
-                    if (pend.referrer) setReferrerUrl(pend.referrer);
-                    loadScriptContent(pend.content);
-                    // Cleanup
-                    chrome.storage.local.remove(key);
-                } else {
-                    // Fallback to URL fetch if storage is missing (e.g. expired or race condition)
-                    if (url) {
-                        console.warn('Install session expired or missing, falling back to direct fetch via bridge/background');
-                        setScriptUrl(url);
-                        // Usage of referrer from outer scope or pend logic if we want to be strict,
-                        // but outer 'referrer' comes from URL param which is what we want for fallback/direct.
-                        fetchScript(url, referrer);
-                    } else {
-                        setStatus('error');
-                        setError(t('installErrorExpired'));
-                    }
-                }
-            });
-            return;
-        }
+        const checkPending = async () => {
+            if (installId) {
+                try {
+                    const pend = await bridge.call<{ url: string; content: string; referrer?: string } | undefined>('GET_PENDING_INSTALL', { id: installId });
 
-        if (!url) {
-            // if we are just testing the page or opened without args
-            if (import.meta.env.DEV) {
-                // allow empty for dev
+                    if (pend && pend.content) {
+                        initializedRef.current = true;
+                        setScriptUrl(pend.url);
+                        if (pend.referrer) setReferrerUrl(pend.referrer);
+                        loadScriptContent(pend.content);
+                        // Cleanup
+                        await bridge.call('CLEAR_PENDING_INSTALL', { id: installId });
+                    } else {
+                        // Fallback
+                        if (url) {
+                            console.warn('Install session expired or missing, falling back to direct fetch via bridge/background');
+                            initializedRef.current = true;
+                            setScriptUrl(url);
+                            fetchScript(url, referrer);
+                        } else {
+                            setStatus('error');
+                            setError(t('installErrorExpired'));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to check pending install", e);
+                    setStatus('error');
+                    setError((e as Error).message);
+                }
                 return;
             }
-            setStatus('error');
-            setError(t('installErrorNoUrl'));
-            return;
-        }
 
-        setScriptUrl(url);
-        fetchScript(url, referrer);
-    }, [fetchScript, loadScriptContent, t]);
+            if (!url) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((import.meta as any).env.DEV) {
+                    return;
+                }
+                setStatus('error');
+                setError(t('installErrorNoUrl'));
+                return;
+            }
+
+            initializedRef.current = true;
+            setScriptUrl(url);
+            fetchScript(url, referrer);
+        };
+        checkPending();
+
+    }, [fetchScript, loadScriptContent, t, initializedRef]);
 
     const handleInstall = async () => {
         if (!metadata || !code) return;
         setStatus('installing');
 
         const id = existingScript ? existingScript.id : crypto.randomUUID();
-
 
         const script = {
             id,
@@ -179,17 +195,22 @@ const Install = () => {
             code: code,
             enabled: true,
             grantedPermissions: (metadata.grant || []).filter(p => p !== 'none'),
-            sourceUrl: scriptUrl,
-            referrerUrl: referrerUrl,
+            sourceUrl: scriptUrl || undefined, // handle null
+            referrerUrl: referrerUrl || undefined,
             installDate: !existingScript ? Date.now() : undefined,
             updateDate: Date.now()
         };
 
         try {
-            await chrome.runtime.sendMessage({ type: MessageType.SAVE_SCRIPT, script });
+            await saveScript(script);
             setStatus('success');
-            setTimeout(() => {
-                window.close();
+            setTimeout(async () => {
+                try {
+                    await bridge.call('CLOSE_TAB');
+                } catch (e) {
+                    console.error("Failed to close tab", e);
+                    window.close(); // Fallback
+                }
             }, 2000);
         } catch (e) {
             setStatus('error');
@@ -197,8 +218,13 @@ const Install = () => {
         }
     };
 
-    const handleCancel = () => {
-        window.close();
+    const handleCancel = async () => {
+        try {
+            await bridge.call('CLOSE_TAB');
+        } catch (e) {
+            console.error("Failed to close tab", e);
+            window.close(); // Fallback
+        }
     };
 
     if (status === 'loading') {
@@ -303,7 +329,7 @@ const Install = () => {
 
                             <div className="meta-label">{t('installMetaSource')}</div>
                             <div style={{ wordBreak: 'break-all', fontSize: '0.85em' }}>
-                                <a href={sanitizeToHttpUrl(scriptUrl)} target="_blank" rel="noreferrer">{scriptUrl}</a>
+                                <a href={sanitizeToHttpUrl(scriptUrl || '')} target="_blank" rel="noreferrer">{scriptUrl}</a>
                             </div>
                         </div>
                     </div>

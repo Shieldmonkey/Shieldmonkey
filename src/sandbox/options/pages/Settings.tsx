@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { Save, FolderInput, Clock, Check, AlertCircle, RotateCcw, Sun, Moon, Monitor, Upload, Download } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
-import { saveDirectoryHandle, getDirectoryHandle } from '../../utils/backupStorage';
-import { performBackup, performRestore, performBackupLegacy, performRestoreLegacy } from '../../utils/backupManager';
+import { performBackupLegacy, performRestoreLegacy } from '../../../utils/backupManager';
 import { useI18n } from '../../context/I18nContext';
-import { isFileSystemSupported } from '../../utils/browserPolyfill';
-
+import { isFileSystemSupported } from '../../../utils/browserPolyfill';
+import { bridge } from '../../bridge/client';
 
 const Settings = () => {
-    const { theme, setTheme, extensionEnabled, toggleExtension } = useApp();
+    const { theme, setTheme, extensionEnabled, toggleExtension, scripts } = useApp();
     const { t, locale, setLocale } = useI18n();
     const { showModal } = useModal();
 
@@ -27,24 +26,34 @@ const Settings = () => {
     const [classicRestoreMessage, setClassicRestoreMessage] = useState<string>('');
     const [autoBackup, setAutoBackup] = useState(false);
     const [fsSupported, setFsSupported] = useState(true);
+    const [appVersion, setAppVersion] = useState<string>('');
     const restoreInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        // Check if FS supported (Host always supports it if Chrome/Edge, but we can check via bridge or just assume based on response)
+        // Actually, we can check browser here
         const supported = isFileSystemSupported();
         setFsSupported(supported);
 
         if (supported) {
-            getDirectoryHandle().then(async (handle) => {
-                if (handle) {
-                    setBackupDirName(handle.name);
-                }
+            bridge.call<string | null>('GET_BACKUP_DIR_NAME').then(name => {
+                if (name) setBackupDirName(name);
             });
         }
 
-        chrome.storage.local.get(['lastBackupTime', 'autoBackup'], (res) => {
-            if (res.lastBackupTime) setLastBackupTime(res.lastBackupTime as string);
-            if (res.autoBackup !== undefined) setAutoBackup(!!res.autoBackup);
-        });
+        const init = async () => {
+            try {
+                const res = await bridge.call<{ lastBackupTime: string, autoBackup: boolean }>('GET_SETTINGS');
+                if (res.lastBackupTime) setLastBackupTime(res.lastBackupTime);
+                if (res.autoBackup !== undefined) setAutoBackup(!!res.autoBackup);
+
+                const info = await bridge.call<{ version: string }>('GET_APP_INFO');
+                setAppVersion(info.version);
+            } catch (e) {
+                console.error("Failed to load settings", e);
+            }
+        };
+        init();
     }, []);
 
     const handleSelectBackupDir = async () => {
@@ -53,11 +62,11 @@ const Settings = () => {
             setBackupStatus('idle');
             setBackupMessage('');
             setIsBackupLoading(true);
-            const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-            await saveDirectoryHandle(handle);
-            setBackupDirName(handle.name);
+            const name = await bridge.call<string>('SELECT_BACKUP_DIR');
+            setBackupDirName(name);
         } catch (e) {
-            if ((e as Error).name !== 'AbortError') {
+            // handle abort or error
+            if ((e as Error).message !== 'Selection cancelled') {
                 console.error("Backup setup failed", e);
                 setBackupStatus('error');
                 setBackupMessage((e as Error).message);
@@ -78,29 +87,29 @@ const Settings = () => {
             }
             setIsBackupLoading(true);
             let count;
+            // Use current scripts from context
             if (fsSupported) {
-                count = await performBackup();
+                count = await bridge.call<number>('RUN_BACKUP', { scripts, version: appVersion });
                 setBackupStatus('success');
                 setBackupMessage(t('savedScriptsMsg', [String(count)]));
             } else {
-                count = await performBackupLegacy();
+                count = await performBackupLegacy(scripts, appVersion);
                 setClassicBackupStatus('success');
                 setClassicBackupMessage(t('savedScriptsMsg', [String(count)]));
             }
             const time = new Date().toISOString();
             setLastBackupTime(time);
-            chrome.storage.local.set({ lastBackupTime: time });
+            await bridge.call('UPDATE_BACKUP_SETTINGS', { lastBackupTime: time });
         } catch (e) {
             console.error("Backup failed", e);
             if (fsSupported) {
                 setBackupStatus('error');
-                setBackupMessage((e as Error).message);
+                setBackupMessage((e as Error).message || String(e));
             } else {
                 setClassicBackupStatus('error');
-                setClassicBackupMessage((e as Error).message);
+                setClassicBackupMessage((e as Error).message || String(e));
             }
         } finally {
-            setIsBackupLoading(true);
             setIsBackupLoading(false);
         }
     };
@@ -120,9 +129,15 @@ const Settings = () => {
                     setClassicRestoreMessage('');
                     setIsBackupLoading(true);
 
-                    count = await performRestoreLegacy(file);
+                    // Pass current scripts for merging
+                    const result = await performRestoreLegacy(file, scripts);
+                    count = result.count;
+
+                    // Update scripts via bridge
+                    await bridge.call('UPDATE_SCRIPTS', result.mergedScripts);
+
                     try {
-                        await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                        await bridge.call('RELOAD_SCRIPTS');
                     } catch (msgError) {
                         console.warn("Failed to notify background script of restore:", msgError);
                     }
@@ -150,12 +165,20 @@ const Settings = () => {
             return;
         }
 
+        // For host-based restore, we assume the directory handles are already set in the persistent storage on host side.
+        // We trigger the restore flow. Host picks from its stored handle.
         try {
-            const handle = await window.showDirectoryPicker();
+            // We need to confirm first. But we don't know the folder name if we don't fetch it first.
+            // We fetched backupDirName in useEffect.
+            if (!backupDirName) {
+                alert(t('noDirSelected'));
+                return;
+            }
+
             showModal(
                 'confirm',
                 t('confirmRestoreTitle'),
-                t('confirmRestoreMsg', [handle.name]),
+                t('confirmRestoreMsg', [backupDirName]),
                 async () => {
                     let count = 0;
                     try {
@@ -163,9 +186,14 @@ const Settings = () => {
                         setRestoreMessage('');
                         setIsBackupLoading(true);
 
-                        count = await performRestore(handle);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const result = await bridge.call<{ count: number, mergedScripts: any[] }>('RUN_RESTORE', { scripts });
+                        count = result.count;
+
+                        await bridge.call('UPDATE_SCRIPTS', result.mergedScripts);
+
                         try {
-                            await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                            await bridge.call('RELOAD_SCRIPTS');
                         } catch (msgError) {
                             console.warn("Failed to notify background script of restore:", msgError);
                         }
@@ -176,31 +204,26 @@ const Settings = () => {
                     } catch (e) {
                         console.error("Restore failed", e);
                         setRestoreStatus('error');
-                        setRestoreMessage((e as Error).message);
-                        showModal('error', t('restoreFailedTitle'), (e as Error).message);
+                        setRestoreMessage((e as Error).message || String(e));
+                        showModal('error', t('restoreFailedTitle'), (e as Error).message || String(e));
                     } finally {
                         setIsBackupLoading(false);
                     }
                 }
             );
         } catch (e) {
-            if ((e as Error).name !== 'AbortError') {
-                console.error("Restore failed", e);
-                setRestoreStatus('error');
-                setRestoreMessage((e as Error).message);
-                showModal('error', 'Error', (e as Error).message);
-            }
+            console.error("Restore setup failed", e);
         }
     };
 
     const toggleAutoBackup = (checked: boolean) => {
         setAutoBackup(checked);
-        chrome.storage.local.set({ autoBackup: checked });
+        bridge.call('UPDATE_BACKUP_SETTINGS', { autoBackup: checked });
     };
 
     return (
         <div className="content-scroll">
-            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div style={{ margin: '0 auto', width: '100%', maxWidth: '100%' }}>
                 <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('pageTitleSettings')}</h2>
 
                 {/* Status Section for Mobile (or general access) since sidebar hidden on mobile */}
@@ -234,7 +257,7 @@ const Settings = () => {
                                     border: '1px solid var(--border-color)',
                                     color: 'var(--text-secondary)'
                                 }}>
-                                    v{chrome.runtime.getManifest().version}
+                                    v{appVersion}
                                 </span>
                             </div>
                             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -434,7 +457,7 @@ const Settings = () => {
                                                         setClassicBackupStatus('idle');
                                                         setClassicBackupMessage('');
                                                         setIsBackupLoading(true);
-                                                        const count = await performBackupLegacy();
+                                                        const count = await performBackupLegacy(scripts, appVersion);
                                                         setClassicBackupStatus('success');
                                                         setClassicBackupMessage(t('savedScriptsMsg', [String(count)]));
                                                     } catch (e) {

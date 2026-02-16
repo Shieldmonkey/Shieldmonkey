@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor, Edit } from 'lucide-react';
 import './App.css';
-import { parseMetadata } from '../utils/metadataParser';
-import { isScriptMatchingUrl } from '../utils/scriptMatcher';
+import { parseMetadata } from '../../utils/metadataParser';
+import { isScriptMatchingUrl } from '../../utils/scriptMatcher';
 import { useI18n } from '../context/I18nContext';
-import { isValidHttpUrl } from '../utils/urlValidator';
+import { isValidHttpUrl } from '../../utils/urlValidator';
+import { bridge } from '../bridge/client';
 
 interface Script {
   id: string;
@@ -44,7 +45,7 @@ function App() {
   useEffect(() => {
     const init = async () => {
       // Get settings first to apply theme immediately
-      const data = await chrome.storage.local.get(['scripts', 'extensionEnabled', 'theme']);
+      const data = await bridge.call<{ scripts: Script[], extensionEnabled: boolean, theme: Theme }>('GET_SETTINGS');
 
       // Apply theme
       const storedTheme = (data.theme as Theme) || 'dark';
@@ -54,8 +55,8 @@ function App() {
       setExtensionEnabled(data.extensionEnabled !== false);
 
       // Get current tab URL
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const url = tab.url;
+      const url = await bridge.call<string | undefined>('GET_CURRENT_TAB_URL');
+
       // Only allow supported schemes (whitelist)
       if (!url || !isValidHttpUrl(url)) {
         return;
@@ -82,42 +83,42 @@ function App() {
     const nextTheme = modes[nextIndex];
     setTheme(nextTheme);
     applyTheme(nextTheme);
-    chrome.storage.local.set({ theme: nextTheme });
+    bridge.call('UPDATE_THEME', nextTheme);
   };
 
   const openDashboard = (create: boolean = false) => {
-    let url = '/src/options/index.html';
+    let path = '';
     if (create) {
       if (currentUrl) {
-        url += `?match=${encodeURIComponent(currentUrl)}`;
+        path = `?match=${encodeURIComponent(currentUrl)}#/options/new`;
+      } else {
+        path = '#/options/new';
       }
-      url += '#/new';
     }
-    chrome.tabs.create({ url: chrome.runtime.getURL(url) });
-    window.close();
+    bridge.call('OPEN_DASHBOARD', { path });
+    // window.close() might not work in iframe, or it closes iframe? 
+    // Usually popup closes when focus is lost.
   };
 
   const toggleGlobal = async (checked: boolean) => {
     setExtensionEnabled(checked);
-    // Optimistic update, but we should ensure background gets it
+    // Optimistic update
     try {
-      await chrome.runtime.sendMessage({ type: 'TOGGLE_GLOBAL', enabled: checked });
+      await bridge.call('TOGGLE_GLOBAL', checked);
     } catch (e) {
       console.error("Failed to toggle global", e);
-      // Revert on failure?
-      // setExtensionEnabled(!checked);
     }
   };
 
   const toggleScript = async (id: string, checked: boolean) => {
     setActiveScripts(prev => prev.map(s => s.id === id ? { ...s, enabled: checked } : s));
-    await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: id, enabled: checked });
+    await bridge.call('TOGGLE_SCRIPT', { scriptId: id, enabled: checked });
   };
 
   const deleteScript = async (id: string, name: string) => {
     if (confirm(t('confirmDeleteScript', [name]))) {
       setActiveScripts(prev => prev.filter(s => s.id !== id));
-      await chrome.runtime.sendMessage({ type: 'DELETE_SCRIPT', scriptId: id });
+      await bridge.call('DELETE_SCRIPT', { scriptId: id });
     }
   };
 
@@ -130,10 +131,9 @@ function App() {
   const checkForUpdate = (script: Script) => {
     const url = getUpdateUrl(script);
     if (url) {
-      // Use START_INSTALL_FLOW to safely fetch script content via loader page,
-      // preventing browser download prompts.
-      chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url });
-      window.close();
+      // Use START_INSTALL_FLOW
+      bridge.call('START_INSTALL_FLOW', { url });
+      // window.close(); 
     } else {
       alert(t('noUpdateUrlAlert'));
     }
@@ -141,10 +141,8 @@ function App() {
 
   const editScript = (id: string) => {
     // Open directly using the hash routing supported by Options App
-    // Format: src/options/index.html#scripts/<id>
-    const url = chrome.runtime.getURL(`/src/options/index.html#/scripts/${id}`);
-    chrome.tabs.create({ url: url });
-    window.close();
+    bridge.call('OPEN_DASHBOARD', { path: `#/options/scripts/${id}` });
+    // window.close();
   };
 
   return (

@@ -1,14 +1,22 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { initBridge } from '../host/bridge';
 
-import { I18nProvider } from '../context/I18nContext.tsx'
+// Initialize bridge
+initBridge();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <I18nProvider>
-      <App />
-    </I18nProvider>
-  </StrictMode>,
-)
+// Set body styles
+document.body.style.margin = '0';
+document.body.style.padding = '0';
+// Extension popup needs explicit dimensions
+document.body.style.width = '420px';
+document.body.style.height = '600px';
+document.body.style.overflow = 'hidden';
+
+// Create iframe
+const iframe = document.createElement('iframe');
+const hash = window.location.hash || '#/popup';
+iframe.src = chrome.runtime.getURL('src/sandbox/index.html') + hash;
+iframe.style.width = '100%';
+iframe.style.height = '100%';
+iframe.style.border = 'none';
+iframe.style.display = 'block'; // Prevent inline vertical-align scrollbar
+document.body.appendChild(iframe);

@@ -19,7 +19,7 @@ export async function processScriptContent(content: string): Promise<Script> {
         id: crypto.randomUUID(),
         name: metadata.name || 'Imported Script',
         code: content,
-        enabled: true,
+        enabled: false,
         lastSavedCode: content,
         grantedPermissions: metadata.grant || [],
         installDate: Date.now()

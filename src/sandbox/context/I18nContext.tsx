@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext, type ReactNode, useCallback } from 'react';
-import enMessages from '../../public/_locales/en/messages.json';
-import jaMessages from '../../public/_locales/ja/messages.json';
+import { bridge } from '../bridge/client';
+import enMessages from '../../../public/_locales/en/messages.json';
+import jaMessages from '../../../public/_locales/ja/messages.json';
 
 type Locale = 'en' | 'ja' | 'system';
 type Messages = Record<string, { message: string, description?: string, placeholders?: Record<string, { content: string }> }>;
@@ -28,7 +29,7 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
 
     // Initialize from storage
     useEffect(() => {
-        chrome.storage.local.get('locale', (data) => {
+        bridge.call<{ locale?: string }>('GET_SETTINGS').then((data) => {
             if (data.locale) {
                 setLocaleState(data.locale as Locale);
             }
@@ -37,7 +38,7 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
 
     const setLocale = (newLocale: Locale) => {
         setLocaleState(newLocale);
-        chrome.storage.local.set({ locale: newLocale });
+        bridge.call('UPDATE_LOCALE', newLocale);
     };
 
     const t = useCallback((key: string, substitutions?: string | string[]) => {

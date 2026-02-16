@@ -25,21 +25,23 @@ test('Backup and Restore Logic', async () => {
     // Wait for page to fully initialize, especially on first run
     await newPage.waitForTimeout(TIMEOUT.MEDIUM);
 
-    const selectBtn = newPage.getByRole('button', { name: /Select$/i });
+    const frame = newPage.frameLocator('iframe');
+
+    const selectBtn = frame.getByRole('button', { name: /Select$/i });
     await selectBtn.waitFor({ state: 'visible' });
     await selectBtn.click();
 
-    await expect.poll(async () => newPage.getByText('mock-backup-dir').isVisible(), { timeout: 10000 }).toBe(true);
+    await expect.poll(async () => frame.getByText('mock-backup-dir').isVisible(), { timeout: 10000 }).toBe(true);
 
-    const backupBtn = newPage.getByRole('button', { name: /Backup Now/i });
+    const backupBtn = frame.getByRole('button', { name: /Backup Now/i });
     await backupBtn.click();
 
-    await expect.poll(async () => newPage.getByText(/Saved \d+ scripts/).isVisible()).toBe(true);
+    await expect.poll(async () => frame.getByText(/Saved \d+ scripts/).isVisible()).toBe(true);
 
-    const restoreBtn = newPage.getByRole('button', { name: /Select Directory & Restore/i });
+    const restoreBtn = frame.getByRole('button', { name: /Select Directory & Restore/i });
     await restoreBtn.click();
 
-    const modal = newPage.locator('.modal-content');
+    const modal = frame.locator('.modal-content');
     await modal.waitFor({ state: 'visible' });
 
     const confirmBtn = modal.getByRole('button', { name: /OK/i });
@@ -48,5 +50,8 @@ test('Backup and Restore Logic', async () => {
     await newPage.waitForTimeout(TIMEOUT.VERY_LONG);
 
     await newPage.goto(getExtensionUrl(extensionId, '/src/options/index.html#/scripts'));
-    await expect.poll(async () => newPage.getByText('Restored Script').isVisible()).toBe(true);
+
+    // Scripts list is also in iframe
+    const scriptsFrame = newPage.frameLocator('iframe');
+    await expect.poll(async () => scriptsFrame.getByText('Restored Script').isVisible()).toBe(true);
 });

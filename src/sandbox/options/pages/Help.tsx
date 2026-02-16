@@ -1,19 +1,30 @@
 import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { isUserScriptsAvailable, requestPermission, isFirefox, isMobile } from '../../utils/browserPolyfill';
+import { isFirefox } from '../../../utils/browserPolyfill';
 import { useTranslation } from '../../context/I18nContext';
 
 const Help = () => {
     const { t } = useTranslation();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [appVersion, setAppVersion] = useState<string>('');
     const isFirefoxBrowser = isFirefox();
-    const isMobileDevice = isMobile();
+    // const isMobileDevice = isMobile(); // Unused
 
     useEffect(() => {
         let mounted = true;
         const check = async () => {
-            const has = await isUserScriptsAvailable();
-            if (mounted) setHasPermission(has);
+            // Check permission via bridge
+            try {
+                const { bridge } = await import('../../bridge/client');
+                const has = await bridge.call<boolean>('CHECK_USER_SCRIPTS_PERMISSION');
+                if (mounted) setHasPermission(has);
+
+                // Fetch version
+                const info = await bridge.call<{ version: string }>('GET_APP_INFO');
+                if (mounted && info && info.version) setAppVersion(info.version);
+            } catch (e) {
+                console.error("Failed to check permission or version", e);
+            }
         };
         check();
 
@@ -27,33 +38,30 @@ const Help = () => {
     }, []);
 
     const handleRequestPermission = async () => {
-        const granted = await requestPermission(['userScripts']);
-        setHasPermission(granted);
-        if (granted) {
-            // Reload extension to ensure scripts are registered if needed
-            chrome.runtime.reload();
+        try {
+            const { bridge } = await import('../../bridge/client');
+            const granted = await bridge.call<boolean>('REQUEST_USER_SCRIPTS_PERMISSION');
+            setHasPermission(granted);
+            if (granted) {
+                // Reload extension to ensure scripts are registered if needed
+                chrome.runtime.reload();
+            }
+        } catch (e) {
+            console.error("Failed to request permission", e);
         }
     };
 
-    const openExtensionsPage = () => {
-        let url: string;
-
+    const openExtensionsPage = async () => {
         if (isFirefoxBrowser) {
-            // Firefox doesn't support opening extensions page via tabs.create
             console.warn('Firefox does not support opening about:addons via tabs.create');
             return;
-        } else if (isMobileDevice) {
-            // Mobile Chromium browsers need extensions list page
-            url = 'chrome://extensions/';
-        } else {
-            // Desktop Chrome/Edge - open specific extension page
-            url = `chrome://extensions/?id=${chrome.runtime.id}`;
         }
 
-        if (chrome.tabs) {
-            chrome.tabs.create({ url });
-        } else {
-            window.open(url, '_blank');
+        try {
+            const { bridge } = await import('../../bridge/client');
+            await bridge.call('OPEN_EXTENSION_SETTINGS');
+        } catch (e) {
+            console.error("Failed to open extension settings", e);
         }
     };
 
@@ -186,7 +194,7 @@ const Help = () => {
                         {t('appDescription')}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        <span>{t('helpVersionPrefix')} {chrome.runtime.getManifest().version}</span>
+                        <span>{t('helpVersionPrefix')} {appVersion}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span>{t('helpCreatedBy')}</span>
                             <a href="https://github.com/toshs" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-color)', textDecoration: 'none' }}>

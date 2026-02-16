@@ -46,7 +46,7 @@ export function setupMessageListener() {
 
         if (message.type === MessageType.START_INSTALL_FLOW) {
             const { url, referrer } = message;
-            let installUrl = chrome.runtime.getURL('/src/options/index.html') + `#/install?url=${encodeURIComponent(url)}`;
+            let installUrl = chrome.runtime.getURL('/src/options/index.html') + `#/options/install?url=${encodeURIComponent(url)}`;
             if (referrer) {
                 installUrl += `&referrer=${encodeURIComponent(referrer)}`;
             }
@@ -67,7 +67,7 @@ export function setupMessageListener() {
 
             // Store content temporarily
             chrome.storage.local.set({ [key]: { url, content, referrer } }).then(() => {
-                let installUrl = chrome.runtime.getURL(`/src/options/index.html#/install?installId=${installId}&url=${encodeURIComponent(url)}`);
+                let installUrl = chrome.runtime.getURL(`/src/options/index.html#/options/install?installId=${installId}&url=${encodeURIComponent(url)}`);
                 if (referrer) {
                     installUrl += `&referrer=${encodeURIComponent(referrer)}`;
                 }
@@ -82,7 +82,7 @@ export function setupMessageListener() {
 
             // Fallback: Open install page with URL only, let it request background fetch
             // Pass referrer
-            let installUrl = chrome.runtime.getURL(`/src/options/index.html#/install?url=${encodeURIComponent(url)}`);
+            let installUrl = chrome.runtime.getURL(`/src/options/index.html#/options/install?url=${encodeURIComponent(url)}`);
             if (referrer) {
                 installUrl += `&referrer=${encodeURIComponent(referrer)}`;
             }

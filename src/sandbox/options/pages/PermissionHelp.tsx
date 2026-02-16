@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from '../../context/I18nContext';
-import { isFirefox, isMobile, requestPermission } from '../../utils/browserPolyfill';
+import { isFirefox, isMobile, requestPermission } from '../../../utils/browserPolyfill';
 
 const PermissionHelp = () => {
     const { t } = useTranslation();

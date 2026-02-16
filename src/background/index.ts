@@ -8,7 +8,7 @@ import { setupMessageListener } from './messageHandler';
 
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
-
+  console.log("Background Service Worker v0.2.1-debug loaded");
   await reloadAllScripts();
   await checkUserScriptsPermission();
 });

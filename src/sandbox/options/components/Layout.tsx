@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { bridge } from '../../bridge/client';
 import { Terminal, Settings, HelpCircle } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import ToggleSwitch from './ToggleSwitch';
@@ -17,9 +19,17 @@ const SidebarLink = ({ to, icon: Icon, label }: { to: string; icon: any; label: 
 );
 
 const Layout = () => {
-    const { version } = chrome.runtime.getManifest();
+    const [version, setVersion] = useState<string>('...');
     const { extensionEnabled, toggleExtension } = useApp();
     const { t } = useI18n();
+
+    useEffect(() => {
+        bridge.call<{ version: string }>('GET_APP_INFO').then(info => {
+            if (info && info.version) {
+                setVersion(info.version);
+            }
+        }).catch(() => setVersion('0.0.0'));
+    }, []);
 
 
 
@@ -31,9 +41,9 @@ const Layout = () => {
                     <h2>{t('appName')}</h2>
                 </div>
                 <nav className="nav-links">
-                    <SidebarLink to="/scripts" icon={Terminal} label={t('navScripts')} />
-                    <SidebarLink to="/settings" icon={Settings} label={t('navSettings')} />
-                    <SidebarLink to="/help" icon={HelpCircle} label={t('navHelp')} />
+                    <SidebarLink to="/options/scripts" icon={Terminal} label={t('navScripts')} />
+                    <SidebarLink to="/options/settings" icon={Settings} label={t('navSettings')} />
+                    <SidebarLink to="/options/help" icon={HelpCircle} label={t('navHelp')} />
                 </nav>
                 <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -48,9 +58,9 @@ const Layout = () => {
 
             {/* Mobile Bottom Navigation */}
             <nav className="bottom-nav">
-                <SidebarLink to="/scripts" icon={Terminal} label={t('navScripts')} />
-                <SidebarLink to="/settings" icon={Settings} label={t('navSettings')} />
-                <SidebarLink to="/help" icon={HelpCircle} label={t('navHelp')} />
+                <SidebarLink to="/options/scripts" icon={Terminal} label={t('navScripts')} />
+                <SidebarLink to="/options/settings" icon={Settings} label={t('navSettings')} />
+                <SidebarLink to="/options/help" icon={HelpCircle} label={t('navHelp')} />
             </nav>
 
             <main className="main-content">
