@@ -5,6 +5,7 @@ import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import ToggleSwitch from '../components/ToggleSwitch';
 import { parseMetadata } from '../../../utils/metadataParser';
+import { importFromFileLegacy, importFromDirectoryLegacy } from '../../../utils/importManager';
 import { useI18n } from '../../context/I18nContext';
 import { bridge } from '../../bridge/client';
 import type { Script } from '../types';
@@ -54,7 +55,12 @@ const Scripts = () => {
 
     const handleImportFile = async () => {
         try {
-            const importedScripts = await bridge.call<Script[]>('IMPORT_FILE');
+            let importedScripts;
+            if (!('showOpenFilePicker' in window)) {
+                importedScripts = await importFromFileLegacy();
+            } else {
+                importedScripts = await bridge.call<Script[]>('IMPORT_FILE');
+            }
             if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {
                 await saveScript(script);
@@ -69,7 +75,12 @@ const Scripts = () => {
 
     const handleImportFolder = async () => {
         try {
-            const importedScripts = await bridge.call<Script[]>('IMPORT_DIRECTORY');
+            let importedScripts;
+            if (!('showDirectoryPicker' in window)) {
+                importedScripts = await importFromDirectoryLegacy();
+            } else {
+                importedScripts = await bridge.call<Script[]>('IMPORT_DIRECTORY');
+            }
             if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {
                 await saveScript(script);
