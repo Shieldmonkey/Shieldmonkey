@@ -28,7 +28,8 @@ export type ActionType =
     | 'REQUEST_USER_SCRIPTS_PERMISSION'
     | 'REQUEST_USER_SCRIPTS_PERMISSION'
     | 'OPEN_EXTENSION_SETTINGS'
-    | 'CLOSE_TAB';
+    | 'CLOSE_TAB'
+    | 'DOWNLOAD_JSON';
 
 export interface BridgeMessage {
     id: string;

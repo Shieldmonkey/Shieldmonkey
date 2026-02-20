@@ -253,6 +253,33 @@ export function initBridge() {
                 case 'IMPORT_DIRECTORY':
                     result = await handleImportDirectory();
                     break;
+                case 'DOWNLOAD_JSON': {
+                    const blob = new Blob([payload.data], { type: 'application/json' });
+                    // First create Object URL
+                    const url = URL.createObjectURL(blob);
+
+                    try {
+                        // Use chrome.downloads to download the file directly in the host context
+                        await new Promise<void>((resolve, reject) => {
+                            chrome.downloads.download({
+                                url: url,
+                                filename: payload.filename,
+                                saveAs: false
+                            }, () => {
+                                if (chrome.runtime.lastError) {
+                                    reject(new Error(chrome.runtime.lastError.message));
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        });
+                        result = true;
+                    } finally {
+                        // Clean up URL after a bit so download can start
+                        setTimeout(() => URL.revokeObjectURL(url), 10000);
+                    }
+                    break;
+                }
                 default:
                     error = `Unknown action type: ${type}`;
             }

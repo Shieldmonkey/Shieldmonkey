@@ -84,15 +84,25 @@ export async function performBackupLegacy(scripts: Script[], version: string): P
         scripts: scripts
     }, null, 2);
 
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `shieldmonkey_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const filename = `shieldmonkey_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+    try {
+        // Use the bridge to handle the actual download since we are in a sandbox
+        const { bridge } = await import('../sandbox/bridge/client');
+        await bridge.call('DOWNLOAD_JSON', { data, filename });
+    } catch (e) {
+        // Fallback for non-sandboxed or testing environments if bridge is not available
+        console.warn("Bridge download failed, falling back to anchor click", e);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
     return scripts.length;
 }
