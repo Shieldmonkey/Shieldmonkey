@@ -51,5 +51,16 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self';object-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; default-src 'none'"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*",
+        "src/sandbox/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

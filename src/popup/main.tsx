@@ -24,6 +24,6 @@ iframe.src = chrome.runtime.getURL('src/sandbox/index.html') + hash;
 iframe.style.width = '100%';
 iframe.style.height = '100%';
 iframe.style.border = 'none';
-iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-downloads allow-modals');
+iframe.setAttribute('sandbox', 'allow-scripts');
 iframe.style.display = 'block'; // Prevent inline vertical-align scrollbar
 document.body.appendChild(iframe);

@@ -65,6 +65,17 @@
       }
     }
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*",
+        "src/sandbox/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "optional_permissions": [
     "userScripts"
   ]
