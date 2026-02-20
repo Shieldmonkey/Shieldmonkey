@@ -124,7 +124,9 @@ export function initBridge() {
                     await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
                     break;
                 case 'OPEN_DASHBOARD':
-                    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html' + (payload?.path || '')) });
+                    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html' + (payload?.path || '')), active: true });
+                    // Close popup to ensure focus on the new tab, especially on mobile
+                    window.close();
                     break;
                 case 'OPEN_URL':
                     chrome.tabs.create({ url: payload });
@@ -219,7 +221,8 @@ export function initBridge() {
                     // But for specific extension settings on desktop, `?id=` is better.
                     const isMob = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                     const extUrl = isMob ? 'chrome://extensions/' : `chrome://extensions/?id=${chrome.runtime.id}`;
-                    chrome.tabs.create({ url: extUrl });
+                    chrome.tabs.create({ url: extUrl, active: true });
+                    window.close();
                     break;
                 }
                 case 'CLOSE_TAB': {
