@@ -45,6 +45,11 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "sandbox": {
+    "pages": [
+      "src/sandbox/index.html"
+    ]
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self';object-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; default-src 'none'"
   },
