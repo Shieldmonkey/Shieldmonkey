@@ -17,7 +17,6 @@ iframe.src = chrome.runtime.getURL('src/sandbox/index.html') + hash;
 iframe.style.width = '100%';
 iframe.style.height = '100%';
 iframe.style.border = 'none';
-iframe.setAttribute('sandbox', 'allow-scripts');
 document.body.appendChild(iframe);
 
 // Sync hash changes from Host to Iframe
