@@ -78,26 +78,16 @@ const Install = () => {
 
         if (existing) {
             console.log('Found existing script:', existing.id);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setExistingScript(existing);
         } else {
             console.log('No existing script found');
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setExistingScript(null);
         }
     }, [metadata, scripts]);
 
-    const fetchScript = useCallback(async (url: string, referrerArg?: string) => {
-        try {
-            // Use bridge to fetch
-            const response = await bridge.call<{ success: boolean; text: string; error?: string }>('FETCH_SCRIPT', { url, referrer: referrerArg });
-            if (!response || !response.success) {
-                throw new Error(response.error || t('installErrorFailedToFetch'));
-            }
-            const text = response.text;
-            loadScriptContent(text);
-        } catch (e) {
-            setStatus('error');
-            setError((e as Error).message);
-        }
-    }, [loadScriptContent, t]);
+
 
     // Track if we have already initialized the install flow
     // initializedRef is declared at top of component
@@ -111,7 +101,9 @@ const Install = () => {
                 const data = JSON.parse(window.name);
                 if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
                     initializedRef.current = true;
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
                     setScriptUrl(data.url);
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
                     if (data.referrer) setReferrerUrl(data.referrer);
                     loadScriptContent(data.source);
                     return;
@@ -145,16 +137,8 @@ const Install = () => {
                         // Cleanup
                         await bridge.call('CLEAR_PENDING_INSTALL', { id: installId });
                     } else {
-                        // Fallback
-                        if (url) {
-                            console.warn('Install session expired or missing, falling back to direct fetch via bridge/background');
-                            initializedRef.current = true;
-                            setScriptUrl(url);
-                            fetchScript(url, referrer);
-                        } else {
-                            setStatus('error');
-                            setError(t('installErrorExpired'));
-                        }
+                        setStatus('error');
+                        setError(t('installErrorExpired'));
                     }
                 } catch (e) {
                     console.error("Failed to check pending install", e);
@@ -174,13 +158,12 @@ const Install = () => {
                 return;
             }
 
-            initializedRef.current = true;
-            setScriptUrl(url);
-            fetchScript(url, referrer);
+            setStatus('error');
+            setError("Direct installation not permitted. Please use background script fetcher.");
         };
         checkPending();
 
-    }, [fetchScript, loadScriptContent, t, initializedRef]);
+    }, [loadScriptContent, t, initializedRef]);
 
     const handleInstall = async () => {
         if (!metadata || !code) return;
@@ -238,7 +221,6 @@ const Install = () => {
                 <p style={{ color: '#ff6b6b' }}>{error}</p>
                 <div className="actions">
                     <button className="btn-secondary" onClick={handleCancel}>{t('installBtnClose')}</button>
-                    {scriptUrl && <button className="btn-primary" onClick={() => fetchScript(scriptUrl, referrerUrl || undefined)}>{t('installBtnRetry')}</button>}
                 </div>
             </div>
         );

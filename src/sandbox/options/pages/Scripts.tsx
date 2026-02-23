@@ -99,10 +99,7 @@ const Scripts = () => {
     };
 
     const handleCheckUpdate = (script: Script) => {
-        const url = getUpdateUrl(script);
-        if (url) {
-            bridge.call('START_INSTALL_FLOW', { url, referrer: script.referrerUrl });
-        }
+        bridge.call('START_UPDATE_FLOW', { scriptId: script.id });
     };
 
 

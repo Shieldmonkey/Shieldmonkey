@@ -129,14 +129,7 @@ function App() {
   };
 
   const checkForUpdate = (script: Script) => {
-    const url = getUpdateUrl(script);
-    if (url) {
-      // Use START_INSTALL_FLOW
-      bridge.call('START_INSTALL_FLOW', { url });
-      // window.close(); 
-    } else {
-      alert(t('noUpdateUrlAlert'));
-    }
+    bridge.call('START_UPDATE_FLOW', { scriptId: script.id });
   };
 
   const editScript = (id: string) => {

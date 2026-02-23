@@ -156,12 +156,8 @@ export function initBridge() {
                     // payload is { key, substitutions }
                     result = chrome.i18n.getMessage(payload.key, payload.substitutions);
                     break;
-                case 'START_INSTALL_FLOW':
-                    await chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url: payload.url, referrer: payload.referrer });
-                    break;
-                case 'FETCH_SCRIPT':
-                    // Forward to background using runtime.sendMessage
-                    result = await chrome.runtime.sendMessage({ type: 'FETCH_SCRIPT_CONTENT', url: payload.url, referrer: payload.referrer });
+                case 'START_UPDATE_FLOW':
+                    await chrome.runtime.sendMessage({ type: 'START_UPDATE_FLOW', scriptId: payload.scriptId });
                     break;
                 case 'GET_PENDING_INSTALL': {
                     const key = `pending_install_${payload.id}`;
