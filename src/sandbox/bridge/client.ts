@@ -1,4 +1,4 @@
-import type { ActionType, BridgeMessage, BridgeResponse, StorageChangeMessage } from './types';
+import type { ActionType, BridgeActionMap, BridgeMessage, BridgeResponse, StorageChangeMessage } from './types';
 
 class BridgeClient {
     private listeners: Map<string, (response: BridgeResponse) => void> = new Map();
@@ -30,22 +30,25 @@ class BridgeClient {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public async call<T = any>(type: ActionType, payload?: any): Promise<T> {
+    public async call<T extends ActionType>(
+        type: T,
+        ...args: BridgeActionMap[T]['payload'] extends undefined ? [payload?: undefined] : [payload: BridgeActionMap[T]['payload']]
+    ): Promise<BridgeActionMap[T]['response']> {
+        const payload = args[0];
         const id = crypto.randomUUID();
         return new Promise((resolve, reject) => {
             this.listeners.set(id, (response: BridgeResponse) => {
                 if (response.error) {
                     reject(new Error(response.error));
                 } else {
-                    resolve(response.result as T);
+                    resolve(response.result as BridgeActionMap[T]['response']);
                 }
             });
 
             // Target origin * is acceptable here because we are the child sending to parent
             // But ideally we should know the parent origin. 
             // In extension, parent is chrome-extension://<id>
-            window.parent.postMessage({ id, type, payload } as BridgeMessage, '*');
+            window.parent.postMessage({ id, type, payload } as BridgeMessage<T>, '*');
         });
     }
 

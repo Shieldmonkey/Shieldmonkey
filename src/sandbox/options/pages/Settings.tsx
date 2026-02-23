@@ -36,18 +36,18 @@ const Settings = () => {
         setFsSupported(supported);
 
         if (supported) {
-            bridge.call<string | null>('GET_BACKUP_DIR_NAME').then(name => {
+            bridge.call('GET_BACKUP_DIR_NAME').then(name => {
                 if (name) setBackupDirName(name);
             });
         }
 
         const init = async () => {
             try {
-                const res = await bridge.call<{ lastBackupTime: string, autoBackup: boolean }>('GET_SETTINGS');
+                const res = await bridge.call('GET_SETTINGS');
                 if (res.lastBackupTime) setLastBackupTime(res.lastBackupTime);
                 if (res.autoBackup !== undefined) setAutoBackup(!!res.autoBackup);
 
-                const info = await bridge.call<{ version: string }>('GET_APP_INFO');
+                const info = await bridge.call('GET_APP_INFO');
                 setAppVersion(info.version);
             } catch (e) {
                 console.error("Failed to load settings", e);
@@ -62,7 +62,7 @@ const Settings = () => {
             setBackupStatus('idle');
             setBackupMessage('');
             setIsBackupLoading(true);
-            const name = await bridge.call<string>('SELECT_BACKUP_DIR');
+            const name = await bridge.call('SELECT_BACKUP_DIR');
             setBackupDirName(name);
         } catch (e) {
             // handle abort or error
@@ -89,7 +89,7 @@ const Settings = () => {
             let count;
             // Use current scripts from context
             if (fsSupported) {
-                count = await bridge.call<number>('RUN_BACKUP', { scripts, version: appVersion });
+                count = await bridge.call('RUN_BACKUP', { scripts, version: appVersion });
                 setBackupStatus('success');
                 setBackupMessage(t('savedScriptsMsg', [String(count)]));
             } else {
@@ -186,8 +186,7 @@ const Settings = () => {
                         setRestoreMessage('');
                         setIsBackupLoading(true);
 
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const result = await bridge.call<{ count: number, mergedScripts: any[] }>('RUN_RESTORE', { scripts });
+                        const result = await bridge.call('RUN_RESTORE', { scripts });
                         count = result.count;
 
                         await bridge.call('UPDATE_SCRIPTS', result.mergedScripts);

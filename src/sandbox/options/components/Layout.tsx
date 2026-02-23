@@ -24,7 +24,7 @@ const Layout = () => {
     const { t } = useI18n();
 
     useEffect(() => {
-        bridge.call<{ version: string }>('GET_APP_INFO').then(info => {
+        bridge.call('GET_APP_INFO').then(info => {
             if (info && info.version) {
                 setVersion(info.version);
             }

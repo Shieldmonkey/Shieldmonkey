@@ -92,7 +92,7 @@ const Install = () => {
 
             if (installId) {
                 try {
-                    const pend = await bridge.call<{ url: string; content: string; referrer?: string } | undefined>('GET_PENDING_INSTALL', { id: installId });
+                    const pend = await bridge.call('GET_PENDING_INSTALL', { id: installId });
 
                     if (pend && pend.content) {
                         initializedRef.current = true;

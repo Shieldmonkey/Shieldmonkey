@@ -15,11 +15,11 @@ const Help = () => {
         const check = async () => {
             // Check permission via bridge
             try {
-                const has = await bridge.call<boolean>('CHECK_USER_SCRIPTS_PERMISSION');
+                const has = await bridge.call('CHECK_USER_SCRIPTS_PERMISSION');
                 if (mounted) setHasPermission(has);
 
                 // Fetch version
-                const info = await bridge.call<{ version: string }>('GET_APP_INFO');
+                const info = await bridge.call('GET_APP_INFO');
                 if (mounted && info && info.version) setAppVersion(info.version);
             } catch (e) {
                 console.error("Failed to check permission or version", e);
@@ -38,7 +38,7 @@ const Help = () => {
 
     const handleRequestPermission = async () => {
         try {
-            const granted = await bridge.call<boolean>('REQUEST_USER_SCRIPTS_PERMISSION');
+            const granted = await bridge.call('REQUEST_USER_SCRIPTS_PERMISSION');
             setHasPermission(granted);
             if (granted) {
                 chrome.runtime.reload();

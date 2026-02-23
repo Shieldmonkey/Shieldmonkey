@@ -59,7 +59,7 @@ const Scripts = () => {
             if (!('showOpenFilePicker' in window)) {
                 importedScripts = await importFromFileLegacy();
             } else {
-                importedScripts = await bridge.call<Script[]>('IMPORT_FILE');
+                importedScripts = await bridge.call('IMPORT_FILE');
             }
             if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {
@@ -79,7 +79,7 @@ const Scripts = () => {
             if (!('showDirectoryPicker' in window)) {
                 importedScripts = await importFromDirectoryLegacy();
             } else {
-                importedScripts = await bridge.call<Script[]>('IMPORT_DIRECTORY');
+                importedScripts = await bridge.call('IMPORT_DIRECTORY');
             }
             if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {

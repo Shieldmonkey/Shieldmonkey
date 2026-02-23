@@ -92,7 +92,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const reloadScripts = async () => {
-        const data = await bridge.call<{ scripts: Script[] }>('GET_SETTINGS');
+        const data = await bridge.call('GET_SETTINGS');
         if (Array.isArray(data.scripts)) {
             setScripts(data.scripts.map((s: Script) => ({ ...s, lastSavedCode: s.code, enabled: s.enabled !== false })));
         }

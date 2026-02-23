@@ -45,7 +45,7 @@ function App() {
   useEffect(() => {
     const init = async () => {
       // Get settings first to apply theme immediately
-      const data = await bridge.call<{ scripts: Script[], extensionEnabled: boolean, theme: Theme }>('GET_SETTINGS');
+      const data = await bridge.call('GET_SETTINGS');
 
       // Apply theme
       const storedTheme = (data.theme as Theme) || 'dark';
@@ -55,7 +55,7 @@ function App() {
       setExtensionEnabled(data.extensionEnabled !== false);
 
       // Get current tab URL
-      const url = await bridge.call<string | undefined>('GET_CURRENT_TAB_URL');
+      const url = await bridge.call('GET_CURRENT_TAB_URL');
 
       // Only allow supported schemes (whitelist)
       if (!url || !isValidHttpUrl(url)) {

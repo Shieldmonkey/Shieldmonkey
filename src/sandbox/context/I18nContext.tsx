@@ -29,7 +29,7 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
 
     // Initialize from storage
     useEffect(() => {
-        bridge.call<{ locale?: string }>('GET_SETTINGS').then((data) => {
+        bridge.call('GET_SETTINGS').then((data) => {
             if (data.locale) {
                 setLocaleState(data.locale as Locale);
             }
