@@ -340,7 +340,7 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
                     throw new Error("AI Session not found or cannot be cloned");
                 }
                 const newSession = await session.clone();
-                const newSessionId = `ai_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+                const newSessionId = `ai_sess_${Date.now()}_${generateSecureRandomId(16)}`;
                 aiSessions.set(newSessionId, newSession);
                 return { sessionId: newSessionId };
             }
