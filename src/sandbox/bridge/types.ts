@@ -50,6 +50,12 @@ export interface BridgeMessage<T extends ActionType = ActionType> {
     payload?: BridgeActionMap[T]['payload'];
 }
 
+export type TypedBridgeMessage = {
+    [K in ActionType]: BridgeActionMap[K]['payload'] extends undefined | never
+    ? { id: string; type: K; payload?: never }
+    : { id: string; type: K; payload: BridgeActionMap[K]['payload'] }
+}[ActionType];
+
 export interface BridgeResponse {
     id: string;
     error?: string;

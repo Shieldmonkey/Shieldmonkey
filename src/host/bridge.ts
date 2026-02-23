@@ -1,5 +1,6 @@
 import { handleSelectBackupDir, handleGetBackupDirName, handleRunBackup, handleRunRestore } from './backupHandlers';
 import { processScriptContent } from '../utils/importManager';
+import type { TypedBridgeMessage } from '../sandbox/bridge/types';
 
 async function handleImportFile() {
     if (!('showOpenFilePicker' in window)) {
@@ -75,56 +76,58 @@ export function initBridge() {
         // If it's a normal iframe in an extension page, it shares the origin. 
         // If we want to strictly sandbox it, we might use the manifest "sandbox" key, which gives it a unique origin.
 
-        const data = event.data;
+        const data = event.data as Partial<TypedBridgeMessage>;
         if (!data || !data.id || !data.type) return;
 
-        const { id, type, payload } = data;
+        const typedData = data as TypedBridgeMessage;
+        const id = typedData.id;
+        const type = typedData.type;
         let result: unknown = null;
         let error: string | undefined = undefined;
 
         try {
-            switch (type) {
+            switch (typedData.type) {
                 case 'GET_SETTINGS': {
                     const keys = ['scripts', 'theme', 'extensionEnabled', 'locale', 'lastBackupTime', 'autoBackup'];
                     result = await chrome.storage.local.get(keys);
                     break;
                 }
                 case 'UPDATE_THEME':
-                    await chrome.storage.local.set({ theme: payload });
+                    await chrome.storage.local.set({ theme: typedData.payload });
                     break;
                 case 'UPDATE_LOCALE':
-                    await chrome.storage.local.set({ locale: payload });
+                    await chrome.storage.local.set({ locale: typedData.payload });
                     break;
                 case 'TOGGLE_GLOBAL':
-                    await chrome.storage.local.set({ extensionEnabled: payload });
+                    await chrome.storage.local.set({ extensionEnabled: typedData.payload });
                     break;
                 case 'UPDATE_BACKUP_SETTINGS':
-                    await chrome.storage.local.set(payload);
+                    await chrome.storage.local.set(typedData.payload);
                     break;
                 case 'GET_APP_INFO':
                     result = { version: chrome.runtime.getManifest().version };
                     break;
                 case 'UPDATE_SCRIPTS':
-                    await chrome.storage.local.set({ scripts: payload });
+                    await chrome.storage.local.set({ scripts: typedData.payload });
                     break;
                 case 'TOGGLE_SCRIPT':
                     // We need to forward this to background
-                    await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: payload.scriptId, enabled: payload.enabled });
+                    await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: typedData.payload.scriptId, enabled: typedData.payload.enabled });
                     triggerAutoBackup();
                     break;
                 case 'DELETE_SCRIPT':
-                    await chrome.runtime.sendMessage({ type: 'DELETE_SCRIPT', scriptId: payload.scriptId });
+                    await chrome.runtime.sendMessage({ type: 'DELETE_SCRIPT', scriptId: typedData.payload.scriptId });
                     triggerAutoBackup();
                     break;
                 case 'SAVE_SCRIPT':
-                    await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script: payload });
+                    await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script: typedData.payload });
                     triggerAutoBackup();
                     break;
                 case 'RELOAD_SCRIPTS':
                     await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
                     break;
                 case 'OPEN_DASHBOARD':
-                    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html' + (payload?.path || '')), active: true });
+                    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html' + (typedData.payload?.path || '')), active: true });
                     // Close popup to ensure focus on the new tab, especially on mobile
                     window.close();
                     break;
@@ -135,14 +138,14 @@ export function initBridge() {
                     ];
                     let isAllowed = false;
                     try {
-                        const urlObj = new URL(payload);
+                        const urlObj = new URL(typedData.payload);
                         isAllowed = allowedHosts.some(host => urlObj.hostname === host || urlObj.hostname.endsWith('.' + host));
                     } catch { /* parse error */ }
 
                     if (isAllowed) {
-                        chrome.tabs.create({ url: payload });
+                        chrome.tabs.create({ url: typedData.payload });
                     } else {
-                        console.error(`Blocked unauthorized OPEN_URL request to: ${payload}`);
+                        console.error(`Blocked unauthorized OPEN_URL request to: ${typedData.payload}`);
                         throw new Error("URL not whitelisted");
                     }
                     break;
@@ -154,19 +157,19 @@ export function initBridge() {
                 }
                 case 'GET_I18N_MESSAGE':
                     // payload is { key, substitutions }
-                    result = chrome.i18n.getMessage(payload.key, payload.substitutions);
+                    result = chrome.i18n.getMessage(typedData.payload.key, typedData.payload.substitutions);
                     break;
                 case 'START_UPDATE_FLOW':
-                    await chrome.runtime.sendMessage({ type: 'START_UPDATE_FLOW', scriptId: payload.scriptId });
+                    await chrome.runtime.sendMessage({ type: 'START_UPDATE_FLOW', scriptId: typedData.payload.scriptId });
                     break;
                 case 'GET_PENDING_INSTALL': {
-                    const key = `pending_install_${payload.id}`;
+                    const key = `pending_install_${typedData.payload.id}`;
                     const data = await chrome.storage.local.get(key);
                     result = data[key];
                     break;
                 }
                 case 'CLEAR_PENDING_INSTALL': {
-                    const key = `pending_install_${payload.id}`;
+                    const key = `pending_install_${typedData.payload.id}`;
                     await chrome.storage.local.remove(key);
                     break;
                 }
@@ -178,11 +181,11 @@ export function initBridge() {
                     break;
                 case 'RUN_BACKUP':
                     // payload: { scripts, version }
-                    result = await handleRunBackup(payload.scripts, payload.version);
+                    result = await handleRunBackup(typedData.payload.scripts, typedData.payload.version);
                     break;
                 case 'RUN_RESTORE':
                     // payload: { scripts }
-                    result = await handleRunRestore(payload.scripts);
+                    result = await handleRunRestore(typedData.payload.scripts);
                     break;
                 case 'CHECK_USER_SCRIPTS_PERMISSION':
                     // Check if API exists and permission is granted
@@ -266,7 +269,7 @@ export function initBridge() {
                     result = await handleImportDirectory();
                     break;
                 case 'DOWNLOAD_JSON': {
-                    const blob = new Blob([payload.data], { type: 'application/json' });
+                    const blob = new Blob([typedData.payload.data], { type: 'application/json' });
                     // First create Object URL
                     const url = URL.createObjectURL(blob);
 
@@ -275,7 +278,7 @@ export function initBridge() {
                         await new Promise<void>((resolve, reject) => {
                             chrome.downloads.download({
                                 url: url,
-                                filename: payload.filename,
+                                filename: typedData.payload.filename,
                                 saveAs: false
                             }, () => {
                                 if (chrome.runtime.lastError) {
