@@ -15,13 +15,11 @@ const GRANT_VALUES = [
     'GM_setValue', 'GM_getValue', 'GM_deleteValue', 'GM_listValues',
     'GM_addValueChangeListener', 'GM_removeValueChangeListener',
     'GM_getResourceText', 'GM_getResourceURL', 'GM_addStyle',
-    'GM_openInTab', 'GM_registerMenuCommand', 'GM_unregisterMenuCommand',
-    'GM_notification', 'GM_setClipboard', 'GM_xmlhttpRequest', 'GM_download', 'GM_log',
+    'GM_openInTab', 'GM_notification', 'GM_setClipboard', 'GM_xmlhttpRequest', 'GM_download', 'GM_log',
     'GM.setValue', 'GM.getValue', 'GM.deleteValue', 'GM.listValues',
     'GM.addValueChangeListener', 'GM.removeValueChangeListener',
     'GM.getResourceText', 'GM.getResourceURL', 'GM.addStyle',
-    'GM.openInTab', 'GM.registerMenuCommand', 'GM.unregisterMenuCommand',
-    'GM.notification', 'GM.setClipboard', 'GM.xmlhttpRequest', 'GM.download', 'GM.info'
+    'GM.openInTab', 'GM.notification', 'GM.setClipboard', 'GM.xmlhttpRequest', 'GM.download', 'GM.info'
 ];
 
 const RUN_AT_VALUES = [
