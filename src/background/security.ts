@@ -10,8 +10,8 @@ export async function setupSecurityRules() {
                 action: { type: 'block' },
                 condition: {
                     initiatorDomains: [extensionDomain],
+                    excludedRequestDomains: ['shieldmonkey.github.io', 'github.com'],
                     resourceTypes: ['main_frame', 'sub_frame'],
-                    // Allow navigating to safe domains / external resources if needed, otherwise block ALL external frames/top-level nav
                     regexFilter: "^http"
                 }
             }
