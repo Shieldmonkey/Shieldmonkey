@@ -157,28 +157,28 @@ const Help = () => {
                         <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('helpHeaderLinks')}</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <li>
-                                <a href="https://shieldmonkey.github.io/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://shieldmonkey.github.io/" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://shieldmonkey.github.io/')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Globe size={16} />
                                     <span>{t('linkWebsite')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkWebsiteDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <ExternalLink size={16} />
                                     <span>{t('linkGithubRepo')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkGithubRepoDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey/issues" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey/issues" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/issues')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Bug size={16} />
                                     <span>{t('linkReportIssue')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkReportIssueDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey/security" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey/security" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/security')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Shield size={16} />
                                     <span>{t('linkReportVuln')}</span>
                                 </a>

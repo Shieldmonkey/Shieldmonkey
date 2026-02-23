@@ -128,9 +128,25 @@ export function initBridge() {
                     // Close popup to ensure focus on the new tab, especially on mobile
                     window.close();
                     break;
-                case 'OPEN_URL':
-                    chrome.tabs.create({ url: payload });
+                case 'OPEN_URL': {
+                    const allowedHosts = [
+                        'shieldmonkey.github.io',
+                        'github.com'
+                    ];
+                    let isAllowed = false;
+                    try {
+                        const urlObj = new URL(payload);
+                        isAllowed = allowedHosts.some(host => urlObj.hostname === host || urlObj.hostname.endsWith('.' + host));
+                    } catch { /* parse error */ }
+
+                    if (isAllowed) {
+                        chrome.tabs.create({ url: payload });
+                    } else {
+                        console.error(`Blocked unauthorized OPEN_URL request to: ${payload}`);
+                        throw new Error("URL not whitelisted");
+                    }
                     break;
+                }
                 case 'GET_CURRENT_TAB_URL': {
                     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                     result = tab?.url;
