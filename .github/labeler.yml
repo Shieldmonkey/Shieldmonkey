@@ -1,26 +1,25 @@
 # Labels for files changed in a PR
 frontend:
-  - "src/**/*"
-  - "public/**/*"
-  - "index.html"
+  - changed-files:
+      - any-glob-to-any-file: ["src/**/*", "public/**/*", "index.html"]
 background:
-  - "src/background/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "src/background/**/*"
 options:
-  - "src/options/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "src/options/**/*"
 popup:
-  - "src/popup/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "src/popup/**/*"
 content-scripts:
-  - "src/content-script/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "src/content-script/**/*"
 automation:
-  - ".github/workflows/**/*"
-  - ".github/dependabot.yml"
+  - changed-files:
+      - any-glob-to-any-file: [".github/workflows/**/*", ".github/dependabot.yml"]
 documentation:
-  - "*.md"
-  - "docs/**/*"
+  - changed-files:
+      - any-glob-to-any-file: ["*.md", "docs/**/*"]
 config:
-  - "package.json"
-  - "package-lock.json"
-  - "tsconfig.json"
-  - "vite.config.ts"
-  - ".eslintrc.js"
-  - ".prettierrc"
+  - changed-files:
+      - any-glob-to-any-file: ["package.json", "package-lock.json", "pnpm-lock.yaml", "tsconfig.json", "vite.config.ts", ".eslintrc.cjs", ".prettierrc"]
