@@ -2,20 +2,19 @@ import { ExternalLink, Bug, Shield, User, Key, CheckCircle, AlertCircle, Globe }
 import { useState, useEffect } from 'react';
 import { isFirefox } from '../../../utils/browserPolyfill';
 import { useTranslation } from '../../context/I18nContext';
+import { bridge } from '../../bridge/client';
 
 const Help = () => {
     const { t } = useTranslation();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [appVersion, setAppVersion] = useState<string>('');
     const isFirefoxBrowser = isFirefox();
-    // const isMobileDevice = isMobile(); // Unused
 
     useEffect(() => {
         let mounted = true;
         const check = async () => {
             // Check permission via bridge
             try {
-                const { bridge } = await import('../../bridge/client');
                 const has = await bridge.call<boolean>('CHECK_USER_SCRIPTS_PERMISSION');
                 if (mounted) setHasPermission(has);
 
@@ -39,11 +38,9 @@ const Help = () => {
 
     const handleRequestPermission = async () => {
         try {
-            const { bridge } = await import('../../bridge/client');
             const granted = await bridge.call<boolean>('REQUEST_USER_SCRIPTS_PERMISSION');
             setHasPermission(granted);
             if (granted) {
-                // Reload extension to ensure scripts are registered if needed
                 chrome.runtime.reload();
             }
         } catch (e) {
@@ -58,7 +55,6 @@ const Help = () => {
         }
 
         try {
-            const { bridge } = await import('../../bridge/client');
             await bridge.call('OPEN_EXTENSION_SETTINGS');
         } catch (e) {
             console.error("Failed to open extension settings", e);
@@ -157,28 +153,28 @@ const Help = () => {
                         <h3 style={{ fontSize: '1rem', marginBottom: '12px', fontWeight: 600 }}>{t('helpHeaderLinks')}</h3>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <li>
-                                <a href="https://shieldmonkey.github.io/" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://shieldmonkey.github.io/')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://shieldmonkey.github.io/" onClick={(e) => { e.preventDefault(); bridge.call('OPEN_URL', 'https://shieldmonkey.github.io/'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Globe size={16} />
                                     <span>{t('linkWebsite')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkWebsiteDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey" onClick={(e) => { e.preventDefault(); bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <ExternalLink size={16} />
                                     <span>{t('linkGithubRepo')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkGithubRepoDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey/issues" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/issues')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey/issues" onClick={(e) => { e.preventDefault(); bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/issues'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Bug size={16} />
                                     <span>{t('linkReportIssue')}</span>
                                 </a>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('linkReportIssueDesc')}</p>
                             </li>
                             <li>
-                                <a href="https://github.com/shieldmonkey/shieldmonkey/security" onClick={(e) => { e.preventDefault(); import('../../bridge/client').then(({ bridge }) => bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/security')); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
+                                <a href="https://github.com/shieldmonkey/shieldmonkey/security" onClick={(e) => { e.preventDefault(); bridge.call('OPEN_URL', 'https://github.com/shieldmonkey/shieldmonkey/security'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', textDecoration: 'none', fontSize: '0.95rem' }}>
                                     <Shield size={16} />
                                     <span>{t('linkReportVuln')}</span>
                                 </a>
