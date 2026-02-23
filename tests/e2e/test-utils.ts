@@ -37,14 +37,20 @@ export async function launchExtension(): Promise<ExtensionContext> {
         }
     }
 
+    const isHeadless = process.env.HEADLESS !== 'false';
+    const args = [
+        `--disable-extensions-except=${EXTENSION_PATH}`,
+        `--load-extension=${EXTENSION_PATH}`,
+    ];
+
+    if (isHeadless) {
+        args.push('--headless=new');
+    }
+
     const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
-        headless: false, // Use --headless=new in args instead
+        headless: false, // Use --headless=new in args instead for extensions
         locale: 'en',
-        args: [
-            `--disable-extensions-except=${EXTENSION_PATH}`,
-            `--load-extension=${EXTENSION_PATH}`,
-            // '--headless=new', // New headless mode for Chromium
-        ],
+        args,
     });
 
     browserContext.setDefaultTimeout(30000);
