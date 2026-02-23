@@ -12,13 +12,7 @@ export async function setupSecurityRules() {
                     initiatorDomains: [extensionDomain],
                     resourceTypes: ['main_frame', 'sub_frame'],
                     // Allow navigating to safe domains / external resources if needed, otherwise block ALL external frames/top-level nav
-                    regexFilter: "^http",
-                    // We don't want to block opening new tabs via external links 
-                    excludedRequestDomains: [
-                        "shieldmonkey.github.io",
-                        "github.com",
-                        "raw.githubusercontent.com" // for updates
-                    ]
+                    regexFilter: "^http"
                 }
             }
         ];
