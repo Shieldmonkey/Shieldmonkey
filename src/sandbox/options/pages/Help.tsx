@@ -41,7 +41,7 @@ const Help = () => {
             const granted = await bridge.call('REQUEST_USER_SCRIPTS_PERMISSION');
             setHasPermission(granted);
             if (granted) {
-                chrome.runtime.reload();
+                bridge.call('RELOAD_EXTENSION');
             }
         } catch (e) {
             console.error("Failed to request permission", e);

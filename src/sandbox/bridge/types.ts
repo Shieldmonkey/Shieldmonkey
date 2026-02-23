@@ -40,6 +40,7 @@ export interface BridgeActionMap {
     'OPEN_EXTENSION_SETTINGS': { payload?: never; response: void };
     'CLOSE_TAB': { payload?: never; response: void };
     'DOWNLOAD_JSON': { payload: { data: string, filename: string }; response: boolean };
+    'RELOAD_EXTENSION': { payload?: never; response: void };
 }
 
 export type ActionType = keyof BridgeActionMap;

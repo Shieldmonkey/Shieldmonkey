@@ -240,6 +240,9 @@ export function initBridge() {
                     window.close();
                     break;
                 }
+                case 'RELOAD_EXTENSION':
+                    chrome.runtime.reload();
+                    break;
                 case 'CLOSE_TAB': {
                     // Close the current tab (host page)
                     try {
