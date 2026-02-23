@@ -21,8 +21,7 @@ document.body.appendChild(iframe);
 
 // Sync hash changes from Host to Iframe
 window.addEventListener('hashchange', () => {
-    // Only forward if it's different (avoid loops if we update it ourselves)
-    // Actually, iframe handles its own routing. We just say "Navigate".
+    // Only forward if it's different
     if (iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'NAVIGATE', path: window.location.hash }, '*');
     }
@@ -31,25 +30,12 @@ window.addEventListener('hashchange', () => {
 // Listen for hash updates from Iframe
 window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'URL_CHANGED' && event.data.hash) {
+        // Prevent update loop: only alter location.hash if it is different
+        // Actually modifying window.location.hash triggers hashchange, 
+        // which sends NAVIGATE to iframe again.
+        // We use history.replaceState to avoid the hashchange event and history pollution
         if (window.location.hash !== event.data.hash) {
-            // Use replaceState to avoid adding duplicate history entries when user clicks in iframe
-            // But if we want back button support, we might want pushState?
-            // If the iframe navigated, it's a new state.
-            // Let's use history.replaceState so strict browser back/forward works on the host window history stack?
-            // If user clicks a link in iframe -> Iframe URL changes -> We get URL_CHANGED.
-            // If we use replaceState, we update the address bar but don't add to history.
-            // Then back button goes to previous Host page. 
-            // If we use pushState/hash assignment, we add to history. 
-            // Then back button sets Host hash -> Host hashchange -> Iframe navigate.
-            // This seems correct for history support.
-            if (window.location.hash !== event.data.hash) {
-                // Avoid triggering hashchange event loop?
-                // Setting location.hash triggers hashchange.
-                // We need a flag or check source.
-                // But hashchange handler sends NAVIGATE to iframe.
-                // If iframe is already at that hash, doing navigate again is usually fine (React Router ignores).
-                window.location.hash = event.data.hash;
-            }
+            window.history.replaceState(null, '', event.data.hash);
         }
     }
 });
