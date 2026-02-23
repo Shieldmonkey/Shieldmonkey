@@ -4,6 +4,20 @@ import { UserscriptMessageType } from '../types/messages';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const aiSessions = new Map<string, any>();
 
+/**
+ * Generate a cryptographically secure random identifier string.
+ * Uses the Web Crypto API to avoid predictable Math.random() output.
+ */
+function generateSecureRandomId(byteLength: number): string {
+    const bytes = new Uint8Array(byteLength);
+    // `crypto` is available in the extension background context (Service Worker / WorkerGlobalScope)
+    crypto.getRandomValues(bytes);
+    // Encode as a hex string
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string, token?: string) {
@@ -241,7 +255,7 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
                     throw new Error("Prompt API (window.LanguageModel) is not available");
                 }
                 const session = await LanguageModel.create(data.options);
-                const sessionId = `ai_sess_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+                const sessionId = `ai_sess_${Date.now()}_${generateSecureRandomId(16)}`;
                 aiSessions.set(sessionId, session);
                 return { sessionId };
             }
