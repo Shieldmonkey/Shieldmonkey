@@ -7,16 +7,24 @@ export const UserscriptMessageType = {
     GM_openInTab: 'GM_openInTab',
     GM_log: 'GM_log',
     GM_xmlhttpRequest: 'GM_xmlhttpRequest',
-    GM_registerMenuCommand: 'GM_registerMenuCommand',
+
     GM_download: 'GM_download',
-    GM_unregisterMenuCommand: 'GM_unregisterMenuCommand',
+
     GM_setValues: 'GM_setValues',
     GM_getValues: 'GM_getValues',
     GM_deleteValues: 'GM_deleteValues',
     GM_closeTab: 'GM_closeTab',
 
     // Internal
-    GM_xhrAbort: 'GM_xhrAbort'
+    GM_xhrAbort: 'GM_xhrAbort',
+
+    // AI
+    GM_ai_capabilities: 'GM_ai_capabilities',
+    GM_ai_create: 'GM_ai_create',
+    GM_ai_prompt: 'GM_ai_prompt',
+    GM_ai_promptStreaming: 'GM_ai_promptStreaming',
+    GM_ai_destroy: 'GM_ai_destroy',
+    GM_ai_clone: 'GM_ai_clone'
 } as const;
 
 export type UserscriptMessageType = typeof UserscriptMessageType[keyof typeof UserscriptMessageType];

@@ -47,8 +47,11 @@
         }
     }
 
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-        chrome.runtime.onMessage.addListener((message) => {
+    const extAPI = typeof browser !== 'undefined' ? browser : (typeof chrome !== 'undefined' ? chrome : null);
+    const aiStreams = new Map();
+
+    if (extAPI && extAPI.runtime && extAPI.runtime.onMessage) {
+        extAPI.runtime.onMessage.addListener((message) => {
             if (message.type === 'GM_STORAGE_CHANGE' && message.scriptId === SCRIPT_ID) {
                 const key = message.key;
                 const newValue = message.value;
@@ -69,6 +72,15 @@
                 notifyListeners(key, oldValue ? JSON.parse(oldValue) : undefined, newValue, message.remote);
             } else if (message.type === 'GM_URL_CHANGE') {
                 checkUrlChange();
+            } else if (message.type === 'GM_AI_STREAM_CHUNK') {
+                const streamRef = aiStreams.get(message.streamId);
+                if (streamRef) streamRef.push(message.chunk);
+            } else if (message.type === 'GM_AI_STREAM_END') {
+                const streamRef = aiStreams.get(message.streamId);
+                if (streamRef) streamRef.close();
+            } else if (message.type === 'GM_AI_STREAM_ERROR') {
+                const streamRef = aiStreams.get(message.streamId);
+                if (streamRef) streamRef.error(message.error);
             }
         });
     }
@@ -77,9 +89,12 @@
           try {
               const scriptId = SCRIPT_ID;
               const token = SCRIPT_TOKEN;
-              chrome.runtime.sendMessage({ type, data, scriptId, token }, (response) => {
-                  if (chrome.runtime.lastError) {
-                      reject(chrome.runtime.lastError);
+              if (!extAPI || !extAPI.runtime || typeof extAPI.runtime.sendMessage !== 'function') {
+                  throw new Error(`Extension messaging API is unavailable (extAPI: ${typeof extAPI})`);
+              }
+              extAPI.runtime.sendMessage({ type, data, scriptId, token }, (response) => {
+                  if (extAPI.runtime.lastError) {
+                      reject(extAPI.runtime.lastError);
                   } else if (response && response.error) {
                       reject(response.error);
                   } else {
@@ -249,38 +264,6 @@
           return el;
       },
 
-      registerMenuCommand: function(caption, onClick) {
-          if (!granted.has('GM_registerMenuCommand') && !granted.has('GM.registerMenuCommand')) return;
-          console.log("GM_registerMenuCommand registered:", caption);
-          // Just async request, but we need ID for unregister? 
-          // Background now returns it.
-          // But strict sync return in traditional GM? 
-          // Usually valid impls return ID immediately or promise?
-          // Tampermonkey returns id (integer/string).
-          // Since we are async to background, we can't return real ID immediately if generated there unless we predict it.
-          // We changed background to return predictable ID with timestamp + caption?
-          // We can generate ID here and send it? No, scriptId comes from there.
-          // Let's generate a placeholder or promise?
-          // If we return undefined, unregister might fail.
-          // But we can't block. 
-          // Actually we can generate unique ID here? 
-          // 'cmd_' + SCRIPT_ID + '_' + unique
-          // But SCRIPT_ID is strings.
-          // Let's rely on callback result? No, synchronous return expected.
-          // Implementing sync return is hard with async message.
-          // Stub: return a dummy object that we can map later? No.
-          // Let's try to generate ID here if possible? SCRIPT_ID is constant.
-          // const menuId = ...
-          // sendRequest('GM_registerMenuCommand', { caption, menuId });
-          // But currently bg generates it.
-          // For now, return undefined and log warning about unregister limitation?
-          // Actually, if we want to support unregister, we must return an ID.
-          // Let's try sending the request asynchronously and hope it registers.
-          // We can return a Promise? Some scripts might await it?
-          // Most scripts expect number/string.
-          
-          return sendRequest('GM_registerMenuCommand', { caption });
-      },
 
       closeTab: function() {
           // Check for 'window.close' permission too (common practice)
@@ -314,10 +297,6 @@
             return { abort: () => {} }; 
        },
 
-       unregisterMenuCommand: function(menuCmdId) {
-            if (!granted.has('GM_unregisterMenuCommand')) return;
-            sendRequest('GM_unregisterMenuCommand', { menuCmdId });
-       },
 
        setValues: function(values) {
            if (!granted.has('GM_setValue')) return; // Usually shares permission? Or GM_setValues
@@ -384,6 +363,82 @@
            list: function() { console.error("Shieldmonkey: GM_cookie is not supported."); },
            set: function() { console.error("Shieldmonkey: GM_cookie is not supported."); },
            delete: function() { console.error("Shieldmonkey: GM_cookie is not supported."); }
+       },
+       registerMenuCommand: function() { console.error("Shieldmonkey: GM_registerMenuCommand is explicitly not supported."); },
+       unregisterMenuCommand: function() { console.error("Shieldmonkey: GM_unregisterMenuCommand is explicitly not supported."); },
+
+       // --- AI API (Prompt API) ---
+       LanguageModel: {
+           availability: async function() {
+               if (!granted.has('LanguageModel')) {
+                   throw new Error("Shieldmonkey: LanguageModel permission not granted");
+               }
+               return sendRequest('GM_ai_capabilities', {}); // Still using the same message type
+           },
+           create: async function(options) {
+               if (!granted.has('LanguageModel')) {
+                   throw new Error("Shieldmonkey: LanguageModel permission not granted");
+               }
+               const res = await sendRequest('GM_ai_create', { options });
+               const sessionId = res.sessionId;
+               
+               function buildSession(sid) {
+                   return {
+                       prompt: async function(text, promptOptions) {
+                           return sendRequest('GM_ai_prompt', { sessionId: sid, text, options: promptOptions });
+                       },
+                        promptStreaming: async function(text, promptOptions) {
+                            const res = await sendRequest('GM_ai_promptStreaming', { sessionId: sid, text, options: promptOptions });
+                            const streamId = res.streamId;
+                            
+                            let controllerRef;
+                            const stream = new ReadableStream({
+                                start(controller) {
+                                    controllerRef = controller;
+                                    aiStreams.set(streamId, {
+                                        push: (chunk) => controllerRef.enqueue(chunk),
+                                        close: () => {
+                                            controllerRef.close();
+                                            aiStreams.delete(streamId);
+                                        },
+                                        error: (err) => {
+                                            controllerRef.error(new Error(err));
+                                            aiStreams.delete(streamId);
+                                        }
+                                    });
+                                },
+                                cancel() {
+                                    aiStreams.delete(streamId);
+                                }
+                            });
+                            
+                            // Make it AsyncIterable as Chrome Prompt API supports `for await (const chunk of stream)`
+                            stream[Symbol.asyncIterator] = async function* () {
+                                const reader = stream.getReader();
+                                try {
+                                    while (true) {
+                                        const { done, value } = await reader.read();
+                                        if (done) break;
+                                        yield value;
+                                    }
+                                } finally {
+                                    reader.releaseLock();
+                                }
+                            };
+                            
+                            return stream;
+                        },
+                       clone: async function() {
+                           const cloneRes = await sendRequest('GM_ai_clone', { sessionId: sid });
+                           return buildSession(cloneRes.sessionId);
+                       },
+                       destroy: async function() {
+                           return sendRequest('GM_ai_destroy', { sessionId: sid });
+                       }
+                   };
+               }
+               return buildSession(sessionId);
+           }
        }
     };
 
@@ -405,13 +460,13 @@
     scope.GM_log = GM.log;
     scope.GM_addStyle = GM.addStyle;
     scope.GM_addElement = GM.addElement;
-    if (granted.has('GM_registerMenuCommand')) scope.GM_registerMenuCommand = GM.registerMenuCommand;
 
     if (granted.has('GM_download')) scope.GM_download = GM.download;
-    if (granted.has('GM_unregisterMenuCommand')) scope.GM_unregisterMenuCommand = GM.unregisterMenuCommand;
     if (granted.has('GM_setValue')) scope.GM_setValues = GM.setValues;
     if (granted.has('GM_getValue')) scope.GM_getValues = GM.getValues;
     if (granted.has('GM_deleteValue')) scope.GM_deleteValues = GM.deleteValues;
+
+    if (granted.has('LanguageModel')) scope.LanguageModel = GM.LanguageModel;
 
     // Unsupported API Bindings (always exposed but warn)
     scope.GM_getResourceText = GM.getResourceText;
@@ -421,6 +476,8 @@
     scope.GM_getTabs = GM.getTabs;
     scope.GM_webRequest = GM.webRequest;
     scope.GM_cookie = GM.cookie;
+    scope.GM_registerMenuCommand = GM.registerMenuCommand;
+    scope.GM_unregisterMenuCommand = GM.unregisterMenuCommand;
 
     
     // unsafeWindow handling
