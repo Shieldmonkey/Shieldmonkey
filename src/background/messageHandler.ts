@@ -29,28 +29,48 @@ export function setupMessageListener() {
             return true;
         }
 
-        if (message.type === MessageType.FETCH_SCRIPT_CONTENT) {
-            const { url, referrer } = message;
-            fetchScriptContent(url, referrer)
-                .then(text => sendResponse({ success: true, text }))
-                .catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
-            return true; // Keep channel open
-        }
+        if (message.type === MessageType.START_UPDATE_FLOW) {
+            const { scriptId } = message;
+            chrome.storage.local.get(['scripts']).then(data => {
+                const script = ((data.scripts as { id: string, updateUrl?: string, downloadUrl?: string, sourceUrl?: string, code?: string, referrerUrl?: string }[]) || []).find(s => s.id === scriptId);
+                if (script) {
+                    let updateUrl = script.updateUrl || script.downloadUrl || script.sourceUrl;
 
-        if (message.type === MessageType.OPEN_INSTALL_PAGE) {
-            if (_sender.tab && _sender.tab.id) {
-                chrome.tabs.update(_sender.tab.id, { url: message.url });
-            }
-            return true;
-        }
+                    if (!updateUrl && script.code) {
+                        const code = script.code;
+                        const extractMeta = (key: string) => {
+                            const match = code.match(new RegExp(`//\\s*@${key}\\s+(.+)`));
+                            return match ? match[1].trim() : null;
+                        };
+                        updateUrl = (extractMeta('updateURL') || extractMeta('downloadURL') || extractMeta('installURL') || extractMeta('source')) ?? undefined;
+                    }
 
-        if (message.type === MessageType.START_INSTALL_FLOW) {
-            const { url, referrer } = message;
-            let installUrl = chrome.runtime.getURL('/src/options/index.html') + `#/install?url=${encodeURIComponent(url)}`;
-            if (referrer) {
-                installUrl += `&referrer=${encodeURIComponent(referrer)}`;
-            }
-            chrome.tabs.create({ url: installUrl });
+                    if (updateUrl) {
+                        fetchScriptContent(updateUrl, script.referrerUrl)
+                            .then(content => {
+                                const installId = crypto.randomUUID();
+                                const key = `pending_install_${installId}`;
+                                chrome.storage.local.set({ [key]: { url: updateUrl, content, referrer: script.referrerUrl } }).then(() => {
+                                    const installPage = chrome.runtime.getURL(`/src/options/index.html#/options/install?installId=${installId}&url=${encodeURIComponent(updateUrl!)}`);
+                                    chrome.tabs.create({ url: installPage });
+                                    sendResponse({ success: true });
+                                });
+                            })
+                            .catch(err => {
+                                console.error('Failed to fetch script update in background', err);
+                                const installPage = chrome.runtime.getURL(`/src/options/index.html#/options/install?url=${encodeURIComponent(updateUrl!)}`);
+                                chrome.tabs.create({ url: installPage });
+                                sendResponse({ success: false, error: String(err) });
+                            });
+                    } else {
+                        console.warn('No update URL found for script', scriptId);
+                        sendResponse({ success: false, error: 'No update URL found' });
+                    }
+                } else {
+                    console.warn('Script not found for update', scriptId);
+                    sendResponse({ success: false, error: 'Script not found' });
+                }
+            });
             return true;
         }
 
@@ -67,7 +87,7 @@ export function setupMessageListener() {
 
             // Store content temporarily
             chrome.storage.local.set({ [key]: { url, content, referrer } }).then(() => {
-                let installUrl = chrome.runtime.getURL(`/src/options/index.html#/install?installId=${installId}&url=${encodeURIComponent(url)}`);
+                let installUrl = chrome.runtime.getURL(`/src/options/index.html#/options/install?installId=${installId}&url=${encodeURIComponent(url)}`);
                 if (referrer) {
                     installUrl += `&referrer=${encodeURIComponent(referrer)}`;
                 }
@@ -82,7 +102,7 @@ export function setupMessageListener() {
 
             // Fallback: Open install page with URL only, let it request background fetch
             // Pass referrer
-            let installUrl = chrome.runtime.getURL(`/src/options/index.html#/install?url=${encodeURIComponent(url)}`);
+            let installUrl = chrome.runtime.getURL(`/src/options/index.html#/options/install?url=${encodeURIComponent(url)}`);
             if (referrer) {
                 installUrl += `&referrer=${encodeURIComponent(referrer)}`;
             }

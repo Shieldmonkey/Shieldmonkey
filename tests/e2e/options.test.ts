@@ -21,36 +21,41 @@ test('Options page - Install, Save, and Delete User Script', async () => {
     await page.goto(getExtensionUrl(extensionId, '/src/options/index.html'));
     await clearAllScripts(page);
 
+    // Title is on the host page
     const title = await page.title();
     expect(title).toMatch(/Shieldmonkey/i);
 
-    const newScriptBtn = page.getByRole('button', { name: /New Script/i, exact: false });
+    const frame = page.frameLocator('iframe');
+
+    const newScriptBtn = frame.getByRole('button', { name: /New Script/i, exact: false });
     await newScriptBtn.waitFor({ state: 'visible' });
     await newScriptBtn.click();
 
-    await page.waitForURL(/.*#\/scripts\/.+/);
-    expect(page.url()).toMatch(/.*#\/scripts\/.+/);
+    await page.waitForURL(/.*#\/options\/new/);
+    expect(page.url()).toMatch(/.*#\/options\/new/);
 
-    const editor = page.locator('.cm-content').first();
+    const editor = frame.locator('.cm-content').first();
     await editor.click();
 
-    await page.keyboard.press('End');
-    await page.keyboard.type(' // Edited by test');
+    // CodeMirror inside iframe
+    await editor.type(' // Edited by test');
 
-    const saveBtn = page.getByRole('button', { name: /Save/i });
+    const saveBtn = frame.getByRole('button', { name: /Save/i });
     await expect.poll(async () => saveBtn.isEnabled()).toBe(true);
     await saveBtn.click();
 
+    // After save, it should likely navigate to /options/scripts/:id
+    await page.waitForTimeout(1000); // Wait for save and nav
     const currentUrl = page.url();
-    const scriptIdMatch = currentUrl.match(/#\/scripts\/(.+)/);
+    const scriptIdMatch = currentUrl.match(/#\/options\/scripts\/(.+)/);
     const scriptId = scriptIdMatch ? scriptIdMatch[1] : null;
     expect(scriptId).toBeTruthy();
 
-    const backBtn = page.locator('[title="Back to Script List"]');
+    const backBtn = frame.locator('[title="Back to Script List"]');
     await backBtn.waitFor({ state: 'visible' });
     await backBtn.click();
 
-    const scriptRow = page.getByRole('row').filter({ hasText: 'New Script' }).first();
+    const scriptRow = frame.getByRole('row').filter({ hasText: 'New Script' }).first();
     await expect.poll(async () => scriptRow.isVisible()).toBe(true);
 
     const toggleLabel = scriptRow.locator('label.switch');
@@ -70,7 +75,7 @@ test('Options page - Install, Save, and Delete User Script', async () => {
     const deleteBtn = scriptRow.getByRole('button', { name: /Delete/i });
     await deleteBtn.click();
 
-    const modal = page.locator('.modal-content');
+    const modal = frame.locator('.modal-content');
     await modal.waitFor({ state: 'visible' });
 
     const modalDeleteBtn = modal.getByRole('button', { name: /OK/i });

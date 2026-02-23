@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from '../../context/I18nContext';
-import { isFirefox, isMobile, requestPermission } from '../../utils/browserPolyfill';
+import { isFirefox } from '../../../utils/browserPolyfill';
+import { bridge } from '../../bridge/client';
 
 const PermissionHelp = () => {
     const { t } = useTranslation();
@@ -9,7 +10,6 @@ const PermissionHelp = () => {
 
     // Firefox flow
     const isFirefoxBrowser = isFirefox();
-    const isMobileDevice = isMobile();
 
     // Chrome specific logic
     const chromeVersion = (() => {
@@ -19,35 +19,16 @@ const PermissionHelp = () => {
     const isNewWay = chromeVersion >= 138;
 
     const openExtensionsPage = () => {
-        // Firefox doesn't support opening extensions page via tabs.create
-        if (isFirefoxBrowser) {
-            console.warn('Firefox does not support opening about:addons via tabs.create');
-            return;
-        }
-
-        let url: string;
-        if (isMobileDevice) {
-            // Mobile Chromium browsers need extensions list page
-            url = 'chrome://extensions/';
-        } else {
-            // Desktop Chrome/Edge - open specific extension page
-            url = `chrome://extensions/?id=${chrome.runtime.id}`;
-        }
-
-        if (chrome.tabs) {
-            chrome.tabs.create({ url });
-        } else {
-            window.open(url, '_blank');
-        }
+        bridge.call('OPEN_EXTENSION_SETTINGS');
     };
 
     const reloadExtension = () => {
-        chrome.runtime.reload();
+        bridge.call('RELOAD_EXTENSION');
     };
 
     const handleGrantPermission = async () => {
         setGranting(true);
-        const granted = await requestPermission(['userScripts']);
+        const granted = await bridge.call('REQUEST_USER_SCRIPTS_PERMISSION');
         if (granted) {
             reloadExtension();
         } else {

@@ -1,6 +1,6 @@
 import { getDirectoryHandle, verifyPermission } from './backupStorage';
 
-interface Script {
+export interface Script {
     id: string;
     name: string;
     code: string;
@@ -13,7 +13,7 @@ interface Script {
     installDate?: number;
 }
 
-export async function performBackup(existingHandle?: FileSystemDirectoryHandle): Promise<number> {
+export async function performBackup(existingHandle: FileSystemDirectoryHandle | undefined, scripts: Script[], version: string): Promise<number> {
     let handle = existingHandle;
     if (!handle) {
         handle = await getDirectoryHandle();
@@ -22,42 +22,10 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
         throw new Error("No backup directory configured.");
     }
 
-    // Check permission using verifyPermission which handles 'prompt' by requesting permission
-    // This allows recovery if called from UI (User Gesture).
-    // If called from background without gesture, it might throw "User activation required".
-    try {
-        const hasPerm = await verifyPermission(handle, true);
-        if (!hasPerm) {
-            throw new Error("Permission denied or not granted.");
-        }
-    } catch (e) {
-        // Check for lack of user gesture (background case)
-        const err = e as Error;
-        const isInteractionError = err.name === 'SecurityError' ||
-            err.message.includes('activation') ||
-            err.message.includes('gesture');
-
-        if (isInteractionError) {
-            // In background, we can't prompt. Notify user.
-            if (!existingHandle && chrome.notifications && chrome.runtime.id) {
-                chrome.notifications.create({
-                    type: 'basic',
-                    iconUrl: '/icons/icon48.png',
-                    title: 'Shieldmonkey Backup Issue',
-                    message: 'Backup permission lost. Please click "Backup Now" in Settings to re-grant.',
-                    priority: 2
-                });
-            }
-            throw new Error("Permission is 'prompt' (requires user interaction). Please use 'Backup Now' in Settings.");
-        }
-        throw e;
+    const hasPerm = await verifyPermission(handle, true);
+    if (!hasPerm) {
+        throw new Error("Permission denied. User interaction required.");
     }
-
-    const scripts = await new Promise<Script[]>((resolve) => {
-        chrome.storage.local.get(['scripts'], (result) => {
-            resolve((result.scripts as Script[]) || []);
-        });
-    });
 
     // Create or get 'scripts' directory
     const scriptsDirHandle = await handle.getDirectoryHandle('scripts', { create: true });
@@ -97,12 +65,11 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
     }
 
     // Write a full dump including metadata that might not be in the code (like enabled state, etc)
-    // This helps in full restoration.
     const dumpHandle = await handle.getFileHandle('shieldmonkey_dump.json', { create: true });
     const dumpWritable = await dumpHandle.createWritable();
     await dumpWritable.write(JSON.stringify({
         timestamp: new Date().toISOString(),
-        version: chrome.runtime.getManifest().version,
+        version: version,
         scripts: scripts
     }, null, 2));
     await dumpWritable.close();
@@ -110,33 +77,37 @@ export async function performBackup(existingHandle?: FileSystemDirectoryHandle):
     return scripts.length;
 }
 
-export async function performBackupLegacy(): Promise<number> {
-    const scripts = await new Promise<Script[]>((resolve) => {
-        chrome.storage.local.get(['scripts'], (result) => {
-            resolve((result.scripts as Script[]) || []);
-        });
-    });
-
+export async function performBackupLegacy(scripts: Script[], version: string): Promise<number> {
     const data = JSON.stringify({
         timestamp: new Date().toISOString(),
-        version: chrome.runtime.getManifest().version,
+        version: version,
         scripts: scripts
     }, null, 2);
 
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `shieldmonkey_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const filename = `shieldmonkey_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+    try {
+        // Use the bridge to handle the actual download since we are in a sandbox
+        const { bridge } = await import('../sandbox/bridge/client');
+        await bridge.call('DOWNLOAD_JSON', { data, filename });
+    } catch (e) {
+        // Fallback for non-sandboxed or testing environments if bridge is not available
+        console.warn("Bridge download failed, falling back to anchor click", e);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
     return scripts.length;
 }
 
-export async function performRestoreLegacy(file: File): Promise<number> {
+export async function performRestoreLegacy(file: File, currentScripts: Script[]): Promise<{ count: number, mergedScripts: Script[] }> {
     const text = await file.text();
     let data;
     try {
@@ -151,11 +122,6 @@ export async function performRestoreLegacy(file: File): Promise<number> {
 
     const restoreScripts = data.scripts as Script[];
 
-    const currentData = await new Promise<{ scripts: Script[] }>((resolve) => {
-        chrome.storage.local.get(['scripts'], (res) => resolve(res as { scripts: Script[] }));
-    });
-    const currentScripts = currentData.scripts || [];
-
     const scriptMap = new Map<string, Script>();
     currentScripts.forEach(s => scriptMap.set(s.id, s));
 
@@ -164,18 +130,15 @@ export async function performRestoreLegacy(file: File): Promise<number> {
     }
 
     const newScripts = Array.from(scriptMap.values());
-    await chrome.storage.local.set({ scripts: newScripts });
-
-    return restoreScripts.length;
+    return { count: restoreScripts.length, mergedScripts: newScripts };
 }
 
-export async function performRestore(existingHandle?: FileSystemDirectoryHandle): Promise<number> {
+export async function performRestore(existingHandle: FileSystemDirectoryHandle | undefined, currentScripts: Script[]): Promise<{ count: number, mergedScripts: Script[] }> {
     let handle = existingHandle;
     if (!handle) {
         handle = await getDirectoryHandle();
     }
     if (!handle) {
-        // Ask for handle if not found (UI flow should handle this, but internal check)
         throw new Error("No backup directory available.");
     }
 
@@ -191,12 +154,6 @@ export async function performRestore(existingHandle?: FileSystemDirectoryHandle)
 
         const restoreScripts = data.scripts as Script[];
 
-        // Merge logic: Update existing by ID, add new ones.
-        const currentData = await new Promise<{ scripts: Script[] }>((resolve) => {
-            chrome.storage.local.get(['scripts'], (res) => resolve(res as { scripts: Script[] }));
-        });
-        const currentScripts = currentData.scripts || [];
-
         // Map current scripts for easy lookup
         const scriptMap = new Map<string, Script>();
         currentScripts.forEach(s => scriptMap.set(s.id, s));
@@ -208,9 +165,7 @@ export async function performRestore(existingHandle?: FileSystemDirectoryHandle)
         }
 
         const newScripts = Array.from(scriptMap.values());
-        await chrome.storage.local.set({ scripts: newScripts });
-
-        return restoreScripts.length;
+        return { count: restoreScripts.length, mergedScripts: newScripts };
 
     } catch (e) {
         if ((e as Error).name === 'NotFoundError') {

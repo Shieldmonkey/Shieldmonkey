@@ -15,6 +15,8 @@ Shieldmonkeyは、セキュリティと監査可能性を最優先に設計さ�
 
 ## 設計と特徴
 
+![Shieldmonkey Architecture](assets/architecture_diagram.png)
+
 ### 強固なセキュリティポリシー (CSP)
 Shieldmonkeyは、拡張機能自身が外部と意図しない通信を行うことを防ぐため、厳格なContent Security Policy (CSP) を設定しています。
 Background Scriptや各ページからの外部接続は遮断されます。これに伴い、以下の機能は意図的に排除されています。

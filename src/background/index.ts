@@ -3,14 +3,16 @@ import { setupGMListener } from './gmRequestHandler';
 import { setupNavigationListener } from './navigation';
 import { checkUserScriptsPermission } from './permissions';
 import { reloadAllScripts } from './scripts';
+import { setupSecurityRules } from './security';
 
 import { setupMessageListener } from './messageHandler';
 
 // Initialize userscripts environment
 chrome.runtime.onInstalled.addListener(async () => {
-
+  console.log("Background Service Worker v0.2.1-debug loaded");
   await reloadAllScripts();
   await checkUserScriptsPermission();
+  await setupSecurityRules();
 });
 
 chrome.runtime.onStartup.addListener(() => {

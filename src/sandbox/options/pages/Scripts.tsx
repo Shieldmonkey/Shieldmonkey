@@ -4,9 +4,10 @@ import { Play, Pause, Trash2, FileUp, FolderUp, Plus, Terminal, RefreshCw } from
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import ToggleSwitch from '../components/ToggleSwitch';
-import { parseMetadata } from '../../utils/metadataParser';
-import { importFromFile, importFromDirectory } from '../../utils/importManager';
+import { parseMetadata } from '../../../utils/metadataParser';
+import { importFromFileLegacy, importFromDirectoryLegacy } from '../../../utils/importManager';
 import { useI18n } from '../../context/I18nContext';
+import { bridge } from '../../bridge/client';
 import type { Script } from '../types';
 
 const Scripts = () => {
@@ -17,19 +18,7 @@ const Scripts = () => {
     const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
 
     const handleNewScript = async () => {
-        // We will just navigate to a new ID, but we won't save it yet.
-        // The ScriptEditor handles "new" state if the ID is not found in context?
-        // Actually ScriptEditor says `const isNew = !id;`. So we need to navigate to `/scripts/new`?
-        // But the route is probably `/scripts/:id`.
-        // If we navigate to a random ID that doesn't exist, ScriptEditor shows "Script Not Found".
-        // We need a route for creating new scripts, e.g., `/scripts/new` or query param.
-        // Let's assume the router handles `/scripts/new` as a special case or we add it.
-        // Check Layout or router config? I can't see router config easily but I can try navigating to /scripts/new
-        // If I change ScriptEditor to handle "new" as ID, that would work.
-        // Previously ScriptEditor logic: `const isNew = !id;`... wait, useParams returns {} if no ID?
-        // If route provides ID, it is not "new" by that logic unless ID is undefined.
-        // Let's use a dedicated "new" path.
-        navigate('/scripts/new');
+        navigate('/options/new');
     };
 
     const handleBulkEnable = async () => {
@@ -66,12 +55,17 @@ const Scripts = () => {
 
     const handleImportFile = async () => {
         try {
-            const importedScripts = await importFromFile();
-            if (importedScripts.length === 0) return;
+            let importedScripts;
+            if (!('showOpenFilePicker' in window)) {
+                importedScripts = await importFromFileLegacy();
+            } else {
+                importedScripts = await bridge.call('IMPORT_FILE');
+            }
+            if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {
                 await saveScript(script);
             }
-            await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+            await bridge.call('RELOAD_SCRIPTS');
             // Update context? reloadScripts() from context would happen automatically via listener
             showModal('success', t('importSuccessful'), t('importedScripts', [String(importedScripts.length)]));
         } catch (e) {
@@ -81,12 +75,17 @@ const Scripts = () => {
 
     const handleImportFolder = async () => {
         try {
-            const importedScripts = await importFromDirectory();
-            if (importedScripts.length === 0) return;
+            let importedScripts;
+            if (!('showDirectoryPicker' in window)) {
+                importedScripts = await importFromDirectoryLegacy();
+            } else {
+                importedScripts = await bridge.call('IMPORT_DIRECTORY');
+            }
+            if (!importedScripts || importedScripts.length === 0) return;
             for (const script of importedScripts) {
                 await saveScript(script);
             }
-            await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+            await bridge.call('RELOAD_SCRIPTS');
             showModal('success', t('importSuccessful'), t('importedScripts', [String(importedScripts.length)]));
         } catch (e) {
             showModal('error', t('importFailed'), (e as Error).message);
@@ -100,10 +99,7 @@ const Scripts = () => {
     };
 
     const handleCheckUpdate = (script: Script) => {
-        const url = getUpdateUrl(script);
-        if (url) {
-            chrome.runtime.sendMessage({ type: 'START_INSTALL_FLOW', url, referrer: script.referrerUrl });
-        }
+        bridge.call('START_UPDATE_FLOW', { scriptId: script.id });
     };
 
 
@@ -187,7 +183,7 @@ const Scripts = () => {
                                             <td>
                                                 <ToggleSwitch checked={!!script.enabled} onChange={() => toggleScript(script, !script.enabled)} />
                                             </td>
-                                            <td style={{ cursor: 'pointer', maxWidth: '300px' }} onClick={() => navigate(`/scripts/${script.id}`)}>
+                                            <td style={{ cursor: 'pointer', maxWidth: '300px' }} onClick={() => navigate(`/options/scripts/${script.id}`)}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                                                     <span style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{script.name}</span>
                                                 </div>

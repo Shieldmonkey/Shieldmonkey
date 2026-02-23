@@ -37,15 +37,23 @@ export async function launchExtension(): Promise<ExtensionContext> {
         }
     }
 
+    const isHeadless = process.env.HEADLESS !== 'false';
+    const args = [
+        `--disable-extensions-except=${EXTENSION_PATH}`,
+        `--load-extension=${EXTENSION_PATH}`,
+    ];
+
+    if (isHeadless) {
+        args.push('--headless=new');
+    }
+
     const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
-        headless: false, // Use --headless=new in args instead
+        headless: false, // Use --headless=new in args instead for extensions
         locale: 'en',
-        args: [
-            `--disable-extensions-except=${EXTENSION_PATH}`,
-            `--load-extension=${EXTENSION_PATH}`,
-            '--headless=new', // New headless mode for Chromium
-        ],
+        args,
     });
+
+    browserContext.setDefaultTimeout(30000);
 
     try {
         const page = await browserContext.newPage();
@@ -151,7 +159,7 @@ export async function clearAllScripts(page: Page): Promise<void> {
 
 export function createMockFileSystemHandle(initialData?: { name: string; content: string }[]) {
     // Process scripts with permissions
-    const scripts = initialData ? initialData.map((d, i) => {
+    const scripts = initialData ? initialData.map((d) => {
         const grants: string[] = [];
         // Extract @grant
         const lines = d.content.split('\n');
@@ -161,15 +169,25 @@ export function createMockFileSystemHandle(initialData?: { name: string; content
                 grants.push(match[1]);
             }
         }
+
+        // Simple hash for ID to be unique based on name
+        let hash = 0;
+        for (let i = 0; i < d.name.length; i++) {
+            const char = d.name.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0; // Convert to 32bit integer
+        }
+        const safeId = 'restored-script-' + Math.abs(hash);
+
         return {
-            id: 'restored-script-' + i,
+            id: safeId,
             name: d.name,
             code: d.content,
             enabled: true,
             grantedPermissions: grants
         };
     }) : [{
-        id: 'restored-script',
+        id: 'restored-script-default',
         name: 'Restored Script',
         code: '// restored',
         enabled: true,
@@ -185,6 +203,7 @@ export function createMockFileSystemHandle(initialData?: { name: string; content
     const mockBackupDataJson = JSON.stringify(mockBackupData);
 
     return `
+    (() => {
         const mockBackupData = ${mockBackupDataJson};
 
         const mockHandle = {
@@ -230,7 +249,65 @@ export function createMockFileSystemHandle(initialData?: { name: string; content
         };
 
         window.__mockBackupDirectoryHandle = mockHandle;
+    })();
     `;
+}
+
+// Helper: Inject script directly into storage and reload
+export async function injectScriptToStorage(page: Page, scriptPath: string) {
+    const filename = path.basename(scriptPath);
+    const content = readFileSync(scriptPath, 'utf-8');
+
+    // Generate consistent ID
+    let hash = 0;
+    for (let i = 0; i < filename.length; i++) {
+        const char = filename.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    const safeId = 'test-script-' + Math.abs(hash);
+
+    // Extract @grant
+    const grants: string[] = [];
+    const lines = content.split('\n');
+    for (const line of lines) {
+        const match = line.match(/^\s*\/\/\s*@grant\s+(\S+)/);
+        if (match) {
+            grants.push(match[1]);
+        }
+    }
+
+    const scriptObj = {
+        id: safeId,
+        name: filename,
+        code: content,
+        enabled: true,
+        grantedPermissions: grants
+    };
+
+    // Inject via background page or any extension page
+    if (!page.url().startsWith('chrome-extension://')) {
+        throw new Error('injectScriptToStorage requires the page to be on a chrome-extension:// URL');
+    }
+
+    await page.evaluate(async (script) => {
+        const data = await chrome.storage.local.get('scripts');
+        const list = Array.isArray(data.scripts) ? data.scripts : [];
+
+        // Update or Add
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const idx = list.findIndex((s: any) => s.id === script.id);
+        if (idx >= 0) {
+            list[idx] = script;
+        } else {
+            list.push(script);
+        }
+
+        await chrome.storage.local.set({ scripts: list });
+
+        // Trigger reload
+        await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+    }, scriptObj);
 }
 
 // Helper: Install script via mock backup restore
@@ -253,21 +330,49 @@ export async function installScriptFromPath(page: Page, extensionId: string, scr
     await page.waitForTimeout(TIMEOUT.MEDIUM);
 
     // 3. Trigger restore
-    const dropdownBtn = page.getByRole('button', { name: /Select$/i });
+    const frame = page.frameLocator('iframe');
+    const dropdownBtn = frame.getByRole('button', { name: /Select$/i });
     await dropdownBtn.waitFor({ state: 'visible' });
     await dropdownBtn.click();
 
-    const selectBtn = page.getByRole('button', { name: /Select Directory & Restore/i });
+    const selectBtn = frame.getByRole('button', { name: /Select Directory & Restore/i });
     await selectBtn.waitFor({ state: 'visible' });
     await selectBtn.click();
 
     // 4. Confirm modal
-    const modal = page.locator('.modal-content');
+    const modal = frame.locator('.modal-content');
     await modal.waitFor({ state: 'visible' });
+    // Note: Modal might be in a Portal? If so, where is it rendered?
+    // In React App, usually at document.body or a specific root.
+    // If it is in the iframe, frame locator works.
     const confirmBtn = modal.getByRole('button', { name: /OK/i });
     await confirmBtn.click();
 
-    // 5. Wait for restore...
-    // Removed strict wait for hidden to prevent timeouts
-    await page.waitForTimeout(1000);
+    // 5. Wait for success modal
+    const successModal = frame.locator('.modal-content').filter({ hasText: /Restore Complete|Restore Successful/i }); // Matches translation keys roughly
+    // Or better, just wait for any modal that says "Complete" or "Success"
+    // The previous modal was "Confirm Restore", now we expect "Restore Complete"
+
+    // We already clicked OK on confirm. Use a slightly more robust wait.
+    // Wait for the restore process to finish (loading false)
+    // But easier to wait for the success message in the UI if possible.
+
+    // Settings.tsx: showModal('success', t('restoreCompleteTitle'), ...)
+    // we need to find the success modal.
+
+    // Let's assume the "Confirm" modal disappears and a new "Success" modal appears.
+    // Or the same modal updates.
+
+    await successModal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+        console.log("Success modal not found, maybe restore was too fast or failed?");
+    });
+
+    const okBtn = successModal.getByRole('button', { name: /OK/i });
+    if (await okBtn.isVisible()) {
+        await okBtn.click();
+    }
+
+    // 6. Verification: Check if script is in list
+    // navigate to scripts page? No, let's just wait a bit.
+    await page.waitForTimeout(500);
 }

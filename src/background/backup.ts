@@ -1,14 +1,6 @@
-import { performBackup } from '../utils/backupManager';
-
-export async function triggerBackup() {
-    try {
-        const res = await chrome.storage.local.get(['autoBackup']);
-        if (res.autoBackup) {
-            await performBackup();
-            await chrome.storage.local.set({ lastBackupTime: new Date().toISOString() });
-        }
-    } catch (err) {
-        console.error("Auto-backup failed:", err);
-    }
+// This file is no longer used for triggering backup from background.
+// Backup is now triggered from host/bridge.ts to ensure access to File System Access API.
+export async function triggerBackup_DEPRECATED() {
+    // No-op
 }
 

@@ -3,6 +3,33 @@ import { MessageType } from '../types/messages';
 // Detect navigation to .user.js files and redirect to loader page
 export function setupNavigationListener() {
     chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+        // Detect and log unauthorized outgoing navigations from extension pages
+        if (details.url.startsWith('http')) {
+            try {
+                const tab = await chrome.tabs.get(details.tabId);
+                const isFromExtension = tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('moz-extension://');
+
+                // Allow explicit known external URLs our extension might navigate to or open
+                const allowedHosts = [
+                    'shieldmonkey.github.io',
+                    'github.com'
+                ];
+
+                let isAllowed = false;
+                try {
+                    const urlObj = new URL(details.url);
+                    isAllowed = allowedHosts.some(host => urlObj.hostname === host || urlObj.hostname.endsWith('.' + host));
+                } catch { /* Ignore URL parse errors */ }
+
+                if (isFromExtension && !isAllowed) {
+                    // This is an unauthorized navigation from an extension page context.
+                    // Instead of aggressively blocking it via webNavigation, we simply log it.
+                    // Actual requests are restricted via CSP and sandbox attributes.
+                    console.warn(`[Security] Detected unauthorized navigation from extension to: ${details.url}. Logging only.`);
+                }
+            } catch { /* ignore */ }
+        }
+
         if (details.frameId === 0 && details.url && /^[^?#]+\.user\.js([?#].*)?$/i.test(details.url)) {
             let referrer = '';
             try {

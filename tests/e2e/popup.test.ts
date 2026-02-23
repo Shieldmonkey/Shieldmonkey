@@ -23,42 +23,46 @@ test('Popup page opens successfully', async () => {
     const title = await page.title();
     expect(title).toBe('Shieldmonkey');
 
-    await page.waitForSelector('#root');
-    const appElement = page.locator('#root');
+    // Wait for iframe
+    await page.waitForSelector('iframe');
+    const frame = page.frameLocator('iframe');
+
+    // Check for AppContent div or similar that indicates React App loaded
+    // .app-container or similar? Let's assume #root > div
+    await frame.locator('#root').waitFor();
+    const appElement = frame.locator('#root');
     expect(await appElement.isVisible()).toBe(true);
 });
 
 test('Create new script opens options page with editor', async () => {
     await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
 
-    // Click create new script button
-    // Using text based selector from translation key 'createNewScript' which is likely 'Create new script' or similar. 
-    // Actually, looking at App.tsx, the button has text "{t('createNewScript')}". 
-    // Let's assume English locale or check the element structure.
-    // The button has class 'new-script-btn'.
-    const btn = page.locator('.new-script-btn');
+    const frame = page.frameLocator('iframe');
 
-    // Expect a new tab/page to open, prevent race condition by setting up listener first
+    // Click create new script button
+    const btn = frame.locator('.new-script-btn');
+
+    // Expect a new tab/page to open
     const pagePromise = browserContext.waitForEvent('page', page => page.url().includes(extensionId));
     await btn.click();
     const newPage = await pagePromise;
     await newPage.waitForLoadState();
 
     const url = newPage.url();
-    expect(url).toContain('#/new'); // Or it might redirect to /scripts/:id immediately if we logic is fast? 
-    // Wait, my logic says: setCode(template) -> handleSave -> navigate. 
-    // So initially it should be at #/new.
+    expect(url).toContain('#/options/new'); // Updated from #/new to #/options/new
+
+    // New page also has an iframe
+    const newPageFrame = newPage.frameLocator('iframe');
 
     // Check if editor is loaded
-    await newPage.waitForSelector('.cm-editor');
+    await newPageFrame.locator('.cm-editor').waitFor();
 
     // Check if "New Script" is in the name input
-    const nameInput = newPage.locator('.script-name-input');
+    const nameInput = newPageFrame.locator('.script-name-input');
     await nameInput.waitFor();
     expect(await nameInput.innerText()).toBe('New Script');
 
-    // Check if default code is present (partial match)
-    // Monaco content is hard to read directly, but we can check if we are not in "Script Not Found" state.
-    const notFound = newPage.locator('text=Script not found');
+    // Check if default code is present
+    const notFound = newPageFrame.locator('text=Script not found');
     expect(await notFound.isVisible()).toBe(false);
 });

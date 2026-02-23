@@ -1,16 +1,14 @@
 import { test, expect } from 'vitest';
-import { launchExtension, TIMEOUT, installScriptFromPath } from './test-utils';
-import type { BrowserContext, Page } from 'playwright';
+import { launchExtension, TIMEOUT, injectScriptToStorage } from './test-utils';
+import type { BrowserContext } from 'playwright';
 import path from 'path';
 
 let browserContext: BrowserContext;
-let page: Page;
 let extensionId: string;
 
 test.beforeEach(async () => {
     const context = await launchExtension();
     browserContext = context.browserContext;
-    page = context.page;
     extensionId = context.extensionId;
 });
 
@@ -23,8 +21,14 @@ test('Userscript Isolation: Script A should not see variable from Script B', asy
     const scriptAPath = path.join(scriptsDir, 'isolation_test_A.user.js');
     const scriptBPath = path.join(scriptsDir, 'isolation_test_B.user.js');
 
-    await installScriptFromPath(page, extensionId, scriptAPath);
-    await installScriptFromPath(page, extensionId, scriptBPath);
+    // We need an extension page to inject scripts
+    const optionsPage = await browserContext.newPage();
+    await optionsPage.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+
+    await injectScriptToStorage(optionsPage, scriptAPath);
+    await injectScriptToStorage(optionsPage, scriptBPath);
+
+    await optionsPage.close();
 
     // Open a page where both scripts run
     const testPage = await browserContext.newPage();
@@ -37,14 +41,23 @@ test('Userscript Isolation: Script A should not see variable from Script B', asy
     await testPage.goto('https://shieldmonkey.github.io/Shieldmonkey/');
     await testPage.waitForTimeout(TIMEOUT.LONG);
 
+    // Verify Script A ran (check DOM marker)
+    await testPage.locator('#test-a-marker').waitFor({ state: 'visible', timeout: 5000 });
+
+    // Verify Script B ran (check DOM marker)
+    await testPage.locator('#test-b-marker').waitFor({ state: 'visible', timeout: 5000 });
+
     // isolation_test_A sets window.SHIELD_TEST_A
     // isolation_test_B checks window.SHIELD_TEST_A and logs SUCCESS/FAIL
 
     const successLog = logs.find(l => l.includes('SUCCESS: I cannot see window.SHIELD_TEST_A'));
     const failLog = logs.find(l => l.includes('FAIL: I can see window.SHIELD_TEST_A'));
 
-    if (failLog) {
-        console.error('Logs:', logs);
+    if (!successLog && !failLog) {
+        console.error('Missing expected logs. Captured:', logs);
+    } else if (failLog) {
+        console.error('Found FAIL log:', failLog);
+        console.error('All Logs:', logs);
     }
 
     expect(failLog).toBeUndefined();
@@ -59,7 +72,11 @@ test('Origin Isolation: Script running on Origin A should not affect Origin B', 
     const scriptsDir = path.join(process.cwd(), 'tests/fixtures/userscripts');
     // We use isolation_test_A which sets window.SHIELD_TEST_A
     const scriptPath = path.join(scriptsDir, 'isolation_test_A.user.js');
-    await installScriptFromPath(page, extensionId, scriptPath);
+    // We need an extension page to inject
+    const optionsPage = await browserContext.newPage();
+    await optionsPage.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    await injectScriptToStorage(optionsPage, scriptPath);
+    await optionsPage.close();
 
     const pageA = await browserContext.newPage();
     const pageB = await browserContext.newPage();

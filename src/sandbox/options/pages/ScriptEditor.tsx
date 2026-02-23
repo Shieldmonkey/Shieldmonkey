@@ -13,8 +13,8 @@ import * as parserBabel from "prettier/plugins/babel";
 import * as parserEstree from "prettier/plugins/estree";
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
-import { parseMetadata } from '../../utils/metadataParser';
-import { isValidHttpUrl } from '../../utils/urlValidator';
+import { parseMetadata } from '../../../utils/metadataParser';
+import { isValidHttpUrl } from '../../../utils/urlValidator';
 import { type Script } from '../types';
 import { useI18n } from '../../context/I18nContext';
 
@@ -152,7 +152,7 @@ const ScriptEditor = () => {
             if (isNew) {
                 // Navigate to the edit URL for the new script so we are no longer in "new" mode
                 // Replace: true so we don't go back to /new
-                navigate(`/scripts/${updatedScript.id}`, { replace: true });
+                navigate(`/options/scripts/${updatedScript.id}`, { replace: true });
             }
 
         } catch (e) {
@@ -165,13 +165,13 @@ const ScriptEditor = () => {
 
     const handleDelete = () => {
         if (isNew) {
-            navigate('/scripts');
+            navigate('/options/scripts');
             return;
         }
         if (!scriptFromContext) return;
         showGenericModal('confirm', t('editorConfirmDeleteTitle'), t('editorConfirmDeleteMsg'), async () => {
             await deleteScript(scriptFromContext.id);
-            navigate('/scripts');
+            navigate('/options/scripts');
         });
     };
 
@@ -243,10 +243,10 @@ const ScriptEditor = () => {
     const handleBack = () => {
         if (isDirty) {
             showGenericModal('confirm', t('unsavedChangesTitle') || 'Unsaved Changes', t('unsavedChangesMsg') || 'You have unsaved changes. Are you sure you want to leave?', () => {
-                navigate('/scripts');
+                navigate('/options/scripts');
             });
         } else {
-            navigate('/scripts');
+            navigate('/options/scripts');
         }
     };
 
