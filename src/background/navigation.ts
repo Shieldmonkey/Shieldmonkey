@@ -22,23 +22,10 @@ export function setupNavigationListener() {
                 } catch { /* Ignore URL parse errors */ }
 
                 if (isFromExtension && !isAllowed) {
-                    // This is an unauthorized navigation from an extension page context (e.g. malicious redirect in sandbox)
-                    console.error(`[Security] Blocked unauthorized navigation from extension to: ${details.url}`);
-
-                    if (details.frameId === 0) {
-                        // If it's the main frame, maybe the extension is trying to navigate the whole tab away
-                        // We attempt to fix it by navigating back or closing the tab, although DNR might block it first.
-                        // Since DNR blocks it on the network layer, we just update the tab to its safe URL.
-                        chrome.tabs.update(details.tabId, { url: tab.url }).catch(() => { });
-                    } else {
-                        // Subframe navigation: stop it
-                        chrome.scripting.executeScript({
-                            target: { tabId: details.tabId, frameIds: [details.frameId] },
-                            func: () => window.stop()
-                        }).catch(() => { });
-                    }
-                    // Stop further processing for this event
-                    return;
+                    // This is an unauthorized navigation from an extension page context.
+                    // Instead of aggressively blocking it via webNavigation, we simply log it.
+                    // Actual requests are restricted via CSP and sandbox attributes.
+                    console.warn(`[Security] Detected unauthorized navigation from extension to: ${details.url}. Logging only.`);
                 }
             } catch { /* ignore */ }
         }
