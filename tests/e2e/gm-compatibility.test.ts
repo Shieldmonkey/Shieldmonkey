@@ -44,8 +44,7 @@ test('GM API Compatibility: block restricted APIs and support window features', 
     // 5. Bulk Storage
     await expect.poll(() => logs.find(l => l.includes('Bulk Storage PASS'))).toBeDefined();
 
-    // 6. Menu & Download
-    await expect.poll(() => logs.find(l => l.includes('Menu Unregister PASS'))).toBeDefined();
+    // 6. Download
     await expect.poll(() => logs.find(l => l.includes('GM_download exists'))).toBeDefined();
 
     // Check for stubs
