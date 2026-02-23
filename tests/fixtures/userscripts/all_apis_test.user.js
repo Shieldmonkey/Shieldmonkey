@@ -42,8 +42,7 @@
 // @grant        GM_log
 // @grant        GM_notification
 // @grant        GM_openInTab
-// @grant        GM_registerMenuCommand
-// @grant        GM_unregisterMenuCommand
+
 // @grant        GM_setClipboard
 // @grant        GM_getTab
 // @grant        GM_saveTab
@@ -291,25 +290,7 @@
         log("Set clipboard");
     });
 
-    // 6. Menu Commands
-    const grpMenu = createGroup('Menu Commands');
-    let menuId;
-    createButton(grpMenu, 'Register "Test Command"', () => {
-        menuId = GM_registerMenuCommand("Test Command " + Date.now(), () => {
-            log("Menu command clicked!", 'success');
-            alert("Menu command executed!");
-        });
-        log(`Registered ID: ${menuId}`);
-    });
-    createButton(grpMenu, 'Unregister Command', () => {
-        if(menuId) {
-            GM_unregisterMenuCommand(menuId);
-            log(`Unregistered ID: ${menuId}`);
-            menuId = null;
-        } else {
-            log("No menu command registered", 'error');
-        }
-    });
+
 
     // 7. Unsupported / Others
     const grpMisc = createGroup('Unsupported / Misc');

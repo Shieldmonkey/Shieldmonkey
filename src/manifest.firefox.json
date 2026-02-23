@@ -11,7 +11,6 @@
     "notifications",
     "scripting",
     "webNavigation",
-    "contextMenus",
     "downloads",
     "declarativeNetRequest"
   ],

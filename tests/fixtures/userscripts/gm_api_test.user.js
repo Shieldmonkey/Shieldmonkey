@@ -10,8 +10,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_listValues
 // @grant        GM_xmlhttpRequest
-// @grant        GM_registerMenuCommand
-// @grant        GM_unregisterMenuCommand
+
 // @grant        GM_notification
 // @grant        GM_setClipboard
 // @grant        GM_addStyle
@@ -215,13 +214,7 @@
              });
         });
 
-        addBtn('Test Menu Command', () => {
-            GM_registerMenuCommand('Hello from Test Suite', () => {
-                alert('Menu Command Clicked!');
-                log('Menu command callback executed.');
-            });
-            log('Registered "Hello from Test Suite". Check extension menu.');
-        });
+
 
         addBtn('Test Notification', () => {
             GM_notification({

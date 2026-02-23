@@ -14,8 +14,7 @@
 // @grant        GM_deleteValues
 // @grant        GM_listValues
 // @grant        GM_addValueChangeListener
-// @grant        GM_registerMenuCommand
-// @grant        GM_unregisterMenuCommand
+
 // @grant        GM_download
 // @grant        unsafeWindowtValue
 // @grant        GM_closeTab
@@ -110,12 +109,7 @@
     
     // 6. Menu & Download
     try {
-        if (typeof GM_registerMenuCommand !== 'undefined' && typeof GM_unregisterMenuCommand !== 'undefined') {
-            const id = GM_registerMenuCommand("Test Command", () => {});
-            console.log(`${LOG_PREFIX} Menu Registered: ` + id);
-            GM_unregisterMenuCommand(id);
-            console.log(`${LOG_PREFIX} Menu Unregister PASS`);
-        }
+
         
         if (typeof GM_download !== 'undefined') {
              // Mock call, might fail if permission denied or requires user gesture, but check existence

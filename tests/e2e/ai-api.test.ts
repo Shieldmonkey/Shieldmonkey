@@ -1,18 +1,23 @@
-import { test, expect, type BrowserContext } from '@playwright/test';
-import { launchExtension, EXTENSION_PATH } from './test-utils';
+import { test, expect, describe, beforeEach, afterEach } from 'vitest';
+import type { BrowserContext, ConsoleMessage } from 'playwright';
+import { launchExtension, installScriptFromPath } from './test-utils';
 import path from 'path';
 import fs from 'fs';
 
-test.describe('AI API (Prompt API) Support', () => {
+describe('AI API (Prompt API) Support', () => {
     let browserContext: BrowserContext;
+    let extensionId: string;
 
-    test.beforeEach(async () => {
+    beforeEach(async () => {
         const context = await launchExtension();
         browserContext = context.browserContext;
+        extensionId = context.extensionId;
     });
 
-    test.afterEach(async () => {
-        await browserContext.close();
+    afterEach(async () => {
+        if (browserContext) {
+            await browserContext.close();
+        }
     });
 
     test('AI API: LanguageModel access and background restriction', async () => {
@@ -30,7 +35,7 @@ test.describe('AI API (Prompt API) Support', () => {
                 reject(new Error("Test timed out waiting for AI API logs"));
             }, 10000);
 
-            testPage.on('console', (msg) => {
+            testPage.on('console', (msg: ConsoleMessage) => {
                 const text = msg.text();
                 // console.log('BROWSER LOG:', text);
 
@@ -62,14 +67,9 @@ test.describe('AI API (Prompt API) Support', () => {
         });
 
         // 1. Install the script
-        const installPage = await browserContext.newPage();
-        const installUrl = `chrome-extension://${path.basename(EXTENSION_PATH)}/src/options/index.html#/options/install?url=${encodeURIComponent('file://' + scriptPath)}`;
-        await installPage.goto(installUrl);
-
-        // Click "Install"
-        await installPage.click('button:has-text("Install")');
-        await installPage.waitForTimeout(1000);
-        await installPage.close();
+        const setupPage = await browserContext.newPage();
+        await installScriptFromPath(setupPage, extensionId, scriptPath);
+        await setupPage.close();
 
         // 2. Navigate to a page to trigger the script
         await testPage.goto('https://example.com');
