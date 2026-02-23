@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import './Install.css';
 import { parseMetadata, type Metadata } from '../../../utils/metadataParser';
 import CodeMirror from '@uiw/react-codemirror';
@@ -9,9 +9,7 @@ import { useApp } from '../context/useApp';
 import { bridge } from '../../bridge/client';
 import { sanitizeToHttpUrl } from '../../../utils/urlValidator';
 import { Info, X } from 'lucide-react';
-import { type Script } from '../types';
 
-// Theme logic
 // ... (Theme type and Script interface remain same)
 
 const Install = () => {
@@ -20,7 +18,6 @@ const Install = () => {
     const [referrerUrl, setReferrerUrl] = useState<string | null>(null);
     const [code, setCode] = useState<string>('');
     const [metadata, setMetadata] = useState<Metadata | null>(null);
-    const [existingScript, setExistingScript] = useState<Script | null>(null);
     const [error, setError] = useState<string>('');
 
     // Mobile Sidebar State
@@ -50,81 +47,49 @@ const Install = () => {
         }
     }, []);
 
-    // Effect to check for existing script whenever metadata or scripts list changes
-    useEffect(() => {
-        if (!metadata || !scripts) return;
-
-        console.log('Checking for existing script:', { metadata, scriptsCount: scripts.length });
-
-        const existing = scripts.find((s) => {
+    const existingScript = useMemo(() => {
+        if (!metadata || !scripts) return null;
+        return scripts.find((s) => {
             const sNamespace = s.namespace || '';
             const mNamespace = metadata.namespace || '';
-            const matching = s.name === metadata.name && sNamespace === mNamespace;
-
-            if (s.name === metadata.name) {
-                console.log('Found script with same name:', {
-                    sName: s.name,
-                    mName: metadata.name,
-                    sNamespace,
-                    mNamespace,
-                    match: matching
-                });
-            }
-
-            // Also check for matching downloadURL or updateURL if helpful, 
-            // but standard practice is name+namespace.
-            return matching;
-        });
-
-        if (existing) {
-            console.log('Found existing script:', existing.id);
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setExistingScript(existing);
-        } else {
-            console.log('No existing script found');
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setExistingScript(null);
-        }
+            return s.name === metadata.name && sNamespace === mNamespace;
+        }) || null;
     }, [metadata, scripts]);
 
 
 
-    // Track if we have already initialized the install flow
-    // initializedRef is declared at top of component
 
     useEffect(() => {
         if (initializedRef.current) return;
 
-        // Check for content passed via data:text/html redirection (see background script)
-        try {
-            if (window.name) {
-                const data = JSON.parse(window.name);
-                if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
-                    initializedRef.current = true;
-                    // eslint-disable-next-line react-hooks/set-state-in-effect
-                    setScriptUrl(data.url);
-                    // eslint-disable-next-line react-hooks/set-state-in-effect
-                    if (data.referrer) setReferrerUrl(data.referrer);
-                    loadScriptContent(data.source);
-                    return;
+        const initialize = async () => {
+            // Check for content passed via data:text/html redirection (see background script)
+            try {
+                if (window.name) {
+                    const data = JSON.parse(window.name);
+                    if (data && data.type === 'SHIELDMONKEY_INSTALL_DATA' && data.source && data.url) {
+                        initializedRef.current = true;
+                        setScriptUrl(data.url);
+                        if (data.referrer) setReferrerUrl(data.referrer);
+                        loadScriptContent(data.source);
+                        return;
+                    }
                 }
+            } catch (e) {
+                console.warn("Failed to parse window.name for script content", e);
             }
-        } catch (e) {
-            console.warn("Failed to parse window.name for script content", e);
-        }
 
-        // Check for installId (Passed via storage from Content Script)
-        const searchParams = new URLSearchParams(window.location.search);
-        const hash = window.location.hash;
-        const hashSearchParams = new URLSearchParams(hash.split('?')[1]);
+            // Check for installId (Passed via storage from Content Script)
+            const searchParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            const hashSearchParams = new URLSearchParams(hash.split('?')[1]);
 
-        const installId = searchParams.get('installId') || hashSearchParams.get('installId');
-        const url = searchParams.get('url') || hashSearchParams.get('url');
+            const installId = searchParams.get('installId') || hashSearchParams.get('installId');
+            const url = searchParams.get('url') || hashSearchParams.get('url');
 
-        const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer') || undefined;
-        if (referrer) setReferrerUrl(referrer);
+            const referrer = searchParams.get('referrer') || hashSearchParams.get('referrer') || undefined;
+            if (referrer) setReferrerUrl(referrer);
 
-        const checkPending = async () => {
             if (installId) {
                 try {
                     const pend = await bridge.call<{ url: string; content: string; referrer?: string } | undefined>('GET_PENDING_INSTALL', { id: installId });
@@ -161,9 +126,10 @@ const Install = () => {
             setStatus('error');
             setError("Direct installation not permitted. Please use background script fetcher.");
         };
-        checkPending();
 
-    }, [loadScriptContent, t, initializedRef]);
+        initialize();
+
+    }, [loadScriptContent, t, scripts, metadata]);
 
     const handleInstall = async () => {
         if (!metadata || !code) return;
