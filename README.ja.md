@@ -15,7 +15,8 @@ Shieldmonkeyは、セキュリティと監査可能性を最優先に設計さ�
 
 ## 設計と特徴
 
-\`\`\`mermaid
+
+```mermaid
 flowchart TD
     subgraph Browser["Web Browser"]
         WP["Web Page (Target Site)"]
@@ -47,7 +48,7 @@ flowchart TD
     classDef blocked fill:#ffeeee,stroke:#cc0000,stroke-width:2px,stroke-dasharray: 5 5;
     class Sandbox secure;
     class Internet blocked;
-\`\`\`
+```
 
 ### 強固なセキュリティポリシー (CSP)
 Shieldmonkeyは、拡張機能自身が外部と意図しない通信を行うことを防ぐため、厳格なContent Security Policy (CSP) を設定しています。
