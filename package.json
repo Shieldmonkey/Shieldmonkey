@@ -13,7 +13,8 @@
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "test:unit": "vitest run --config vitest.config.unit.ts",
-    "bump-version": "node scripts/bump-version.js"
+    "bump-version": "node scripts/bump-version.js",
+    "screenshot": "npx tsx scripts/take-screenshots.ts"
   },
   "engines": {
     "node": ">=20.0.0",
