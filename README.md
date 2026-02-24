@@ -15,8 +15,39 @@ Shieldmonkey is an open-source, Manifest V3 compliant userscript manager designe
 
 ## Design and Features
 
-![Shieldmonkey Architecture](assets/architecture_diagram.png)
+\`\`\`mermaid
+flowchart TD
+    subgraph Browser["Web Browser"]
+        WP["Web Page (Target Site)"]
+        
+        subgraph Extension["Shieldmonkey Extension"]
+            CS["Content Script"]
+            
+            subgraph Sandbox["Isolated Sandbox (CSP Enforced)"]
+                VM["Script Emulator Context"]
+                US["UserScripts (CodeMirror)"]
+            end
+            
+            BG["Service Worker (Storage/Rules)"]
+        end
+        
+        Internet["External Internet"]
+    end
 
+    WP <-->|DOM Access| CS
+    CS <-->|Message Bridge| VM
+    VM -->|Executes| US
+    CS <-->|Storage/Config| BG
+
+    %% Security boundaries
+    US -.x|Blocked by CSP| Internet
+    BG -.x|DNR / CSP Blocked| Internet
+
+    classDef secure fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+    classDef blocked fill:#ffeeee,stroke:#cc0000,stroke-width:2px,stroke-dasharray: 5 5;
+    class Sandbox secure;
+    class Internet blocked;
+\`\`\`
 ### Strict Content Security Policy (CSP)
 Shieldmonkey enforces a strict Content Security Policy (CSP) to prevent the extension from communicating with external entities unintentionally.
 External connections from Background Scripts and injected pages are blocked. Consequently, the following features are intentionally excluded:

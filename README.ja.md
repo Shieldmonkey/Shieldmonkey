@@ -15,7 +15,39 @@ Shieldmonkeyは、セキュリティと監査可能性を最優先に設計さ�
 
 ## 設計と特徴
 
-![Shieldmonkey Architecture](assets/architecture_diagram.png)
+\`\`\`mermaid
+flowchart TD
+    subgraph Browser["Web Browser"]
+        WP["Web Page (Target Site)"]
+        
+        subgraph Extension["Shieldmonkey Extension"]
+            CS["Content Script"]
+            
+            subgraph Sandbox["Isolated Sandbox (CSP Enforced)"]
+                VM["Script Emulator Context"]
+                US["UserScripts (CodeMirror)"]
+            end
+            
+            BG["Service Worker (Storage/Rules)"]
+        end
+        
+        Internet["External Internet"]
+    end
+
+    WP <-->|DOM Access| CS
+    CS <-->|Message Bridge| VM
+    VM -->|Executes| US
+    CS <-->|Storage/Config| BG
+
+    %% Security boundaries
+    US -.x|Blocked by CSP| Internet
+    BG -.x|DNR / CSP Blocked| Internet
+
+    classDef secure fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+    classDef blocked fill:#ffeeee,stroke:#cc0000,stroke-width:2px,stroke-dasharray: 5 5;
+    class Sandbox secure;
+    class Internet blocked;
+\`\`\`
 
 ### 強固なセキュリティポリシー (CSP)
 Shieldmonkeyは、拡張機能自身が外部と意図しない通信を行うことを防ぐため、厳格なContent Security Policy (CSP) を設定しています。
