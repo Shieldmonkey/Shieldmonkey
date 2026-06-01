@@ -1,23 +1,6 @@
 import type { Script } from './types';
 import { UserscriptMessageType } from '../types/messages';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const aiSessions = new Map<string, any>();
-
-/**
- * Generate a cryptographically secure random identifier string.
- * Uses the Web Crypto API to avoid predictable Math.random() output.
- */
-function generateSecureRandomId(byteLength: number): string {
-    const bytes = new Uint8Array(byteLength);
-    // `crypto` is available in the extension background context (Service Worker / WorkerGlobalScope)
-    crypto.getRandomValues(bytes);
-    // Encode as a hex string
-    return Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
 // GM API Handlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleGMRequest(type: UserscriptMessageType | string, data: any, _sender: chrome.runtime.MessageSender, scriptId?: string, token?: string) {
@@ -44,18 +27,13 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
 
     const permissions = new Set(script.grantedPermissions || []);
     const apiName = type;
-    const isAIApi = apiName.startsWith('GM_ai_');
 
     // Exceptions that don't need permission or are internal
     if (apiName !== UserscriptMessageType.GM_xhrAbort && apiName !== UserscriptMessageType.GM_closeTab && !permissions.has(apiName)) {
         // Also check dot notation if applicable e.g. GM.setValue
         const dotName = apiName.replace('_', '.');
         if (!permissions.has(dotName)) {
-            if (isAIApi) {
-                if (!permissions.has('LanguageModel')) {
-                    throw new Error(`Permission denied: LanguageModel is required for ${apiName}`);
-                }
-            } else if (apiName === 'GM_closeTab' && (permissions.has('window.close') || permissions.has('close'))) {
+            if (apiName === 'GM_closeTab' && (permissions.has('window.close') || permissions.has('close'))) {
                 // Allowed
             } else {
                 console.warn(`Script ${script.name} attempted to use ${apiName} without permission.`);
@@ -224,125 +202,6 @@ async function handleGMRequest(type: UserscriptMessageType | string, data: any, 
                     }
                 });
                 return null;
-            }
-        case UserscriptMessageType.GM_ai_capabilities:
-            {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const LanguageModel = (self as any).LanguageModel;
-                if (!LanguageModel) {
-                    throw new Error("Prompt API (window.LanguageModel) is not available");
-                }
-                const availability = await LanguageModel.availability();
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let params: any = {};
-                try {
-                    params = await LanguageModel.params();
-                } catch {
-                    // Ignore
-                }
-                return {
-                    available: availability,
-                    defaultTemperature: params.defaultTemperature,
-                    defaultTopK: params.defaultTopK,
-                    maxTopK: params.maxTopK
-                };
-            }
-        case UserscriptMessageType.GM_ai_create:
-            {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const LanguageModel = (self as any).LanguageModel;
-                if (!LanguageModel) {
-                    throw new Error("Prompt API (window.LanguageModel) is not available");
-                }
-                const session = await LanguageModel.create(data.options);
-                const sessionId = `ai_sess_${Date.now()}_${generateSecureRandomId(16)}`;
-                aiSessions.set(sessionId, session);
-                return { sessionId };
-            }
-        case UserscriptMessageType.GM_ai_prompt:
-            {
-                const session = aiSessions.get(data.sessionId);
-                if (!session) {
-                    throw new Error("AI Session not found or already destroyed");
-                }
-                const result = await session.prompt(data.text, data.options);
-                return result;
-            }
-        case UserscriptMessageType.GM_ai_promptStreaming:
-            {
-                const session = aiSessions.get(data.sessionId);
-                if (!session) {
-                    throw new Error("AI Session not found or already destroyed");
-                }
-                const streamId = `ai_stream_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-
-                const stream = await session.promptStreaming(data.text, data.options);
-
-                (async () => {
-                    try {
-                        const reader = stream.getReader ? stream.getReader() : null;
-                        if (reader) {
-                            while (true) {
-                                const { done, value } = await reader.read();
-                                if (done) break;
-                                if (tabId) {
-                                    chrome.tabs.sendMessage(tabId, {
-                                        type: 'GM_AI_STREAM_CHUNK',
-                                        streamId,
-                                        chunk: value
-                                    }, { frameId: _sender.frameId }).catch(() => { });
-                                }
-                            }
-                        } else {
-                            for await (const chunk of stream) {
-                                if (tabId) {
-                                    chrome.tabs.sendMessage(tabId, {
-                                        type: 'GM_AI_STREAM_CHUNK',
-                                        streamId,
-                                        chunk
-                                    }, { frameId: _sender.frameId }).catch(() => { });
-                                }
-                            }
-                        }
-
-                        if (tabId) {
-                            chrome.tabs.sendMessage(tabId, {
-                                type: 'GM_AI_STREAM_END',
-                                streamId
-                            }, { frameId: _sender.frameId }).catch(() => { });
-                        }
-                    } catch (e) {
-                        if (tabId) {
-                            chrome.tabs.sendMessage(tabId, {
-                                type: 'GM_AI_STREAM_ERROR',
-                                streamId,
-                                error: (e as Error).message
-                            }, { frameId: _sender.frameId }).catch(() => { });
-                        }
-                    }
-                })();
-
-                return { streamId };
-            }
-        case UserscriptMessageType.GM_ai_destroy:
-            {
-                const session = aiSessions.get(data.sessionId);
-                if (session && typeof session.destroy === 'function') {
-                    session.destroy();
-                }
-                aiSessions.delete(data.sessionId);
-                return null;
-            }
-        case UserscriptMessageType.GM_ai_clone:
-            {
-                const session = aiSessions.get(data.sessionId);
-                if (!session || typeof session.clone !== 'function') {
-                    throw new Error("AI Session not found or cannot be cloned");
-                }
-                const newSession = await session.clone();
-                const newSessionId = `ai_sess_${Date.now()}_${generateSecureRandomId(16)}`;
-                aiSessions.set(newSessionId, newSession);
-                return { sessionId: newSessionId };
             }
     }
     return null;

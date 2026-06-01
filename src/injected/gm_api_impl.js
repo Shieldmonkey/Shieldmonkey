@@ -48,7 +48,6 @@
     }
 
     const extAPI = typeof browser !== 'undefined' ? browser : (typeof chrome !== 'undefined' ? chrome : null);
-    const aiStreams = new Map();
 
     if (extAPI && extAPI.runtime && extAPI.runtime.onMessage) {
         extAPI.runtime.onMessage.addListener((message) => {
@@ -72,15 +71,6 @@
                 notifyListeners(key, oldValue ? JSON.parse(oldValue) : undefined, newValue, message.remote);
             } else if (message.type === 'GM_URL_CHANGE') {
                 checkUrlChange();
-            } else if (message.type === 'GM_AI_STREAM_CHUNK') {
-                const streamRef = aiStreams.get(message.streamId);
-                if (streamRef) streamRef.push(message.chunk);
-            } else if (message.type === 'GM_AI_STREAM_END') {
-                const streamRef = aiStreams.get(message.streamId);
-                if (streamRef) streamRef.close();
-            } else if (message.type === 'GM_AI_STREAM_ERROR') {
-                const streamRef = aiStreams.get(message.streamId);
-                if (streamRef) streamRef.error(message.error);
             }
         });
     }
@@ -365,81 +355,7 @@
            delete: function() { console.error("Shieldmonkey: GM_cookie is not supported."); }
        },
        registerMenuCommand: function() { console.error("Shieldmonkey: GM_registerMenuCommand is explicitly not supported."); },
-       unregisterMenuCommand: function() { console.error("Shieldmonkey: GM_unregisterMenuCommand is explicitly not supported."); },
-
-       // --- AI API (Prompt API) ---
-       LanguageModel: {
-           availability: async function() {
-               if (!granted.has('LanguageModel')) {
-                   throw new Error("Shieldmonkey: LanguageModel permission not granted");
-               }
-               return sendRequest('GM_ai_capabilities', {}); // Still using the same message type
-           },
-           create: async function(options) {
-               if (!granted.has('LanguageModel')) {
-                   throw new Error("Shieldmonkey: LanguageModel permission not granted");
-               }
-               const res = await sendRequest('GM_ai_create', { options });
-               const sessionId = res.sessionId;
-               
-               function buildSession(sid) {
-                   return {
-                       prompt: async function(text, promptOptions) {
-                           return sendRequest('GM_ai_prompt', { sessionId: sid, text, options: promptOptions });
-                       },
-                        promptStreaming: async function(text, promptOptions) {
-                            const res = await sendRequest('GM_ai_promptStreaming', { sessionId: sid, text, options: promptOptions });
-                            const streamId = res.streamId;
-                            
-                            let controllerRef;
-                            const stream = new ReadableStream({
-                                start(controller) {
-                                    controllerRef = controller;
-                                    aiStreams.set(streamId, {
-                                        push: (chunk) => controllerRef.enqueue(chunk),
-                                        close: () => {
-                                            controllerRef.close();
-                                            aiStreams.delete(streamId);
-                                        },
-                                        error: (err) => {
-                                            controllerRef.error(new Error(err));
-                                            aiStreams.delete(streamId);
-                                        }
-                                    });
-                                },
-                                cancel() {
-                                    aiStreams.delete(streamId);
-                                }
-                            });
-                            
-                            // Make it AsyncIterable as Chrome Prompt API supports `for await (const chunk of stream)`
-                            stream[Symbol.asyncIterator] = async function* () {
-                                const reader = stream.getReader();
-                                try {
-                                    while (true) {
-                                        const { done, value } = await reader.read();
-                                        if (done) break;
-                                        yield value;
-                                    }
-                                } finally {
-                                    reader.releaseLock();
-                                }
-                            };
-                            
-                            return stream;
-                        },
-                       clone: async function() {
-                           const cloneRes = await sendRequest('GM_ai_clone', { sessionId: sid });
-                           return buildSession(cloneRes.sessionId);
-                       },
-                       destroy: async function() {
-                           return sendRequest('GM_ai_destroy', { sessionId: sid });
-                       }
-                   };
-               }
-               return buildSession(sessionId);
-           }
-       }
+       unregisterMenuCommand: function() { console.error("Shieldmonkey: GM_unregisterMenuCommand is explicitly not supported."); }
     };
 
     // Expose GM calls to global scope
@@ -465,8 +381,6 @@
     if (granted.has('GM_setValue')) scope.GM_setValues = GM.setValues;
     if (granted.has('GM_getValue')) scope.GM_getValues = GM.getValues;
     if (granted.has('GM_deleteValue')) scope.GM_deleteValues = GM.deleteValues;
-
-    if (granted.has('LanguageModel')) scope.LanguageModel = GM.LanguageModel;
 
     // Unsupported API Bindings (always exposed but warn)
     scope.GM_getResourceText = GM.getResourceText;
