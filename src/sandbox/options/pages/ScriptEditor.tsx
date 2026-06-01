@@ -14,7 +14,7 @@ import * as parserEstree from "prettier/plugins/estree";
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { parseMetadata } from '../../../utils/metadataParser';
-import { isValidHttpUrl } from '../../../utils/urlValidator';
+import { isValidHttpUrl, sanitizeToHttpUrl } from '../../../utils/urlValidator';
 import { type Script } from '../types';
 import { useI18n } from '../../context/I18nContext';
 
@@ -346,7 +346,7 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelPage')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={referrerUrl} target="_blank" rel="noopener noreferrer" title={referrerUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={sanitizeToHttpUrl(referrerUrl)} target="_blank" rel="noopener noreferrer" title={referrerUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(referrerUrl!)}</span>
                                         </a>
@@ -358,7 +358,7 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelSource')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" title={sourceUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={sanitizeToHttpUrl(sourceUrl)} target="_blank" rel="noopener noreferrer" title={sourceUrl} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(sourceUrl!)}</span>
                                         </a>
@@ -371,7 +371,7 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelUpdate')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.updateURL} target="_blank" rel="noopener noreferrer" title={metadata.updateURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={sanitizeToHttpUrl(metadata.updateURL)} target="_blank" rel="noopener noreferrer" title={metadata.updateURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.updateURL!)}</span>
                                         </a>
@@ -383,7 +383,7 @@ const ScriptEditor = () => {
                                 <>
                                     <div style={{ color: 'var(--text-secondary)' }}>{t('editorLabelDownload')}</div>
                                     <div style={{ wordBreak: 'break-all' }}>
-                                        <a href={metadata.downloadURL} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <a href={sanitizeToHttpUrl(metadata.downloadURL)} target="_blank" rel="noopener noreferrer" title={metadata.downloadURL} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <LinkIcon size={12} style={{ flexShrink: 0 }} />
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatDisplayUrl(metadata.downloadURL!)}</span>
                                         </a>
