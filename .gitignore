@@ -30,3 +30,7 @@ dist-firefox
 # Test
 test-user-data-dir
 coverage
+
+# Draw.io backup files
+*.drawio.bkp
+
