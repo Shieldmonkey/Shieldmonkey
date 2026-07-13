@@ -62,7 +62,14 @@ pnpmの設定 (`pnpm-workspace.yaml`) と厳格なバージョン管理により
 - TypeScript
 - CodeMirror 6
 - IndexedDB
-- Vanilla CSS / Sass
+- Vanilla CSS デザイントークン
+
+### フロントエンド構成
+
+- Popup／OptionsのHost内にsandbox化したReact iframeを置き、権限APIへのアクセスは実行時検証付きBridgeに限定しています。
+- Popup、Options、Options内の各ルートを遅延読み込みし、CodeMirrorはエディター表示時、Prettierとparserはフォーマット実行時だけ読み込みます。
+- 永続化する`ScriptRecord`と編集中の`ScriptDraft`は`src/types`の共通ドメイン型を利用します。状態はloading／ready／errorを明示し、楽観的更新に失敗した場合はロールバックします。
+- Security Console UIはVanilla CSSの共通トークンとアクセシブルなRadix primitiveを使用し、900pxを境にデスクトップ／コンパクトナビゲーションを切り替えます。
 
 ## インストールとビルド
 
@@ -97,8 +104,15 @@ pnpm exec playwright install chromium --with-deps
 # 拡張機能をビルド
 pnpm run build
 
+# ユニット／コンポーネントテスト
+pnpm run test:unit
+pnpm run test:component
+
 # E2Eテストを実行
 pnpm run test:e2e
+
+# sandbox初期JavaScriptのgzip 200 KiB budgetを検証
+pnpm run check:bundle
 ```
 
 テストには以下が含まれます：
@@ -107,3 +121,5 @@ pnpm run test:e2e
 - バックアップとリストア機能
 - CSPポリシーの検証
 - ポップアップページの動作確認
+- Bridge検証、タイムアウト解放、ルート／query互換性
+- WCAG 2.2 AA axe検査とレスポンシブレイアウト
