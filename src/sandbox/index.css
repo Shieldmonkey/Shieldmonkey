@@ -1,59 +1,78 @@
 :root {
-  --bg-color: #202020;
-  --text-primary: #e6e6e6;
-  --text-secondary: #999999;
-  --accent-color: #22c55e;
-  --accent-hover: #16a34a;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --surface-bg: #262626;
-  --modal-bg: #262626;
-  --card-bg: #2a2a2a;
-  --hover-bg: #3d3d3d;
-  --success-color: #22c55e;
-  
+  --bg-canvas: #1b1d1b;
+  --bg-subtle: #202320;
+  --bg-surface: #242724;
+  --bg-elevated: #2c302c;
+  --text-primary: #f0f1ed;
+  --text-secondary: #d0d4cf;
+  --text-muted: #b5bab4;
+  --accent-color: #62bd86;
+  --accent-hover: #78ca98;
+  --accent-contrast: #101c14;
+  --border-color: #626a63;
+  --border-strong: #818a82;
+  --danger: #ff8a8a;
+  --warning: #e6bd64;
+  --info: #88b7ee;
+  --success-color: #62bd86;
+  --shadow-lg: 0 4px 12px rgba(0,0,0,.38);
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --font-mono-retro: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
+  --sidebar-bg: #202320;
+  --content-bg: var(--bg-canvas);
+  --surface-bg: var(--bg-surface);
+  --modal-bg: var(--bg-elevated);
+  --bg-color: var(--bg-canvas);
+  --hover-bg: #343934;
+  --primary-color: var(--accent-color);
   color-scheme: dark;
-
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  line-height: 1.6;
-  font-weight: 400;
-
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 :root[data-theme="light"] {
-  --bg-color: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --accent-color: #22c55e;
-  --accent-hover: #16a34a;
-  --border-color: #e2e8f0;
-  --surface-bg: #ffffff;
-  --modal-bg: #ffffff;
-  --card-bg: #f8fafc;
-  --hover-bg: #f1f5f9;
-  --success-color: #22c55e;
-
+  --bg-canvas: #f3f3ef;
+  --bg-subtle: #e8e9e4;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #171a17;
+  --text-secondary: #373d38;
+  --text-muted: #575e58;
+  --accent-color: #176b40;
+  --accent-hover: #0f5833;
+  --accent-contrast: #ffffff;
+  --border-color: #929b94;
+  --border-strong: #6e776f;
+  --danger: #a61f2b;
+  --warning: #795100;
+  --info: #175a9c;
+  --success-color: #176b40;
+  --sidebar-bg: #e5e7e2;
+  --content-bg: var(--bg-canvas);
+  --surface-bg: var(--bg-surface);
+  --modal-bg: var(--bg-elevated);
+  --bg-color: var(--bg-canvas);
+  --hover-bg: #daddd7;
   color-scheme: light;
 }
 
-*, *:before, *:after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden; /* Prevent body scroll, let containers handle it */
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; }
+body { overflow: hidden; background: var(--bg-canvas); color: var(--text-primary); }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { outline: none; }
+:focus-visible { outline: 2px solid var(--accent-color) !important; outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.route-loading, .page-state { min-height: 100%; display: grid; place-content: center; gap: 8px; color: var(--text-secondary); }
+.ui-spinner { width: 18px; height: 18px; border: 2px solid var(--border-color); border-top-color: var(--accent-color); animation: spin .8s steps(8,end) infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }

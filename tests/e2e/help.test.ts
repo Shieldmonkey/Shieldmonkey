@@ -65,9 +65,8 @@ test('Help page - Whitelist blocks unauthorized OPEN_URL via bridge', async () =
         });
     });
 
-    await page.evaluate(() => {
-        // Send massage to host bridge directly to test the whitelist
-        window.postMessage({ id: 'test-evil-url', type: 'OPEN_URL', payload: 'https://evil.com/' }, '*');
+    await frame.evaluate(() => {
+        window.parent.postMessage({ id: 'test-evil-url', type: 'OPEN_URL', payload: 'https://evil.com/' }, '*');
     });
 
     // Wait for the console log or timeout

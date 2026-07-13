@@ -1,17 +1,5 @@
 import { getDirectoryHandle, verifyPermission } from './backupStorage';
-
-export interface Script {
-    id: string;
-    name: string;
-    code: string;
-    enabled?: boolean;
-    lastSavedCode?: string;
-    grantedPermissions?: string[];
-    sourceUrl?: string;
-    referrerUrl?: string;
-    namespace?: string;
-    installDate?: number;
-}
+import type { ScriptRecord as Script } from '../types/script';
 
 export async function performBackup(existingHandle: FileSystemDirectoryHandle | undefined, scripts: Script[], version: string): Promise<number> {
     let handle = existingHandle;

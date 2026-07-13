@@ -27,7 +27,7 @@ test('Options page - Install, Save, and Delete User Script', async () => {
 
     const frame = page.frameLocator('iframe');
 
-    const newScriptBtn = frame.getByRole('button', { name: /New Script/i, exact: false });
+    const newScriptBtn = frame.getByRole('button', { name: /New Script/i, exact: false }).first();
     await newScriptBtn.waitFor({ state: 'visible' });
     await newScriptBtn.click();
 
@@ -82,4 +82,31 @@ test('Options page - Install, Save, and Delete User Script', async () => {
     await modalDeleteBtn.click();
 
     await expect.poll(async () => scriptRow.isVisible()).toBe(false);
+});
+
+test('New script carries the requested match URL into the editor', async () => {
+    const target = 'https://example.com/private/*';
+    await page.goto(`${getExtensionUrl(extensionId, '/src/options/index.html')}#/options/new?match=${encodeURIComponent(target)}`);
+    const frame = page.frameLocator('iframe');
+    const editor = frame.locator('.cm-content').first();
+    await editor.waitFor({ state: 'visible' });
+    await expect.poll(async () => editor.innerText()).toContain(`@match       ${target}`);
+});
+
+test('Script console filters scripts by name and state', async () => {
+    await page.goto(getExtensionUrl(extensionId, '/src/options/index.html'));
+    await page.evaluate(() => chrome.storage.local.set({ scripts: [
+        { id: 'alpha', name: 'Alpha Audit', code: '// ==UserScript==\n// @name Alpha Audit\n// @match https://alpha.example/*\n// ==/UserScript==', enabled: true },
+        { id: 'beta', name: 'Beta Tool', code: '// ==UserScript==\n// @name Beta Tool\n// @match https://beta.example/*\n// ==/UserScript==', enabled: false }
+    ] }));
+    await page.reload();
+    const frame = page.frameLocator('iframe');
+    const search = frame.getByPlaceholder(/Search scripts/i);
+    await search.fill('Alpha');
+    await expect.poll(() => frame.locator('.script-link').filter({ hasText: 'Alpha Audit' }).isVisible()).toBe(true);
+    await expect.poll(() => frame.locator('.script-link').filter({ hasText: 'Beta Tool' }).isVisible()).toBe(false);
+    await search.fill('');
+    await frame.getByLabel(/Filter by execution status/i).selectOption('disabled');
+    await expect.poll(() => frame.locator('.script-link').filter({ hasText: 'Beta Tool' }).isVisible()).toBe(true);
+    await expect.poll(() => frame.locator('.script-link').filter({ hasText: 'Alpha Audit' }).isVisible()).toBe(false);
 });

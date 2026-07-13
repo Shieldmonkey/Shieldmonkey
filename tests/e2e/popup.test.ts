@@ -32,6 +32,28 @@ test('Popup page opens successfully', async () => {
     await frame.locator('#root').waitFor();
     const appElement = frame.locator('#root');
     expect(await appElement.isVisible()).toBe(true);
+    expect(await page.locator('#popup-placeholder').count()).toBe(0);
+    expect(await page.locator('iframe').evaluate(element => getComputedStyle(element).visibility)).toBe('visible');
+    expect(await page.getByText(/Loading Shieldmonkey/i).count()).toBe(0);
+    expect(await frame.getByText(/Loading Shieldmonkey/i).count()).toBe(0);
+});
+
+test('Popup reveals with the stored theme already applied', async () => {
+    await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
+    await page.evaluate(() => chrome.storage.local.set({ theme: 'light' }));
+    await page.reload();
+    await page.frameLocator('iframe').locator('.popup-console').waitFor();
+    expect(await page.locator('html').getAttribute('data-theme')).toBe('light');
+    expect(await page.frameLocator('iframe').locator('html').getAttribute('data-theme')).toBe('light');
+    expect(await page.locator('#popup-placeholder').count()).toBe(0);
+});
+
+test('Popup shows a retry action when the sandbox cannot load', async () => {
+    await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html#/options/scripts'));
+    const placeholder = page.locator('#popup-placeholder[data-error="true"]');
+    await placeholder.waitFor({ timeout: 5_000 });
+    await expect.poll(() => placeholder.getByRole('button', { name: /Retry|再試行/i }).isVisible()).toBe(true);
+    expect(await page.locator('iframe').evaluate(element => getComputedStyle(element).visibility)).toBe('hidden');
 });
 
 test('Create new script opens options page with editor', async () => {
@@ -65,4 +87,15 @@ test('Create new script opens options page with editor', async () => {
     // Check if default code is present
     const notFound = newPageFrame.locator('text=Script not found');
     expect(await notFound.isVisible()).toBe(false);
+});
+
+test('Popup does not eagerly load editor tooling', async () => {
+    const loadedScripts: string[] = [];
+    page.on('response', response => {
+        if (response.request().resourceType() === 'script') loadedScripts.push(response.url());
+    });
+    await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
+    const frame = page.frameLocator('iframe');
+    await frame.locator('.popup-console').waitFor();
+    expect(loadedScripts.some(url => /ScriptEditor|standalone|babel-|estree-|dark-/i.test(url))).toBe(false);
 });

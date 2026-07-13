@@ -1,10 +1,10 @@
 import { type BrowserContext, type Page, chromium } from 'playwright';
-import { readFileSync, rmSync, existsSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 
 // Constants
 export const EXTENSION_PATH = path.join(process.cwd(), 'dist');
-export const USER_DATA_DIR = path.join(process.cwd(), 'test-user-data-dir');
 export const TIMEOUT = {
     SHORT: 300,
     MEDIUM: 1000,
@@ -27,15 +27,9 @@ export interface MockScript {
 }
 
 // Main extension launcher
-export async function launchExtension(): Promise<ExtensionContext> {
-    // Clean up previous user data dir to avoid SingletonLock errors
-    if (existsSync(USER_DATA_DIR)) {
-        try {
-            rmSync(USER_DATA_DIR, { recursive: true, force: true });
-        } catch (e) {
-            console.warn(`[WARN] Failed to clean up user data dir: ${e}`);
-        }
-    }
+async function launchExtensionOnce(): Promise<ExtensionContext> {
+    // A fresh profile per launch prevents stale singleton locks and service-worker state.
+    const userDataDir = mkdtempSync(path.join(tmpdir(), 'shieldmonkey-e2e-'));
 
     const isHeadless = process.env.HEADLESS !== 'false';
     const args = [
@@ -47,10 +41,13 @@ export async function launchExtension(): Promise<ExtensionContext> {
         args.push('--headless=new');
     }
 
-    const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    const browserContext = await chromium.launchPersistentContext(userDataDir, {
         headless: false, // Use --headless=new in args instead for extensions
         locale: 'en',
         args,
+    });
+    browserContext.on('close', () => {
+        try { rmSync(userDataDir, { recursive: true, force: true }); } catch { /* OS temp cleanup is the fallback. */ }
     });
 
     browserContext.setDefaultTimeout(30000);
@@ -76,6 +73,15 @@ export async function launchExtension(): Promise<ExtensionContext> {
     } catch (error) {
         await browserContext.close().catch(() => { }); // Ignore close errors
         throw error;
+    }
+}
+
+export async function launchExtension(): Promise<ExtensionContext> {
+    try {
+        return await launchExtensionOnce();
+    } catch (error) {
+        console.warn(`[WARN] Extension launch failed; retrying once: ${error}`);
+        return launchExtensionOnce();
     }
 }
 
