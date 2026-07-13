@@ -1,209 +1,65 @@
-import { useState, useEffect } from 'react';
-import { Settings, FileText, Plus, Trash2, RefreshCw, Sun, Moon, Monitor, Edit } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Edit3, FileCode2, Gauge, Moon, Plus, RefreshCw, Settings, Sun, Monitor } from 'lucide-react';
 import './App.css';
 import { parseMetadata } from '../../utils/metadataParser';
 import { isScriptMatchingUrl } from '../../utils/scriptMatcher';
-import { useI18n } from '../context/I18nContext';
 import { isValidHttpUrl } from '../../utils/urlValidator';
+import { useI18n } from '../context/I18nContext';
 import { bridge } from '../bridge/client';
+import ToggleSwitch from '../options/components/ToggleSwitch';
+import type { ScriptRecord, Theme } from '../../types/script';
 
-interface Script {
-  id: string;
-  name: string;
-  code: string;
-  enabled?: boolean;
-  updateUrl?: string;
-  downloadUrl?: string;
-  sourceUrl?: string;
-}
+export default function App() {
+    const [scripts, setScripts] = useState<ScriptRecord[]>([]);
+    const [currentUrl, setCurrentUrl] = useState('');
+    const [extensionEnabled, setExtensionEnabled] = useState(true);
+    const [theme, setTheme] = useState<Theme>('dark');
+    const [error, setError] = useState<string | null>(null);
+    const { t } = useI18n();
 
-type Theme = 'light' | 'dark' | 'system';
-
-const ToggleSwitch = ({ checked, onChange, disabled }: { checked: boolean, onChange: (checked: boolean) => void, disabled?: boolean }) => (
-  <label className={`switch ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
-    <input type="checkbox" checked={checked} onChange={(e) => !disabled && onChange(e.target.checked)} disabled={disabled} />
-    <span className="slider"></span>
-  </label>
-);
-
-function App() {
-  const [activeScripts, setActiveScripts] = useState<Script[]>([]);
-  const [currentUrl, setCurrentUrl] = useState<string>('');
-  const [extensionEnabled, setExtensionEnabled] = useState(true);
-  const [theme, setTheme] = useState<Theme>('dark');
-  const { t } = useI18n();
-
-  const applyTheme = (newTheme: Theme) => {
-    if (newTheme === 'system') {
-      const isLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-      document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', newTheme);
-    }
-  };
-
-  useEffect(() => {
-    const init = async () => {
-      // Get settings first to apply theme immediately
-      const data = await bridge.call('GET_SETTINGS');
-
-      // Apply theme
-      const storedTheme = (data.theme as Theme) || 'dark';
-      setTheme(storedTheme);
-      applyTheme(storedTheme);
-
-      setExtensionEnabled(data.extensionEnabled !== false);
-
-      // Get current tab URL
-      const url = await bridge.call('GET_CURRENT_TAB_URL');
-
-      // Only allow supported schemes (whitelist)
-      if (!url || !isValidHttpUrl(url)) {
-        return;
-      }
-
-      setCurrentUrl(url);
-
-      const scripts = (data.scripts || []) as Script[];
-
-      // Filter scripts that match current URL (regardless of enabled state, so we can toggle them)
-      const matched = scripts.filter(script => {
-        return isScriptMatchingUrl(script.code, url);
-      });
-
-      setActiveScripts(matched);
+    const applyTheme = (value: Theme) => {
+        const resolved = value === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : value;
+        document.documentElement.setAttribute('data-theme', resolved);
     };
 
-    init();
-  }, []);
+    useEffect(() => {
+        Promise.all([bridge.call('GET_SETTINGS'), bridge.call('GET_CURRENT_TAB_URL')]).then(([settings, url]) => {
+            const nextTheme = settings.theme || 'dark';
+            setTheme(nextTheme); applyTheme(nextTheme);
+            setExtensionEnabled(settings.extensionEnabled !== false);
+            if (url && isValidHttpUrl(url)) {
+                setCurrentUrl(url);
+                setScripts((settings.scripts || []).filter(script => isScriptMatchingUrl(script.code, url)));
+            }
+        }).catch(reason => setError((reason as Error).message));
+    }, []);
 
-  const cycleTheme = () => {
-    const modes: Theme[] = ['light', 'dark', 'system'];
-    const nextIndex = (modes.indexOf(theme) + 1) % modes.length;
-    const nextTheme = modes[nextIndex];
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-    bridge.call('UPDATE_THEME', nextTheme);
-  };
+    const cycleTheme = async () => {
+        const themes: Theme[] = ['light', 'dark', 'system'];
+        const next = themes[(themes.indexOf(theme) + 1) % themes.length];
+        setTheme(next); applyTheme(next); await bridge.call('UPDATE_THEME', next);
+    };
+    const setGlobal = async (enabled: boolean) => {
+        const previous = extensionEnabled; setExtensionEnabled(enabled); setError(null);
+        try { await bridge.call('TOGGLE_GLOBAL', enabled); } catch (reason) { setExtensionEnabled(previous); setError((reason as Error).message); }
+    };
+    const setScript = async (id: string, enabled: boolean) => {
+        const previous = scripts; setScripts(items => items.map(item => item.id === id ? { ...item, enabled } : item));
+        try { await bridge.call('TOGGLE_SCRIPT', { scriptId: id, enabled }); } catch (reason) { setScripts(previous); setError((reason as Error).message); }
+    };
+    const host = currentUrl ? (() => { try { return new URL(currentUrl).hostname; } catch { return currentUrl; } })() : t('unsupportedPage');
 
-  const openDashboard = (create: boolean = false) => {
-    let path = '';
-    if (create) {
-      if (currentUrl) {
-        path = `?match=${encodeURIComponent(currentUrl)}#/options/new`;
-      } else {
-        path = '#/options/new';
-      }
-    }
-    bridge.call('OPEN_DASHBOARD', { path });
-    // window.close() might not work in iframe, or it closes iframe? 
-    // Usually popup closes when focus is lost.
-  };
-
-  const toggleGlobal = async (checked: boolean) => {
-    setExtensionEnabled(checked);
-    // Optimistic update
-    try {
-      await bridge.call('TOGGLE_GLOBAL', checked);
-    } catch (e) {
-      console.error("Failed to toggle global", e);
-    }
-  };
-
-  const toggleScript = async (id: string, checked: boolean) => {
-    setActiveScripts(prev => prev.map(s => s.id === id ? { ...s, enabled: checked } : s));
-    await bridge.call('TOGGLE_SCRIPT', { scriptId: id, enabled: checked });
-  };
-
-  const deleteScript = async (id: string, name: string) => {
-    if (confirm(t('confirmDeleteScript', [name]))) {
-      setActiveScripts(prev => prev.filter(s => s.id !== id));
-      await bridge.call('DELETE_SCRIPT', { scriptId: id });
-    }
-  };
-
-  const getUpdateUrl = (script: Script) => {
-    if (script.updateUrl || script.downloadUrl || script.sourceUrl) return script.updateUrl || script.downloadUrl || script.sourceUrl;
-    const metadata = parseMetadata(script.code);
-    return metadata.updateURL || metadata.downloadURL || metadata.installURL || metadata.source;
-  };
-
-  const checkForUpdate = (script: Script) => {
-    bridge.call('START_UPDATE_FLOW', { scriptId: script.id });
-  };
-
-  const editScript = (id: string) => {
-    // Open directly using the hash routing supported by Options App
-    bridge.call('OPEN_DASHBOARD', { path: `#/options/scripts/${id}` });
-    // window.close();
-  };
-
-  return (
-    <div className="popup-container">
-      <header className="popup-header">
-        <div className="logo-area">
-          <img src="/icons/icon48.png" alt="Logo" className="logo-img" />
-          <h1>{t('appName')}</h1>
-          <div className="global-switch-container">
-            <ToggleSwitch checked={extensionEnabled} onChange={toggleGlobal} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={cycleTheme} className="icon-btn" title={t('themeTooltip', [theme])}>
-            {theme === 'light' && <Sun size={20} />}
-            {theme === 'dark' && <Moon size={20} />}
-            {theme === 'system' && <Monitor size={20} />}
-          </button>
-          <button onClick={() => openDashboard(false)} className="icon-btn" title={t('dashboardTooltip')}>
-            <Settings size={20} />
-          </button>
-        </div>
-      </header>
-      <main className="popup-main">
-        {activeScripts.length > 0 ? (
-          <div className="script-list">
-            <h2 className="list-title">
-              {t('scriptsOnThisPage')}
-            </h2>
-            {activeScripts.map(script => (
-              <div key={script.id} className="script-item-row" style={{ opacity: extensionEnabled ? 1 : 0.6, pointerEvents: extensionEnabled ? 'auto' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-                  <ToggleSwitch checked={!!script.enabled} onChange={(c) => toggleScript(script.id, c)} />
-                  <span className="script-name" style={{ marginLeft: '12px' }} title={script.name}>{script.name}</span>
-                </div>
-                <div className="script-actions">
-                  <button className="icon-btn" title={t('editTooltip')} onClick={() => editScript(script.id)} style={{ padding: '8px' }}>
-                    <Edit size={18} />
-                  </button>
-                  {getUpdateUrl(script) && (
-                    <button className="icon-btn" title={t('checkForUpdatesTooltip')} onClick={() => checkForUpdate(script)} style={{ padding: '8px' }}>
-                      <RefreshCw size={18} />
-                    </button>
-                  )}
-                  <button className="icon-btn" title={t('deleteTooltip')} onClick={() => deleteScript(script.id, script.name)} style={{ padding: '8px', color: '#ef4444' }}>
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <FileText size={48} className="text-gray-400 mb-2" />
-            <p>{t('noScriptsMatching')}</p>
-            {currentUrl && <p className="text-xs text-gray-500 mt-2 truncate max-w-200">{currentUrl}</p>}
-          </div>
-        )
-        }
-
-        <div style={{ padding: '0 16px 16px', marginTop: 'auto' }}>
-          <button className="new-script-btn" onClick={() => openDashboard(true)}>
-            <Plus size={16} /> {t('createNewScript')}
-          </button>
-        </div>
-      </main >
-    </div >
-  );
+    return <div className="popup-console">
+        <header className="popup-console-header"><div className="popup-brand"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>Security Console</span></div></div><div className="popup-header-actions"><button onClick={cycleTheme} aria-label={t('themeTooltip', [theme])}>{theme === 'light' ? <Sun /> : theme === 'dark' ? <Moon /> : <Monitor />}</button><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/scripts' })} aria-label={t('dashboardTooltip')}><Settings /></button></div></header>
+        <section className={`popup-status ${extensionEnabled ? 'active' : 'paused'}`}><div><span className="status-dot" /><div><strong>{extensionEnabled ? t('globalStatusActive') : t('globalStatusPaused')}</strong><span>{extensionEnabled ? t('globalStatusDescActive') : t('globalStatusDescPaused')}</span></div></div><ToggleSwitch checked={extensionEnabled} onChange={setGlobal} ariaLabel={t('extensionLabel')} /></section>
+        {error && <div className="popup-error" role="alert">{error}</div>}
+        <div className="page-context"><Gauge size={15} /><span>{host}</span><strong>{scripts.length}</strong></div>
+        <main className="popup-script-list">
+            {scripts.length ? scripts.map(script => {
+                const metadata = parseMetadata(script.code); const canUpdate = Boolean(script.sourceUrl || metadata.updateURL || metadata.downloadURL);
+                return <article className="popup-script" key={script.id}><div className="popup-script-main"><ToggleSwitch checked={script.enabled !== false} onChange={enabled => setScript(script.id, enabled)} disabled={!extensionEnabled} ariaLabel={t('toggleScript', [script.name])} /><div><strong title={script.name}>{script.name}</strong><span>{metadata.namespace || `${metadata.match.length} URL`}</span></div></div><div className="popup-script-actions"><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: `/options/scripts/${script.id}` })} aria-label={t('editTooltip')}><Edit3 /></button>{canUpdate && <button onClick={() => bridge.call('START_UPDATE_FLOW', { scriptId: script.id })} aria-label={t('checkForUpdatesTooltip')}><RefreshCw /></button>}</div></article>;
+            }) : <div className="popup-empty"><FileCode2 /><strong>{t('noScriptsMatching')}</strong><span>{host}</span></div>}
+        </main>
+        <footer><button className="popup-create new-script-btn" onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/new', query: currentUrl ? { match: currentUrl } : undefined })}><Plus />{t('createNewScript')}</button></footer>
+    </div>;
 }
-
-export default App;

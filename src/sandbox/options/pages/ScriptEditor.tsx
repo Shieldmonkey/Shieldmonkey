@@ -1,16 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import CodeMirror from '@uiw/react-codemirror';
 
 import { javascript, scopeCompletionSource } from '@codemirror/lang-javascript';
 import { userScriptMetadataCompletion } from '../codemirrorConfig';
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson, Wrench, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Info, Shield, Globe, Link as LinkIcon, X, Loader, Check, FileJson, Wrench, Undo2, Redo2, AlertTriangle } from 'lucide-react';
 import { undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
-import * as prettier from "prettier/standalone";
-import * as parserBabel from "prettier/plugins/babel";
-import * as parserEstree from "prettier/plugins/estree";
 import { useApp } from '../context/useApp';
 import { useModal } from '../context/useModal';
 import { parseMetadata } from '../../../utils/metadataParser';
@@ -22,6 +19,7 @@ const ScriptEditor = () => {
     const { id } = useParams<{ id: string }>();
     const isNew = !id || id === 'new';
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { scripts, saveScript, deleteScript } = useApp();
     const { showModal: showGenericModal } = useModal();
     const { t } = useI18n();
@@ -42,6 +40,7 @@ const ScriptEditor = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
+    const [formatError, setFormatError] = useState<string | null>(null);
     const toolbarRef = useRef<HTMLDivElement>(null);
 
     // Close tools when clicking outside
@@ -73,8 +72,7 @@ const ScriptEditor = () => {
         if (!initializedRef.current) {
             if (isNew) {
                 // Initialize new script
-                const params = new URLSearchParams(window.location.search);
-                const matchUrl = params.get('match') || 'http://*/*';
+                const matchUrl = searchParams.get('match') || 'http://*/*';
 
                 const template = `// ==UserScript==
 // @name        New Script
@@ -101,7 +99,7 @@ const ScriptEditor = () => {
                 initializedRef.current = true;
             }
         }
-    }, [scriptFromContext, isNew]);
+    }, [scriptFromContext, isNew, searchParams]);
 
     // For existing scripts, if we change IDs (renaming? no), or just switching scripts
     useEffect(() => {
@@ -193,7 +191,13 @@ const ScriptEditor = () => {
 
     const handleFormat = useCallback(async () => {
         try {
-            const formatted = await prettier.format(code, {
+            setFormatError(null);
+            const [{ format }, parserBabel, parserEstree] = await Promise.all([
+                import('prettier/standalone'),
+                import('prettier/plugins/babel'),
+                import('prettier/plugins/estree')
+            ]);
+            const formatted = await format(code, {
                 parser: "babel",
                 plugins: [parserBabel, parserEstree],
                 semi: true,
@@ -204,7 +208,7 @@ const ScriptEditor = () => {
             setCode(formatted);
         } catch (e) {
             console.error("Format failed", e);
-            // Optionally show toast/error
+            setFormatError((e as Error).message || 'Formatting failed');
         }
     }, [code]);
 
@@ -633,6 +637,14 @@ const ScriptEditor = () => {
                         </div>
                     </div>
                 </header>
+
+                {formatError && (
+                    <div className="inline-notice inline-notice-error" role="alert">
+                        <AlertTriangle size={16} />
+                        <span>{formatError}</span>
+                        <button className="icon-btn" onClick={() => setFormatError(null)} aria-label="Dismiss formatting error"><X size={16} /></button>
+                    </div>
+                )}
 
                 <div className="monaco-wrapper" style={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
 

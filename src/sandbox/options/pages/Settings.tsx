@@ -171,7 +171,7 @@ const Settings = () => {
             // We need to confirm first. But we don't know the folder name if we don't fetch it first.
             // We fetched backupDirName in useEffect.
             if (!backupDirName) {
-                alert(t('noDirSelected'));
+                showModal('warning', t('sectionRestore'), t('noDirSelected'));
                 return;
             }
 

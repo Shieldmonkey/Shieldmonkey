@@ -1,59 +1,77 @@
 :root {
-  --bg-color: #202020;
-  --text-primary: #e6e6e6;
-  --text-secondary: #999999;
-  --accent-color: #22c55e;
-  --accent-hover: #16a34a;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --surface-bg: #262626;
-  --modal-bg: #262626;
-  --card-bg: #2a2a2a;
-  --hover-bg: #3d3d3d;
-  --success-color: #22c55e;
-  
+  --bg-canvas: #0b0f0d;
+  --bg-subtle: #111713;
+  --bg-surface: #161d19;
+  --bg-elevated: #1c2520;
+  --text-primary: #f2f7f4;
+  --text-secondary: #a9b8af;
+  --text-muted: #7f9086;
+  --accent-color: #43e07b;
+  --accent-hover: #6bea97;
+  --accent-contrast: #06230f;
+  --border-color: #2b3931;
+  --border-strong: #42554a;
+  --danger: #ff6b6b;
+  --warning: #f8c15c;
+  --info: #69a9ff;
+  --success-color: #43e07b;
+  --shadow-lg: 0 24px 70px rgba(0,0,0,.45);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --sidebar-bg: #0d120f;
+  --content-bg: var(--bg-canvas);
+  --surface-bg: var(--bg-surface);
+  --modal-bg: var(--bg-elevated);
+  --bg-color: var(--bg-canvas);
+  --hover-bg: #233027;
+  --primary-color: var(--accent-color);
   color-scheme: dark;
-
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-  line-height: 1.6;
-  font-weight: 400;
-
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 :root[data-theme="light"] {
-  --bg-color: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --accent-color: #22c55e;
-  --accent-hover: #16a34a;
-  --border-color: #e2e8f0;
-  --surface-bg: #ffffff;
-  --modal-bg: #ffffff;
-  --card-bg: #f8fafc;
-  --hover-bg: #f1f5f9;
-  --success-color: #22c55e;
-
+  --bg-canvas: #f4f8f5;
+  --bg-subtle: #edf3ef;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #102118;
+  --text-secondary: #425b4d;
+  --text-muted: #657b6e;
+  --accent-color: #087a36;
+  --accent-hover: #05602a;
+  --accent-contrast: #ffffff;
+  --border-color: #ccdad1;
+  --border-strong: #9db2a5;
+  --danger: #b4232d;
+  --warning: #8a5600;
+  --info: #145daf;
+  --success-color: #087a36;
+  --sidebar-bg: #eaf1ec;
+  --content-bg: var(--bg-canvas);
+  --surface-bg: var(--bg-surface);
+  --modal-bg: var(--bg-elevated);
+  --bg-color: var(--bg-canvas);
+  --hover-bg: #deebe2;
   color-scheme: light;
 }
 
-*, *:before, *:after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden; /* Prevent body scroll, let containers handle it */
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; }
+body { overflow: hidden; background: var(--bg-canvas); color: var(--text-primary); }
+button, input, select, textarea { font: inherit; }
+button, a, input, select { outline: none; }
+:focus-visible { outline: 3px solid var(--accent-color) !important; outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.route-loading, .page-state { min-height: 100%; display: grid; place-content: center; gap: 12px; color: var(--text-secondary); }
+.ui-spinner { width: 24px; height: 24px; border: 2px solid var(--border-color); border-top-color: var(--accent-color); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
