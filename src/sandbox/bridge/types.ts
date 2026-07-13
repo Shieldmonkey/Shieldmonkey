@@ -124,3 +124,8 @@ export interface StorageChangeMessage {
     changes: { [key: string]: any }; // simplified storage change
     areaName: string;
 }
+
+export interface SandboxReadyMessage {
+    type: 'SANDBOX_READY';
+    route: 'popup';
+}

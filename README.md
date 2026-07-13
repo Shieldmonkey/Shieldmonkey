@@ -71,6 +71,10 @@ We prioritize supply chain security by leveraging `pnpm` configuration and stric
 - Persisted `ScriptRecord` values and editable `ScriptDraft` values share domain types in `src/types`. Script state exposes explicit loading, ready, and error states and rolls optimistic changes back when a bridge operation fails.
 - The Security Console UI uses shared Vanilla CSS tokens and accessible Radix primitives. Desktop and compact navigation switch at 900px.
 
+### Evergreen Utility design
+
+Shieldmonkey follows an evergreen utility design: the clarity of long-lived desktop administration software without nostalgic decoration. Flat surfaces, explicit one-pixel boundaries, compact controls, system typography, and visible text labels take priority over gradients, glow, glass effects, oversized headings, and ornamental motion. Green is reserved for the brand, active state, selection, and primary actions.
+
 ## Installation and Build
 
 1. Clone the repository

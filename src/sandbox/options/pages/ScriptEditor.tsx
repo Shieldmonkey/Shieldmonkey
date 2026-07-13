@@ -404,7 +404,7 @@ const ScriptEditor = () => {
                             className="btn-secondary"
                             onClick={handleDelete}
                             style={{
-                                color: '#ef4444',
+                                color: 'var(--danger)',
                                 borderColor: 'var(--border-color)',
                                 width: '100%',
                                 justifyContent: 'center',
@@ -651,6 +651,7 @@ const ScriptEditor = () => {
                     {/* CodeMirror Editor */}
                     <div style={{ height: '100%', overflow: 'hidden', fontSize: '14px' }}>
                         <CodeMirror
+                            aria-label={t('scriptCodeEditor')}
                             onCreateEditor={(view) => {
                                 viewRef.current = view;
                             }}
@@ -658,6 +659,7 @@ const ScriptEditor = () => {
                             height="100%"
                             theme={cmTheme}
                             extensions={[
+                                EditorView.contentAttributes.of({ 'aria-label': t('scriptCodeEditor') }),
                                 javascript({ jsx: true }),
                                 javascript().language.data.of({
                                     autocomplete: userScriptMetadataCompletion

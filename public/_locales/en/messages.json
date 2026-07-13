@@ -264,5 +264,12 @@
   "updatedHeader": { "message": "Updated" },
   "bulkActions": { "message": "Bulk script actions" },
   "globalPausedBanner": { "message": "Global execution is paused. Scripts remain available for review." },
-  "unsupportedPage": { "message": "This page cannot run user scripts" }
+  "unsupportedPage": { "message": "This page cannot run user scripts" },
+  "toggleExtensionSetting": { "message": "Enable or disable Shieldmonkey" },
+  "toggleAutoBackup": { "message": "Enable automatic backup" },
+  "selectRestoreFile": { "message": "Select a Shieldmonkey backup file" },
+  "popupLoadFailed": { "message": "Shieldmonkey could not open." },
+  "retry": { "message": "Retry" },
+  "utilityLabel": { "message": "User Script Manager" },
+  "scriptCodeEditor": { "message": "User script code editor" }
 }

@@ -71,6 +71,10 @@ pnpmの設定 (`pnpm-workspace.yaml`) と厳格なバージョン管理により
 - 永続化する`ScriptRecord`と編集中の`ScriptDraft`は`src/types`の共通ドメイン型を利用します。状態はloading／ready／errorを明示し、楽観的更新に失敗した場合はロールバックします。
 - Security Console UIはVanilla CSSの共通トークンとアクセシブルなRadix primitiveを使用し、900pxを境にデスクトップ／コンパクトナビゲーションを切り替えます。
 
+### Evergreen Utilityデザイン
+
+Shieldmonkeyは、懐古的な装飾ではなく、長年使われるデスクトップ管理ソフトの明快さを基準とする「Evergreen Utility」を採用しています。平面、明確な1px境界、コンパクトな操作要素、システム書体、文字ラベルを優先し、グラデーション、光彩、ガラス表現、巨大見出し、装飾的な動きを避けます。緑はブランド、稼働状態、選択、主要操作に限定して使用します。
+
 ## インストールとビルド
 
 1. リポジトリのクローン

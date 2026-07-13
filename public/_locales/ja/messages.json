@@ -264,5 +264,12 @@
   "updatedHeader": { "message": "更新日" },
   "bulkActions": { "message": "スクリプトの一括操作" },
   "globalPausedBanner": { "message": "全体の実行は一時停止中です。スクリプトの確認と編集は引き続き行えます。" },
-  "unsupportedPage": { "message": "このページではユーザースクリプトを実行できません" }
+  "unsupportedPage": { "message": "このページではユーザースクリプトを実行できません" },
+  "toggleExtensionSetting": { "message": "Shieldmonkey全体の有効・無効を切り替え" },
+  "toggleAutoBackup": { "message": "自動バックアップを有効化" },
+  "selectRestoreFile": { "message": "Shieldmonkeyのバックアップファイルを選択" },
+  "popupLoadFailed": { "message": "Shieldmonkeyを開けませんでした。" },
+  "retry": { "message": "再試行" },
+  "utilityLabel": { "message": "ユーザースクリプト管理" },
+  "scriptCodeEditor": { "message": "ユーザースクリプトのコードエディター" }
 }

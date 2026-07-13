@@ -17,6 +17,18 @@ describe('accessible controls', () => {
         expect(onChange).toHaveBeenCalledWith(true);
     });
 
+    test('switch supports keyboard input and exposes disabled state', async () => {
+        const onChange = vi.fn();
+        const { rerender } = render(<ToggleSwitch checked={false} onChange={onChange} ariaLabel="Enable automatic backup" />);
+        const control = screen.getByRole('switch', { name: 'Enable automatic backup' });
+        control.focus();
+        await userEvent.keyboard(' ');
+        expect(onChange).toHaveBeenCalledWith(true);
+
+        rerender(<ToggleSwitch checked={false} onChange={onChange} ariaLabel="Enable automatic backup" disabled />);
+        expect(control.hasAttribute('disabled')).toBe(true);
+    });
+
     test('confirmation dialog supports keyboard cancellation and focus return', () => {
         const onClose = vi.fn();
         const trigger = document.createElement('button');

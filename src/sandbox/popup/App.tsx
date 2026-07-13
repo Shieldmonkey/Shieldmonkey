@@ -15,6 +15,7 @@ export default function App() {
     const [extensionEnabled, setExtensionEnabled] = useState(true);
     const [theme, setTheme] = useState<Theme>('dark');
     const [error, setError] = useState<string | null>(null);
+    const [initialized, setInitialized] = useState(false);
     const { t } = useI18n();
 
     const applyTheme = (value: Theme) => {
@@ -31,8 +32,12 @@ export default function App() {
                 setCurrentUrl(url);
                 setScripts((settings.scripts || []).filter(script => isScriptMatchingUrl(script.code, url)));
             }
-        }).catch(reason => setError((reason as Error).message));
+        }).catch(reason => setError((reason as Error).message)).finally(() => setInitialized(true));
     }, []);
+
+    useEffect(() => {
+        if (initialized) window.parent.postMessage({ type: 'SANDBOX_READY', route: 'popup' }, '*');
+    }, [initialized]);
 
     const cycleTheme = async () => {
         const themes: Theme[] = ['light', 'dark', 'system'];
@@ -49,8 +54,10 @@ export default function App() {
     };
     const host = currentUrl ? (() => { try { return new URL(currentUrl).hostname; } catch { return currentUrl; } })() : t('unsupportedPage');
 
+    if (!initialized) return null;
+
     return <div className="popup-console">
-        <header className="popup-console-header"><div className="popup-brand"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>Security Console</span></div></div><div className="popup-header-actions"><button onClick={cycleTheme} aria-label={t('themeTooltip', [theme])}>{theme === 'light' ? <Sun /> : theme === 'dark' ? <Moon /> : <Monitor />}</button><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/scripts' })} aria-label={t('dashboardTooltip')}><Settings /></button></div></header>
+        <header className="popup-console-header"><div className="popup-brand"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>{t('utilityLabel')}</span></div></div><div className="popup-header-actions"><button onClick={cycleTheme} aria-label={t('themeTooltip', [theme])}>{theme === 'light' ? <Sun /> : theme === 'dark' ? <Moon /> : <Monitor />}</button><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/scripts' })} aria-label={t('dashboardTooltip')}><Settings /></button></div></header>
         <section className={`popup-status ${extensionEnabled ? 'active' : 'paused'}`}><div><span className="status-dot" /><div><strong>{extensionEnabled ? t('globalStatusActive') : t('globalStatusPaused')}</strong><span>{extensionEnabled ? t('globalStatusDescActive') : t('globalStatusDescPaused')}</span></div></div><ToggleSwitch checked={extensionEnabled} onChange={setGlobal} ariaLabel={t('extensionLabel')} /></section>
         {error && <div className="popup-error" role="alert">{error}</div>}
         <div className="page-context"><Gauge size={15} /><span>{host}</span><strong>{scripts.length}</strong></div>

@@ -37,7 +37,7 @@ const PermissionHelp = () => {
     };
 
     return (
-        <div style={{
+        <div className="permission-help-page" style={{
             maxWidth: '600px',
             width: '90%',
             padding: '2rem',
@@ -55,7 +55,7 @@ const PermissionHelp = () => {
                 {t('permissionHelpDesc')}
             </p>
 
-            <div style={{
+            <div className="permission-instructions" style={{
                 textAlign: 'left',
                 backgroundColor: 'rgba(0,0,0,0.2)',
                 padding: '1.5rem',

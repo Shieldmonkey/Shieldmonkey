@@ -21,7 +21,7 @@ export default function Layout() {
 
     return <div className="security-shell">
         <aside className="security-sidebar">
-            <div className="brand-lockup"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>Security Console</span></div></div>
+            <div className="brand-lockup"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>{t('utilityLabel')}</span></div></div>
             <nav className="security-nav" aria-label="Main navigation">{links.map(({ to, icon: Icon, key }) => <NavLink key={to} to={to} className={({ isActive }) => isActive ? 'active' : ''}><Icon size={18} /><span>{t(key)}</span></NavLink>)}</nav>
             <div className="sidebar-status"><div><span className={`status-dot ${extensionEnabled ? 'active' : ''}`} /><div><strong>{extensionEnabled ? t('globalStatusActive') : t('globalStatusPaused')}</strong><span>v{version}</span></div></div><ToggleSwitch checked={extensionEnabled} onChange={toggleExtension} ariaLabel={t('extensionLabel')} /></div>
         </aside>

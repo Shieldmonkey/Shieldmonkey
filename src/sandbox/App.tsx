@@ -44,13 +44,11 @@ function HashSync() {
 function SandboxApp() {
     return (
         <HashRouter>
-            <Suspense fallback={<div className="route-loading" role="status">Loading Shieldmonkey…</div>}>
-                <Routes>
-                    <Route path="/popup/*" element={<PopupApp />} />
-                    <Route path="/options/*" element={<OptionsApp />} />
-                    <Route path="*" element={<RedirectToOptions />} />
-                </Routes>
-            </Suspense>
+            <Routes>
+                <Route path="/popup/*" element={<Suspense fallback={null}><PopupApp /></Suspense>} />
+                <Route path="/options/*" element={<Suspense fallback={<div className="route-loading" role="status">Loading Shieldmonkey…</div>}><OptionsApp /></Suspense>} />
+                <Route path="*" element={<RedirectToOptions />} />
+            </Routes>
             <HashSync />
         </HashRouter>
     );
