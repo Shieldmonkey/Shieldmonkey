@@ -66,3 +66,14 @@ test('Create new script opens options page with editor', async () => {
     const notFound = newPageFrame.locator('text=Script not found');
     expect(await notFound.isVisible()).toBe(false);
 });
+
+test('Popup does not eagerly load editor tooling', async () => {
+    const loadedScripts: string[] = [];
+    page.on('response', response => {
+        if (response.request().resourceType() === 'script') loadedScripts.push(response.url());
+    });
+    await page.goto(getExtensionUrl(extensionId, '/src/popup/index.html'));
+    const frame = page.frameLocator('iframe');
+    await frame.locator('.popup-console').waitFor();
+    expect(loadedScripts.some(url => /ScriptEditor|standalone|babel-|estree-|dark-/i.test(url))).toBe(false);
+});
