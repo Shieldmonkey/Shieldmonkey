@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import PopupApp from './popup/App';
-import OptionsApp from './options/App';
+const PopupApp = lazy(() => import('./popup/App'));
+const OptionsApp = lazy(() => import('./options/App'));
 
 // Redirect logic for legacy paths (e.g. #/settings -> #/options/settings)
 function RedirectToOptions() {
@@ -13,21 +13,22 @@ function RedirectToOptions() {
 // Removed HashSync as we simplify the routing approach to avoid the location API limits
 
 function HashSync() {
-    const { pathname } = useLocation();
+    const { pathname, search } = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fullPath = '#' + pathname;
+        const fullPath = `#${pathname}${search}`;
         window.parent.postMessage({ type: 'URL_CHANGED', hash: fullPath }, '*');
-    }, [pathname]);
+    }, [pathname, search]);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (event.source !== window.parent) return;
             if (event.data && event.data.type === 'NAVIGATE' && event.data.path) {
                 const targetHash = event.data.path;
                 const targetPath = targetHash.startsWith('#') ? targetHash.slice(1) : targetHash;
 
-                if (pathname !== targetPath) {
+                if (`${pathname}${search}` !== targetPath) {
                     // Use replace to prevent blowing up the history stack
                     navigate(targetPath, { replace: true });
                 }
@@ -35,7 +36,7 @@ function HashSync() {
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [navigate, pathname]);
+    }, [navigate, pathname, search]);
 
     return null;
 }
@@ -43,11 +44,13 @@ function HashSync() {
 function SandboxApp() {
     return (
         <HashRouter>
-            <Routes>
-                <Route path="/popup/*" element={<PopupApp />} />
-                <Route path="/options/*" element={<OptionsApp />} />
-                <Route path="*" element={<RedirectToOptions />} />
-            </Routes>
+            <Suspense fallback={<div className="route-loading" role="status">Loading Shieldmonkey…</div>}>
+                <Routes>
+                    <Route path="/popup/*" element={<PopupApp />} />
+                    <Route path="/options/*" element={<OptionsApp />} />
+                    <Route path="*" element={<RedirectToOptions />} />
+                </Routes>
+            </Suspense>
             <HashSync />
         </HashRouter>
     );
