@@ -30,6 +30,10 @@ test('script console switches between cards and table at supported widths', asyn
         const frame = page.frameLocator('iframe');
         await expect.poll(() => frame.locator('.script-card-list').isVisible()).toBe(true);
         expect(await frame.locator('.script-table-shell').count()).toBe(0);
+        expect(await frame.locator('.security-sidebar').isVisible()).toBe(false);
+
+        const workspaceWidth = await frame.locator('.security-workspace').evaluate((element) => element.getBoundingClientRect().width);
+        expect(workspaceWidth).toBeGreaterThanOrEqual(viewport.width - 1);
     }
 
     await page.setViewportSize({ width: 1440, height: 1000 });

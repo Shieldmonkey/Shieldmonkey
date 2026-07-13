@@ -941,7 +941,10 @@ button {
 .match-list { border-radius: 2px !important; }
 
 @media (max-width: 900px) {
-    .mobile-console-header { min-height: 52px; }.mobile-bottom-nav { height: 60px; }.security-shell { padding-bottom: 60px; }
+    .security-shell { grid-template-columns: minmax(0, 1fr); padding-bottom: 60px; }
+    .security-sidebar { display: none; }
+    .security-workspace, .security-content { width: 100%; }
+    .mobile-console-header { min-height: 52px; }.mobile-bottom-nav { height: 60px; }
     .console-page, .security-content > .content-scroll { padding: 16px 10px 72px; }
     .script-card-list { gap: 6px; }.script-card { padding: 10px; }.bulk-action-bar { bottom: 66px; }
 }
