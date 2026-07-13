@@ -259,3 +259,30 @@ export async function handleDeleteScript(scriptId: string) {
     await unregisterUserScripts({ ids: [scriptId] });
     await updateActiveTabBadge();
 }
+
+export async function handleBulkSetScriptEnabled(scriptIds: string[], enabled: boolean) {
+    if (!await isUserScriptsAvailable()) throw new Error('API unavailable');
+    const ids = new Set(scriptIds);
+    const data = await chrome.storage.local.get('scripts');
+    const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
+    const matched = scripts.filter(script => ids.has(script.id));
+    if (matched.length !== ids.size) throw new Error('One or more scripts were not found');
+    await chrome.storage.local.set({
+        scripts: scripts.map(script => ids.has(script.id) ? { ...script, enabled } : script)
+    });
+    await reloadAllScripts();
+}
+
+export async function handleBulkDeleteScripts(scriptIds: string[]) {
+    if (!await isUserScriptsAvailable()) throw new Error('API unavailable');
+    const ids = new Set(scriptIds);
+    const data = await chrome.storage.local.get('scripts');
+    const scripts: Script[] = Array.isArray(data.scripts) ? data.scripts : [];
+    await chrome.storage.local.set({ scripts: scripts.filter(script => !ids.has(script.id)) });
+    try {
+        await unregisterUserScripts({ ids: scriptIds });
+    } catch {
+        // Missing registrations are already in the desired state.
+    }
+    await updateActiveTabBadge();
+}

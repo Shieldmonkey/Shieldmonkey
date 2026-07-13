@@ -1,8 +1,5 @@
 import { initBridge } from '../host/bridge';
 
-// Initialize bridge
-initBridge();
-
 // Set body styles
 document.body.style.margin = '0';
 document.body.style.padding = '0';
@@ -26,3 +23,4 @@ iframe.style.height = '100%';
 iframe.style.border = 'none';
 iframe.style.display = 'block'; // Prevent inline vertical-align scrollbar
 document.body.appendChild(iframe);
+initBridge(iframe);

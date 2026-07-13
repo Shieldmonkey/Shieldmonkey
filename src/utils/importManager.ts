@@ -1,17 +1,6 @@
 
 import { parseMetadata } from './metadataParser';
-
-// Duplicated from App.tsx/backupManager.ts to avoid circular deps if they exist, 
-// or simpler to just redefine for clean utility.
-interface Script {
-    id: string;
-    name: string;
-    code: string;
-    enabled: boolean;
-    lastSavedCode: string;
-    grantedPermissions: string[];
-    installDate: number;
-}
+import type { ScriptRecord as Script } from '../types/script';
 
 export async function processScriptContent(content: string): Promise<Script> {
     const metadata = parseMetadata(content);
@@ -20,7 +9,6 @@ export async function processScriptContent(content: string): Promise<Script> {
         name: metadata.name || 'Imported Script',
         code: content,
         enabled: false,
-        lastSavedCode: content,
         grantedPermissions: metadata.grant || [],
         installDate: Date.now()
     };
