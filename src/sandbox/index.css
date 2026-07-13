@@ -25,6 +25,7 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --font-mono-retro: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
   --sidebar-bg: #202320;
   --content-bg: var(--bg-canvas);
   --surface-bg: var(--bg-surface);
