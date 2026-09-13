@@ -164,15 +164,6 @@ body {
         to { opacity: 1; }
     }
 
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-
-    .icon-spin {
-        animation: spin 1s linear infinite;
-    }
-
     /* Ensure mobile toggle buttons are visible and flex */
     button.mobile-toggle-btn.icon-btn,
     .mobile-toggle-btn {
@@ -408,36 +399,29 @@ th.col-actions {
 }
 
 .editor-header {
-    height: 60px;
+    min-height: 54px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 16px;
     padding: 0 24px;
     background-color: var(--bg-color);
     flex-shrink: 0;
 }
 
-.script-name-input {
-    background: transparent;
-    border: none;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    outline: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.2s;
-    margin-left: 12px;
-}
-
-.script-name-input:hover, .script-name-input:focus {
-    background-color: rgba(255, 255, 255, 0.05);
+.editor-header-nav {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
 }
 
 .editor-actions {
     display: flex;
+    align-items: center;
     gap: 12px;
+    flex: 0 0 auto;
+    margin-left: auto;
 }
 
 
@@ -696,13 +680,6 @@ th.col-actions {
         min-width: 120px; /* Ensure buttons don't get too squashed before wrapping */
     }
 
-    /* Hide script name/namespace in header on mobile as it's moved to sidebar info */
-    .script-info-header {
-        display: none !important;
-    }
-
-
-
     /* Fix Sidebar Info Grid for Mobile */
     .script-editor-sidebar .content-scroll div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important; /* Stack vertically */
@@ -875,7 +852,7 @@ button {
     background: var(--bg-subtle); font: 600 10px/1.2 var(--font-mono-retro); box-shadow: none;
 }
 .ui-card, .settings-card { border: 1px solid var(--border-color) !important; border-radius: 2px !important; background: var(--bg-surface) !important; box-shadow: none !important; }
-.ui-input, .ui-field input, .ui-field select, .script-toolbar select, .search-field, .script-name-input {
+.ui-input, .ui-field input, .ui-field select, .script-toolbar select, .search-field {
     min-height: 34px; padding: 5px 8px; border: 1px solid var(--border-color); border-radius: 2px;
     color: var(--text-primary); background: var(--bg-surface); box-shadow: none;
 }
@@ -884,20 +861,19 @@ button {
 .inline-notice { padding: 8px 10px; border-radius: 2px; background: var(--bg-surface); }
 .inline-notice-error { border-color: var(--danger); }.inline-notice-warning { border-color: var(--warning); }.inline-notice-success { border-color: var(--success-color); }
 
-.switch { position: relative; width: 52px; height: 24px; display: inline-block; flex: 0 0 52px; cursor: pointer; }
+.switch { position: relative; width: 40px; height: 22px; display: inline-block; flex: 0 0 40px; cursor: pointer; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.switch .slider { position: absolute; inset: 0; display: grid; place-items: center; border: 1px solid var(--border-strong); border-radius: 2px; color: var(--text-secondary); background: var(--bg-subtle); }
-.switch .slider::before { display: none; }
-.switch input:checked + .slider { color: var(--accent-contrast); border-color: var(--accent-color); background: var(--accent-color); }
+.switch .slider { position: absolute; inset: 0; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--bg-subtle); }
+.switch .slider::before { position: absolute; top: 2px; left: 2px; display: block; width: 16px; height: 16px; content: ''; border-radius: 50%; background: var(--text-primary); transform: translateX(0); }
+.switch input:checked + .slider { border-color: var(--accent-color); background: var(--accent-color); }
+.switch input:checked + .slider::before { transform: translateX(18px); }
 .switch input:disabled + .slider { opacity: .55; cursor: not-allowed; }
-.switch-state { font: 700 9px/1 var(--font-mono-retro); letter-spacing: .06em; }
-.sidebar-status .switch .switch-state { color: inherit; }
 .switch:has(input:focus-visible) .slider { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
 .security-shell { grid-template-columns: 220px minmax(0,1fr); background: var(--bg-canvas); }
 .security-sidebar { padding: 10px 8px; border-color: var(--border-color); background: var(--bg-subtle); }
 .brand-lockup { height: 44px; gap: 8px; padding: 0 6px; }.brand-lockup img { width: 30px; height: 30px; }
-.brand-lockup strong { letter-spacing: 0; font-size: 13px; }.brand-lockup span { color: var(--text-muted); font-family: var(--font-mono-retro); font-size: 9px; font-weight: 600; line-height: 1.2; text-transform: uppercase; letter-spacing: .04em; }
+.brand-lockup strong { letter-spacing: 0; font-size: 13px; }
 .security-nav { margin-top: 16px; gap: 2px; border-top: 1px solid var(--border-color); padding-top: 8px; }
 .security-nav a, .mobile-bottom-nav a { padding: 8px; border: 1px solid transparent; border-radius: 2px; font-family: var(--font-mono-retro); font-size: 12px; text-decoration: none; }
 .security-nav a:hover { border-color: var(--border-color); }.security-nav a.active { color: var(--text-primary); border-color: var(--border-strong); background: var(--bg-surface); box-shadow: inset 3px 0 var(--accent-color); }
@@ -931,6 +907,9 @@ button {
 
 .app-container, .install-container { background: var(--bg-canvas); }
 .editor-header, .install-header { min-height: 54px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle); box-shadow: none; }
+.editor-save-button { width: 112px; }
+.editor-danger-zone { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); }
+.editor-danger-zone .btn-secondary { width: 100%; justify-content: center; padding: 10px; color: var(--danger); border-color: var(--border-color); }
 .sidebar, .install-sidebar { border-right: 1px solid var(--border-color); background: var(--bg-surface); }
 .sidebar-header, .install-info-section { border-color: var(--border-color); }
 .monaco-wrapper, .codemirror-wrapper { border-radius: 0 !important; box-shadow: none !important; }

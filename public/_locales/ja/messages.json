@@ -157,6 +157,7 @@
   "editorHeaderPermissions": { "message": "権限" },
   "editorHeaderMatches": { "message": "マッチ" },
   "editorBtnSave": { "message": "保存" },
+  "editorBtnSaved": { "message": "保存済み" },
   "editorBtnSaving": { "message": "保存中..." },
   "editorBtnDelete": { "message": "スクリプトを削除" },
   "editorConfirmDeleteTitle": { "message": "スクリプトの削除" },

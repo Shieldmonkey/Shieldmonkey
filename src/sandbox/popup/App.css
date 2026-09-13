@@ -2,9 +2,7 @@
 .popup-console-header { min-height: 58px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle); }
 .popup-brand { display: flex; align-items: center; gap: 8px; }
 .popup-brand img { width: 30px; height: 30px; image-rendering: auto; }
-.popup-brand div { display: grid; gap: 1px; }
 .popup-brand strong { font-size: 14px; letter-spacing: 0; }
-.popup-brand span { color: var(--text-muted); font-family: var(--font-mono-retro); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .popup-header-actions, .popup-script-actions { display: flex; gap: 4px; }
 .popup-header-actions button, .popup-script-actions button { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border: 1px solid transparent; border-radius: 2px; color: var(--text-secondary); background: transparent; cursor: pointer; }
 .popup-header-actions button:hover, .popup-script-actions button:hover { border-color: var(--border-color); background: var(--bg-surface); color: var(--text-primary); }
@@ -14,7 +12,7 @@
 .popup-status > div { display: flex; align-items: center; gap: 8px; }
 .popup-status > div > div { display: grid; gap: 1px; }
 .popup-status strong { font-family: var(--font-mono-retro); font-size: 12px; font-variant-numeric: tabular-nums; }
-.popup-status span:not(.status-dot):not(.slider):not(.switch-state) { max-width: 250px; font-size: 10px; color: var(--text-muted); }
+.popup-status span:not(.status-dot):not(.slider) { max-width: 250px; font-size: 10px; color: var(--text-muted); }
 .status-dot { width: 8px; height: 8px; border: 1px solid var(--border-strong); border-radius: 0; background: var(--warning); }
 .active .status-dot, .status-dot.active { background: var(--accent-color); }
 .popup-error { margin: 0 10px 8px; padding: 8px 10px; border: 1px solid var(--danger); border-radius: 2px; color: var(--danger); background: var(--bg-surface); font-size: 11px; }

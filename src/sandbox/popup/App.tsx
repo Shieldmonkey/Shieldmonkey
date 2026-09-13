@@ -57,7 +57,7 @@ export default function App() {
     if (!initialized) return null;
 
     return <div className="popup-console">
-        <header className="popup-console-header"><div className="popup-brand"><img src="/icons/icon48.png" alt="" /><div><strong>{t('appName')}</strong><span>{t('utilityLabel')}</span></div></div><div className="popup-header-actions"><button onClick={cycleTheme} aria-label={t('themeTooltip', [theme])}>{theme === 'light' ? <Sun /> : theme === 'dark' ? <Moon /> : <Monitor />}</button><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/scripts' })} aria-label={t('dashboardTooltip')}><Settings /></button></div></header>
+        <header className="popup-console-header"><div className="popup-brand"><img src="/icons/icon48.png" alt="" /><strong>{t('appName')}</strong></div><div className="popup-header-actions"><button onClick={cycleTheme} aria-label={t('themeTooltip', [theme])}>{theme === 'light' ? <Sun /> : theme === 'dark' ? <Moon /> : <Monitor />}</button><button onClick={() => bridge.call('OPEN_DASHBOARD', { path: '/options/scripts' })} aria-label={t('dashboardTooltip')}><Settings /></button></div></header>
         <section className={`popup-status ${extensionEnabled ? 'active' : 'paused'}`}><div><span className="status-dot" /><div><strong>{extensionEnabled ? t('globalStatusActive') : t('globalStatusPaused')}</strong><span>{extensionEnabled ? t('globalStatusDescActive') : t('globalStatusDescPaused')}</span></div></div><ToggleSwitch checked={extensionEnabled} onChange={setGlobal} ariaLabel={t('extensionLabel')} /></section>
         {error && <div className="popup-error" role="alert">{error}</div>}
         <div className="page-context"><Gauge size={15} /><span>{host}</span><strong>{scripts.length}</strong></div>

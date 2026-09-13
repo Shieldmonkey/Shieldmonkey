@@ -157,6 +157,7 @@
   "editorHeaderPermissions": { "message": "Permissions" },
   "editorHeaderMatches": { "message": "Matches" },
   "editorBtnSave": { "message": "Save" },
+  "editorBtnSaved": { "message": "Saved" },
   "editorBtnSaving": { "message": "Saving..." },
   "editorBtnDelete": { "message": "Delete Script" },
   "editorConfirmDeleteTitle": { "message": "Delete Script" },

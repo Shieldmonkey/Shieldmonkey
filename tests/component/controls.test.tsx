@@ -13,6 +13,7 @@ describe('accessible controls', () => {
         render(<ToggleSwitch checked={false} onChange={onChange} ariaLabel="Enable Example" />);
         const control = screen.getByRole('switch', { name: 'Enable Example' });
         expect(control.getAttribute('aria-checked')).toBe('false');
+        expect(control.parentElement?.textContent).toBe('');
         await userEvent.click(control);
         expect(onChange).toHaveBeenCalledWith(true);
     });

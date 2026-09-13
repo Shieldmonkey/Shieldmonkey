@@ -31,7 +31,8 @@ const ScriptEditor = () => {
     const [code, setCode] = useState<string>('');
     const [name, setName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [isSaved, setIsSaved] = useState(false); // Success state
+    const [isSaved, setIsSaved] = useState(false);
+    const [savedCode, setSavedCode] = useState<string | null>(null);
 
     // New script specific state
     const [newScriptId] = useState(() => crypto.randomUUID());
@@ -42,6 +43,7 @@ const ScriptEditor = () => {
     const [canRedo, setCanRedo] = useState(false);
     const [formatError, setFormatError] = useState<string | null>(null);
     const toolbarRef = useRef<HTMLDivElement>(null);
+    const savedIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Close tools when clicking outside
     useEffect(() => {
@@ -101,6 +103,10 @@ const ScriptEditor = () => {
         }
     }, [scriptFromContext, isNew, searchParams]);
 
+    useEffect(() => () => {
+        if (savedIndicatorTimeoutRef.current) clearTimeout(savedIndicatorTimeoutRef.current);
+    }, []);
+
     // For existing scripts, if we change IDs (renaming? no), or just switching scripts
     useEffect(() => {
         if (!isNew && scriptFromContext && scriptFromContext.id !== id) {
@@ -113,10 +119,12 @@ const ScriptEditor = () => {
     }, [scriptFromContext, id, isNew]);
 
 
-    const lastSavedCode = isNew ? '' : (scriptFromContext?.lastSavedCode || '');
+    const lastSavedCode = savedCode ?? (isNew ? '' : (scriptFromContext?.lastSavedCode || ''));
     const isDirty = code !== lastSavedCode;
 
     const handleSave = useCallback(async () => {
+        if (isSaving || !isDirty) return;
+
         setIsSaving(true);
         try {
             const currentCode = code;
@@ -141,9 +149,10 @@ const ScriptEditor = () => {
 
             await saveScript(updatedScript);
             setName(updatedScript.name);
-
+            setSavedCode(currentCode);
             setIsSaved(true);
-            setTimeout(() => {
+            if (savedIndicatorTimeoutRef.current) clearTimeout(savedIndicatorTimeoutRef.current);
+            savedIndicatorTimeoutRef.current = setTimeout(() => {
                 setIsSaved(false);
             }, 2000);
 
@@ -159,7 +168,7 @@ const ScriptEditor = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [code, scriptFromContext, saveScript, showGenericModal, t, isNew, newScriptId, navigate]);
+    }, [code, scriptFromContext, saveScript, showGenericModal, t, isNew, newScriptId, navigate, isDirty, isSaving]);
 
     const handleDelete = () => {
         if (isNew) {
@@ -398,26 +407,6 @@ const ScriptEditor = () => {
                         </div>
                     </div>
 
-                    {/* Delete Script Button */}
-                    <div style={{ marginBottom: '32px' }}>
-                        <button
-                            className="btn-secondary"
-                            onClick={handleDelete}
-                            style={{
-                                color: 'var(--danger)',
-                                borderColor: 'var(--border-color)',
-                                width: '100%',
-                                justifyContent: 'center',
-                                padding: '10px'
-                            }}
-                        >
-                            <Trash2 size={16} />
-                            <span>{t('editorBtnDelete') || "Delete Script"}</span>
-                        </button>
-                    </div>
-
-
-
                     {/* Matches Section */}
                     {
                         (metadata.match || []).length > 0 && (
@@ -465,13 +454,24 @@ const ScriptEditor = () => {
                         )
                     }
 
+                    {/* Destructive actions stay at the end of the information panel. */}
+                    <div className="editor-danger-zone">
+                        <button
+                            className="btn-secondary"
+                            onClick={handleDelete}
+                        >
+                            <Trash2 size={16} />
+                            <span>{t('editorBtnDelete') || "Delete Script"}</span>
+                        </button>
+                    </div>
+
 
                 </div >
             </aside >
 
             <main className="main-content">
                 <header className="editor-header">
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div className="editor-header-nav">
                         {/* Mobile Back Button */}
                         <button
                             className="icon-btn"
@@ -491,28 +491,6 @@ const ScriptEditor = () => {
                             <Info size={18} />
                         </button>
                     </div>
-
-                    <div className="script-info-header" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minWidth: 0, paddingLeft: '16px' }}>
-                        <div
-                            className="script-name-input"
-                            title={t('nameDefinedInMetadata')}
-                            style={{
-                                cursor: 'default',
-                                marginLeft: 0,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
-                            }}
-                        >
-                            {name}
-                        </div>
-                        {metadata.namespace && (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: '8px' }}>
-                                {metadata.namespace}
-                            </span>
-                        )}
-                    </div>
-
 
                     <div className="editor-actions">
                         {/* Manual Editor Toggle Removed - CodeMirror handles mobile natively */}
@@ -621,18 +599,17 @@ const ScriptEditor = () => {
                             )}
 
                             <button
-                                className="btn-primary"
+                                className="btn-primary editor-save-button"
                                 onClick={handleSave}
-                                disabled={isSaving || (!isDirty && !isSaved)}
+                                disabled={isSaving || !isDirty}
                                 style={{
-                                    minWidth: '90px',
                                     justifyContent: 'center',
                                     backgroundColor: isSaved ? 'var(--success-color, #10b981)' : undefined,
                                     borderColor: isSaved ? 'var(--success-color, #10b981)' : undefined
                                 }}
                             >
-                                {isSaved ? <Check size={16} /> : isSaving ? <Loader size={16} className="icon-spin" /> : <Save size={16} />}
-                                <span>{t('editorBtnSave')}</span>
+                                {isSaved ? <Check size={16} /> : isSaving ? <Loader size={16} /> : <Save size={16} />}
+                                <span>{isSaving ? t('editorBtnSaving') : isSaved ? t('editorBtnSaved') : t('editorBtnSave')}</span>
                             </button>
                         </div>
                     </div>
@@ -676,6 +653,7 @@ const ScriptEditor = () => {
                             ]}
                             onChange={(value) => {
                                 setCode(value);
+                                setIsSaved(false);
                                 const metadata = parseMetadata(value);
                                 if (metadata.name && metadata.name !== name) {
                                     setName(metadata.name);

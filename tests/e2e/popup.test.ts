@@ -79,10 +79,9 @@ test('Create new script opens options page with editor', async () => {
     // Check if editor is loaded
     await newPageFrame.locator('.cm-editor').waitFor();
 
-    // Check if "New Script" is in the name input
-    const nameInput = newPageFrame.locator('.script-name-input');
-    await nameInput.waitFor();
-    expect(await nameInput.innerText()).toBe('New Script');
+    // The script name is shown in the info sidebar, not in the editor header.
+    expect(await newPageFrame.locator('.script-editor-sidebar').innerText()).toContain('New Script');
+    expect(await newPageFrame.locator('.script-name-input').count()).toBe(0);
 
     // Check if default code is present
     const notFound = newPageFrame.locator('text=Script not found');
