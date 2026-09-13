@@ -6,6 +6,7 @@ import { performBackupLegacy, performRestoreLegacy } from '../../../utils/backup
 import { useI18n } from '../../context/I18nContext';
 import { isFileSystemSupported } from '../../../utils/browserPolyfill';
 import { bridge } from '../../bridge/client';
+import ToggleSwitch from '../components/ToggleSwitch';
 
 const Settings = () => {
     const { theme, setTheme, extensionEnabled, toggleExtension, scripts } = useApp();
@@ -171,7 +172,7 @@ const Settings = () => {
             // We need to confirm first. But we don't know the folder name if we don't fetch it first.
             // We fetched backupDirName in useEffect.
             if (!backupDirName) {
-                alert(t('noDirSelected'));
+                showModal('warning', t('sectionRestore'), t('noDirSelected'));
                 return;
             }
 
@@ -221,7 +222,7 @@ const Settings = () => {
     };
 
     return (
-        <div className="content-scroll">
+        <div className="content-scroll settings-page">
             <div style={{ margin: '0 auto', width: '100%', maxWidth: '100%' }}>
                 <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('pageTitleSettings')}</h2>
 
@@ -264,10 +265,7 @@ const Settings = () => {
                             </p>
                         </div>
 
-                        <label className="switch" style={{ transform: 'scale(1.2)', marginRight: '8px' }}>
-                            <input type="checkbox" checked={extensionEnabled} onChange={(e) => toggleExtension(e.target.checked)} />
-                            <span className="slider"></span>
-                        </label>
+                        <ToggleSwitch checked={extensionEnabled} onChange={toggleExtension} ariaLabel={t('toggleExtensionSetting')} />
                     </div>
                 </div>
 
@@ -362,10 +360,7 @@ const Settings = () => {
                                             </p>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <label className="switch">
-                                                <input type="checkbox" checked={autoBackup} onChange={(e) => toggleAutoBackup(e.target.checked)} disabled={!backupDirName} />
-                                                <span className="slider"></span>
-                                            </label>
+                                            <ToggleSwitch checked={autoBackup} onChange={toggleAutoBackup} disabled={!backupDirName} ariaLabel={t('toggleAutoBackup')} />
                                         </div>
                                     </div>
 
@@ -577,6 +572,7 @@ const Settings = () => {
                                             type="file"
                                             accept=".json"
                                             ref={restoreInputRef}
+                                            aria-label={t('selectRestoreFile')}
                                             style={{ display: 'none' }}
                                             onChange={handleRestoreFileSelected}
                                         />

@@ -53,5 +53,5 @@ test('Backup and Restore Logic', async () => {
 
     // Scripts list is also in iframe
     const scriptsFrame = newPage.frameLocator('iframe');
-    await expect.poll(async () => scriptsFrame.getByText('Restored Script').isVisible()).toBe(true);
+    await expect.poll(async () => scriptsFrame.getByText('Restored Script').first().isVisible()).toBe(true);
 });

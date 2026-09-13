@@ -18,6 +18,12 @@ Please include a summary of the change and which issue is fixed.
 Please describe the tests that you ran to verify your changes.
 -->
 
+### Browser smoke test
+
+- [ ] Chrome: popup, script list, editor, and settings
+- [ ] Firefox: popup, script list, editor, and settings
+- [ ] Keyboard-only navigation and light/dark themes
+
 ## Checklist
 
 - [ ] My code follows the style guidelines of this project

@@ -1,0 +1,55 @@
+.switch {
+    position: relative;
+    display: inline-block;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 22px;
+    cursor: pointer;
+}
+
+.switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.switch .slider {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--bg-subtle);
+}
+
+.switch .slider::before {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    display: block;
+    width: 16px;
+    height: 16px;
+    content: '';
+    border-radius: 50%;
+    background: var(--text-primary);
+    transform: translateX(0);
+}
+
+.switch input:checked + .slider {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+}
+
+.switch input:checked + .slider::before {
+    transform: translateX(18px);
+}
+
+.switch input:disabled + .slider {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.switch:has(input:focus-visible) .slider {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}

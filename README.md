@@ -62,7 +62,18 @@ We prioritize supply chain security by leveraging `pnpm` configuration and stric
 - TypeScript
 - CodeMirror 6
 - IndexedDB
-- Vanilla CSS / Sass
+- Vanilla CSS design tokens
+
+### Frontend architecture
+
+- The popup and options hosts contain a sandboxed React iframe. A validated request/response bridge is the only path to privileged extension APIs.
+- Popup, options, and options routes are lazy-loaded. CodeMirror is loaded only for the editor, while Prettier and its parsers are loaded only when formatting is requested.
+- Persisted `ScriptRecord` values and editable `ScriptDraft` values share domain types in `src/types`. Script state exposes explicit loading, ready, and error states and rolls optimistic changes back when a bridge operation fails.
+- The Security Console UI uses shared Vanilla CSS tokens and accessible Radix primitives. Desktop and compact navigation switch at 900px.
+
+### Evergreen Utility design
+
+Shieldmonkey follows an evergreen utility design: the clarity of long-lived desktop administration software without nostalgic decoration. Flat surfaces, explicit one-pixel boundaries, compact controls, system typography, and visible text labels take priority over gradients, glow, glass effects, oversized headings, and ornamental motion. Green is reserved for the brand, active state, selection, and primary actions.
 
 ## Installation and Build
 
@@ -86,7 +97,7 @@ We prioritize supply chain security by leveraging `pnpm` configuration and stric
 4. Load the extension
    Open `chrome://extensions` in Chrome, enable Developer Mode, and load the generated `dist` directory.
 
-## testing
+## Testing
 
 You can run E2E tests to verify Shieldmonkey's functionality.
 
@@ -97,8 +108,15 @@ pnpm exec playwright install chromium --with-deps
 # Build the extension
 pnpm run build
 
+# Run unit and component tests
+pnpm run test:unit
+pnpm run test:component
+
 # Run E2E tests
 pnpm run test:e2e
+
+# Enforce the 200 KiB gzip sandbox bootstrap budget
+pnpm run check:bundle
 ```
 
 Tests include:
@@ -107,3 +125,5 @@ Tests include:
 - Backup and restore functionality
 - CSP policy verification
 - Popup page behavior check
+- Bridge validation, timeout cleanup, and route/query compatibility
+- WCAG 2.2 AA axe checks and responsive layouts

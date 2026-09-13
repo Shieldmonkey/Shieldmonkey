@@ -15,7 +15,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-    await browserContext.close();
+    await browserContext?.close();
 });
 
 test('API Permissions: Unauthorized GM_ calls should fail and Runtime access restricted', async () => {

@@ -1,49 +1,23 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
-// Import only the languages we need - NO, we remove Monaco completely
+import { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
 import { AppProvider } from './context/AppContext';
 import { ModalProvider } from './context/ModalContext';
 
-import Layout from './components/Layout';
-import Scripts from './pages/Scripts';
-import ScriptEditor from './pages/ScriptEditor';
-import Settings from './pages/Settings';
-import Help from './pages/Help';
-import PermissionHelp from './pages/PermissionHelp';
-import Install from './pages/Install';
-
-// Helper component to sync hash with parent
-function HashSync() {
-  const { hash } = useLocation();
-
-  useEffect(() => {
-    // Notify parent of hash change
-    window.parent.postMessage({ type: 'URL_CHANGED', hash }, '*');
-  }, [hash]);
-
-  useEffect(() => {
-    // Listen for navigation requests from parent (browser back/forward)
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'NAVIGATE' && event.data.path) {
-        if (window.location.hash !== event.data.path) {
-          window.location.hash = event.data.path;
-        }
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  return null;
-}
+const Layout = lazy(() => import('./components/Layout'));
+const Scripts = lazy(() => import('./pages/Scripts'));
+const ScriptEditor = lazy(() => import('./pages/ScriptEditor'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Help = lazy(() => import('./pages/Help'));
+const PermissionHelp = lazy(() => import('./pages/PermissionHelp'));
+const Install = lazy(() => import('./pages/Install'));
 
 function App() {
   return (
     <AppProvider>
       <ModalProvider>
-        <HashSync />
+        <Suspense fallback={<div className="route-loading" role="status">Loading…</div>}>
         <Routes>
           <Route path="install" element={<Install />} />
           <Route path="permission-help" element={
@@ -62,6 +36,7 @@ function App() {
           <Route path="scripts/:id" element={<ScriptEditor />} />
           <Route path="new" element={<ScriptEditor />} />
         </Routes>
+        </Suspense>
       </ModalProvider>
     </AppProvider>
   );

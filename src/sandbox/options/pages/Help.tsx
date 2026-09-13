@@ -62,7 +62,7 @@ const Help = () => {
     };
 
     return (
-        <div className="content-scroll">
+        <div className="content-scroll help-page">
             <div style={{ maxWidth: '900px', margin: '0 auto' }}>
                 <h2 className="page-title" style={{ marginBottom: '20px' }}>{t('navHelp')}</h2>
 
@@ -206,4 +206,3 @@ const Help = () => {
 };
 
 export default Help;
-

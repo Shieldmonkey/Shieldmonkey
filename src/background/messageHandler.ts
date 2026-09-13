@@ -1,4 +1,4 @@
-import { handleSaveScript, handleToggleScript, handleToggleGlobal, handleDeleteScript, reloadAllScripts } from './scripts';
+import { handleSaveScript, handleToggleScript, handleToggleGlobal, handleDeleteScript, handleBulkSetScriptEnabled, handleBulkDeleteScripts, reloadAllScripts } from './scripts';
 import { fetchScriptContent } from './fetcher';
 import { MessageType } from '../types/messages';
 
@@ -26,6 +26,16 @@ export function setupMessageListener() {
         if (message.type === MessageType.DELETE_SCRIPT) {
             const { scriptId } = message;
             handleDeleteScript(scriptId).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
+            return true;
+        }
+
+        if (message.type === MessageType.BULK_SET_SCRIPT_ENABLED) {
+            handleBulkSetScriptEnabled(message.scriptIds, message.enabled).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
+            return true;
+        }
+
+        if (message.type === MessageType.BULK_DELETE_SCRIPTS) {
+            handleBulkDeleteScripts(message.scriptIds).then(() => sendResponse({ success: true })).catch((err: unknown) => sendResponse({ success: false, error: err instanceof Error ? err.message : String(err) }));
             return true;
         }
 

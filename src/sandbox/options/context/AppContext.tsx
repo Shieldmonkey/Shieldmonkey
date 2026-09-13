@@ -2,17 +2,19 @@ import React, { useState, useEffect, type ReactNode } from 'react';
 import { type Script, type Theme } from '../types';
 import { AppContext } from './AppContextDefinition';
 import { bridge } from '../../bridge/client';
+import { normalizeScript, toPersistedScript } from '../../../types/script';
 
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [scripts, setScripts] = useState<Script[]>([]);
     const [theme, setTheme] = useState<Theme>('dark');
     const [extensionEnabled, setExtensionEnabled] = useState(true);
+    const [loadStatus, setLoadStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [operationError, setOperationError] = useState<string | null>(null);
 
     // Initial Load & Storage Sync
     useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        bridge.call('GET_SETTINGS').then((data: any) => {
+        bridge.call('GET_SETTINGS').then((data) => {
             const storedTheme = (data.theme as Theme) || 'dark';
             setTheme(storedTheme);
             if (data.extensionEnabled !== undefined) setExtensionEnabled(!!data.extensionEnabled);
@@ -20,12 +22,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             const storedScripts = data.scripts as Script[] | undefined;
             if (Array.isArray(storedScripts)) {
                 const initializedScripts = storedScripts.map(s => ({
-                    ...s,
+                    ...normalizeScript(s),
                     lastSavedCode: s.code,
-                    enabled: s.enabled !== false
                 }));
                 setScripts(initializedScripts);
             }
+            setLoadStatus('ready');
+        }).catch((error: Error) => {
+            setOperationError(error.message);
+            setLoadStatus('error');
         });
     }, []);
 
@@ -79,16 +84,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         bridge.call('UPDATE_THEME', newTheme);
     };
 
-    const handleToggleExtension = (enabled: boolean) => {
+    const handleToggleExtension = async (enabled: boolean) => {
+        const previous = extensionEnabled;
         setExtensionEnabled(enabled);
-        bridge.call('TOGGLE_GLOBAL', enabled);
-        // chrome.runtime.sendMessage({ type: MessageType.RELOAD_SCRIPTS }); // Bridge handles this? Or host handles?
-        // bridge.call('RELOAD_SCRIPTS'); // If needed explicitly, but host likely handles it on storage change? 
-        // Host bridge: TOGGLE_GLOBAL sets storage. Background listens to storage. 
-        // Background sends RELOAD_SCRIPTS message? 
-        // In original code: set storage, THEN send RELOAD_SCRIPTS.
-        // So we should probably send RELOAD_SCRIPTS via bridge too.
-        bridge.call('RELOAD_SCRIPTS');
+        setOperationError(null);
+        try {
+            await bridge.call('TOGGLE_GLOBAL', enabled);
+        } catch (error) {
+            setExtensionEnabled(previous);
+            setOperationError((error as Error).message);
+            throw error;
+        }
     };
 
     const reloadScripts = async () => {
@@ -99,7 +105,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const saveScript = async (script: Script) => {
-        await bridge.call('SAVE_SCRIPT', script);
+        setOperationError(null);
+        try {
+            await bridge.call('SAVE_SCRIPT', toPersistedScript(script));
+        } catch (error) {
+            setOperationError((error as Error).message);
+            throw error;
+        }
     };
 
     const deleteScript = async (id: string) => {
@@ -107,14 +119,52 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const toggleScript = async (script: Script, enabled: boolean) => {
-        // Optimistic upate
+        const previous = script.enabled !== false;
         setScripts(prev => prev.map(s => s.id === script.id ? { ...s, enabled } : s));
-        await bridge.call('TOGGLE_SCRIPT', { scriptId: script.id, enabled });
+        setOperationError(null);
+        try {
+            await bridge.call('TOGGLE_SCRIPT', { scriptId: script.id, enabled });
+        } catch (error) {
+            setScripts(prev => prev.map(s => s.id === script.id ? { ...s, enabled: previous } : s));
+            setOperationError((error as Error).message);
+            throw error;
+        }
+    };
+
+    const bulkSetScriptEnabled = async (ids: string[], enabled: boolean) => {
+        const previous = scripts;
+        const selected = new Set(ids);
+        setScripts(current => current.map(script => selected.has(script.id) ? { ...script, enabled } : script));
+        setOperationError(null);
+        try {
+            await bridge.call('BULK_SET_SCRIPT_ENABLED', { scriptIds: ids, enabled });
+        } catch (error) {
+            setScripts(previous);
+            setOperationError((error as Error).message);
+            throw error;
+        }
+    };
+
+    const bulkDeleteScripts = async (ids: string[]) => {
+        const previous = scripts;
+        const selected = new Set(ids);
+        setScripts(current => current.filter(script => !selected.has(script.id)));
+        setOperationError(null);
+        try {
+            await bridge.call('BULK_DELETE_SCRIPTS', { scriptIds: ids });
+        } catch (error) {
+            setScripts(previous);
+            setOperationError((error as Error).message);
+            throw error;
+        }
     };
 
     return (
         <AppContext.Provider value={{
             scripts,
+            loadStatus,
+            operationError,
+            clearOperationError: () => setOperationError(null),
             theme,
             extensionEnabled,
             setTheme: updateTheme,
@@ -123,11 +173,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             reloadScripts,
             saveScript,
             deleteScript,
-            toggleScript
+            toggleScript,
+            bulkSetScriptEnabled,
+            bulkDeleteScripts
         }}>
             {children}
         </AppContext.Provider>
     );
 };
-
-

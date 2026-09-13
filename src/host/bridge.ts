@@ -1,6 +1,6 @@
 import { handleSelectBackupDir, handleGetBackupDirName, handleRunBackup, handleRunRestore } from './backupHandlers';
 import { processScriptContent } from '../utils/importManager';
-import type { TypedBridgeMessage } from '../sandbox/bridge/types';
+import { isBridgeRequest, type BridgeError, type TypedBridgeMessage } from '../sandbox/bridge/types';
 
 async function handleImportFile() {
     if (!('showOpenFilePicker' in window)) {
@@ -70,20 +70,35 @@ async function triggerAutoBackup() {
     }
 }
 
-export function initBridge() {
+async function sendRuntimeMessage(message: unknown) {
+    const response = await chrome.runtime.sendMessage(message);
+    if (response && response.success === false) {
+        throw new Error(response.error || 'The background operation failed.');
+    }
+    return response;
+}
+
+export function initBridge(iframe: HTMLIFrameElement) {
     window.addEventListener('message', async (event: MessageEvent) => {
-        // Usage: <iframe src="src/sandbox/index.html">
-        // If it's a normal iframe in an extension page, it shares the origin. 
-        // If we want to strictly sandbox it, we might use the manifest "sandbox" key, which gives it a unique origin.
+        if (event.source !== iframe.contentWindow) return;
+        if (!isBridgeRequest(event.data)) {
+            const candidate = event.data as { id?: unknown; type?: unknown } | null;
+            if (candidate && typeof candidate.id === 'string') {
+                const invalid: BridgeError = {
+                    code: 'INVALID_REQUEST',
+                    message: 'The bridge request payload is invalid.',
+                    action: typeof candidate.type === 'string' ? candidate.type as TypedBridgeMessage['type'] : undefined
+                };
+                iframe.contentWindow?.postMessage({ id: candidate.id, error: invalid }, '*');
+            }
+            return;
+        }
 
-        const data = event.data as Partial<TypedBridgeMessage>;
-        if (!data || !data.id || !data.type) return;
-
-        const typedData = data as TypedBridgeMessage;
+        const typedData = event.data;
         const id = typedData.id;
         const type = typedData.type;
         let result: unknown = null;
-        let error: string | undefined = undefined;
+        let error: BridgeError | undefined;
 
         try {
             switch (typedData.type) {
@@ -99,7 +114,7 @@ export function initBridge() {
                     await chrome.storage.local.set({ locale: typedData.payload });
                     break;
                 case 'TOGGLE_GLOBAL':
-                    await chrome.storage.local.set({ extensionEnabled: typedData.payload });
+                    await sendRuntimeMessage({ type: 'TOGGLE_GLOBAL', enabled: typedData.payload });
                     break;
                 case 'UPDATE_BACKUP_SETTINGS':
                     await chrome.storage.local.set(typedData.payload);
@@ -112,22 +127,35 @@ export function initBridge() {
                     break;
                 case 'TOGGLE_SCRIPT':
                     // We need to forward this to background
-                    await chrome.runtime.sendMessage({ type: 'TOGGLE_SCRIPT', scriptId: typedData.payload.scriptId, enabled: typedData.payload.enabled });
-                    triggerAutoBackup();
+                    await sendRuntimeMessage({ type: 'TOGGLE_SCRIPT', scriptId: typedData.payload.scriptId, enabled: typedData.payload.enabled });
+                    await triggerAutoBackup();
+                    break;
+                case 'BULK_SET_SCRIPT_ENABLED':
+                    await sendRuntimeMessage({ type: 'BULK_SET_SCRIPT_ENABLED', ...typedData.payload });
+                    await triggerAutoBackup();
+                    break;
+                case 'BULK_DELETE_SCRIPTS':
+                    await sendRuntimeMessage({ type: 'BULK_DELETE_SCRIPTS', ...typedData.payload });
+                    await triggerAutoBackup();
                     break;
                 case 'DELETE_SCRIPT':
-                    await chrome.runtime.sendMessage({ type: 'DELETE_SCRIPT', scriptId: typedData.payload.scriptId });
-                    triggerAutoBackup();
+                    await sendRuntimeMessage({ type: 'DELETE_SCRIPT', scriptId: typedData.payload.scriptId });
+                    await triggerAutoBackup();
                     break;
                 case 'SAVE_SCRIPT':
-                    await chrome.runtime.sendMessage({ type: 'SAVE_SCRIPT', script: typedData.payload });
-                    triggerAutoBackup();
+                    await sendRuntimeMessage({ type: 'SAVE_SCRIPT', script: typedData.payload });
+                    await triggerAutoBackup();
                     break;
                 case 'RELOAD_SCRIPTS':
-                    await chrome.runtime.sendMessage({ type: 'RELOAD_SCRIPTS' });
+                    await sendRuntimeMessage({ type: 'RELOAD_SCRIPTS' });
                     break;
                 case 'OPEN_DASHBOARD':
-                    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html' + (typedData.payload?.path || '')), active: true });
+                    {
+                        const path = typedData.payload?.path || '/options/scripts';
+                        const query = new URLSearchParams(typedData.payload?.query || {}).toString();
+                        const route = `#${path}${query ? `?${query}` : ''}`;
+                        chrome.tabs.create({ url: chrome.runtime.getURL(`src/options/index.html${route}`), active: true });
+                    }
                     // Close popup to ensure focus on the new tab, especially on mobile
                     window.close();
                     break;
@@ -299,22 +327,18 @@ export function initBridge() {
                     break;
                 }
                 default:
-                    error = `Unknown action type: ${type}`;
+                    error = { code: 'INVALID_REQUEST', message: `Unknown action type: ${type}`, action: type };
             }
         } catch (e: unknown) {
-            error = (e as Error).message || 'Unknown error';
+            error = { code: 'ACTION_FAILED', message: (e as Error).message || 'Unknown error', action: type };
         }
 
-        if (event.source && (event.source as WindowProxy).postMessage) {
-            // Target origin must be '*' because the sandboxed iframe has a null origin
-            (event.source as WindowProxy).postMessage({ id, result, error }, '*');
-        }
+        iframe.contentWindow?.postMessage({ id, result, error }, '*');
     });
 
     // Forward storage changes
     chrome.storage.onChanged.addListener((changes, areaName) => {
-        const iframe = document.querySelector('iframe');
-        if (iframe && iframe.contentWindow) {
+        if (iframe.contentWindow) {
             iframe.contentWindow.postMessage({
                 type: 'STORAGE_CHANGED',
                 changes,

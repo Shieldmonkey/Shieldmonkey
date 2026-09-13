@@ -1,8 +1,5 @@
 import { initBridge } from '../host/bridge';
 
-// Initialize bridge
-initBridge();
-
 // Set body styles
 document.body.style.margin = '0';
 document.body.style.padding = '0';
@@ -12,12 +9,17 @@ document.body.style.overflow = 'hidden';
 
 // Create iframe
 const iframe = document.createElement('iframe');
-const hash = window.location.hash || '#/options';
-iframe.src = chrome.runtime.getURL('src/sandbox/index.html') + hash;
+const legacyMatch = new URLSearchParams(window.location.search).get('match');
+const hash = window.location.hash || '#/options/scripts';
+const normalizedHash = legacyMatch && hash === '#/options/new'
+    ? `#/options/new?match=${encodeURIComponent(legacyMatch)}`
+    : hash;
+iframe.src = chrome.runtime.getURL('src/sandbox/index.html') + normalizedHash;
 iframe.style.width = '100%';
 iframe.style.height = '100%';
 iframe.style.border = 'none';
 document.body.appendChild(iframe);
+initBridge(iframe);
 
 // Sync hash changes from Host to Iframe
 window.addEventListener('hashchange', () => {
@@ -29,6 +31,7 @@ window.addEventListener('hashchange', () => {
 
 // Listen for hash updates from Iframe
 window.addEventListener('message', (event) => {
+    if (event.source !== iframe.contentWindow) return;
     if (event.data && event.data.type === 'URL_CHANGED' && event.data.hash) {
         // Prevent update loop: only alter location.hash if it is different
         // Actually modifying window.location.hash triggers hashchange, 
